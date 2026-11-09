@@ -116,15 +116,15 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
     </div>
   </div>
   <div class="overlay" id="overlay">
-    <div class="sub">1/10 ELECTRIC TOURING · 20 FT LIVING ROOM</div>
+    <div class="sub">1/10 ELECTRIC TOURING · 20 FT ROOM AFTER DARK</div>
     <h1>CARPET<br>CIRCUIT</h1>
     <div class="spec">Shaft-drive 4WD touring chassis, 1.45 kg, 257 mm wheelbase, 190 mm body, GT coupe shell. Brushed 540 out of the box: about 40 km/h. Foam barriers on green carpet.</div>
     <div class="keys">
       <span><kbd>↑</kbd>/<kbd>W</kbd> throttle</span><span><kbd>↓</kbd>/<kbd>S</kbd> brake, hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd>/<kbd>A</kbd><kbd>D</kbd> steer</span>
       <span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span>
-      <span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
+      <span><kbd>L</kbd> mood lights</span><span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
     </div>
-    <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>Menu</b> pause</div>
+    <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>D-pad up</b> lights · <b>Menu</b> pause</div>
     <div class="btns"><button id="go" type="button">START ENGINE</button><button id="setupbtn" class="ghost" type="button">CAR SETUP</button></div>
   </div>
   <div class="garage" id="garage" hidden>
@@ -136,7 +136,7 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
 </div>
 <footer>
   <span id="padhint" hidden>Controller: stick + <kbd>RT</kbd>/<kbd>LT</kbd></span>
-  <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
+  <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>L</kbd> lights</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -154,7 +154,7 @@ renderer.setPixelRatio(1);
 renderer.setSize(1280, 720, false);
 renderer.setClearColor(0x000000);
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xd8cdb6, 6, 14);
+scene.fog = new THREE.Fog(0x1c1628, 7, 16);
 const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.02, 30);
 
 /* ---------------- procedural low-res textures ---------------- */
@@ -175,9 +175,9 @@ function grain(g, w, h, rgb, amp, seed) {
 }
 const T = {};
 T.carpet = tex(128, 128, (g, w, h) => {
-  grain(g, w, h, [178, 160, 128], 46, 1);
+  grain(g, w, h, [128, 126, 134], 36, 1);
   const r = rng(7); g.globalAlpha = 0.18;
-  for (let i = 0; i < 90; i++) { g.fillStyle = r() < .5 ? '#6d5c44' : '#e5d6b6'; g.fillRect(r() * w, r() * h, 2, 2); }
+  for (let i = 0; i < 90; i++) { g.fillStyle = r() < .5 ? '#5f5d66' : '#dcdae0'; g.fillRect(r() * w, r() * h, 2, 2); }
 }, 14, 14);
 T.track = tex(128, 128, (g, w, h) => {
   grain(g, w, h, [62, 96, 74], 40, 2);
@@ -185,13 +185,11 @@ T.track = tex(128, 128, (g, w, h) => {
   for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
 });
 T.wall = tex(128, 128, (g, w, h) => {
-  grain(g, w, h, [214, 205, 178], 14, 3);
-  g.fillStyle = 'rgba(160,140,100,0.22)';
-  for (let x = 0; x < w; x += 32) { g.fillRect(x, 0, 3, h); g.fillRect(x + 8, 0, 1, h); }
-  g.fillStyle = 'rgba(150,90,70,0.28)';
-  for (let y = 8; y < h; y += 32) for (let x = 20; x < w; x += 32) { g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x + 4, y); g.lineTo(x, y + 4); g.lineTo(x - 4, y); g.fill(); }
-}, 1 / 0.55, 1 / 0.55);
-T.ceiling = tex(64, 64, (g, w, h) => grain(g, w, h, [236, 232, 220], 18, 4), 1, 1);
+  grain(g, w, h, [238, 238, 236], 9, 3);
+  const r = rng(31); g.fillStyle = 'rgba(0,0,0,0.035)';
+  for (let i = 0; i < 40; i++) g.fillRect(r() * w, r() * h, 3, 3); // roller-paint texture
+}, 1 / 0.8, 1 / 0.8);
+T.ceiling = tex(64, 64, (g, w, h) => grain(g, w, h, [240, 240, 238], 12, 4), 1, 1);
 T.ceiling.repeat.set(10, 10);
 T.wood = tex(128, 128, (g, w, h) => {
   grain(g, w, h, [120, 78, 44], 18, 5);
@@ -208,16 +206,18 @@ T.curtain = tex(64, 64, (g, w, h) => {
 });
 T.radiator = tex(64, 32, (g, w, h) => { g.fillStyle = '#e9e7df'; g.fillRect(0, 0, w, h); g.fillStyle = '#b8b5aa'; for (let x = 0; x < w; x += 6) g.fillRect(x, 0, 2, h); }, 4, 1);
 T.sky = tex(256, 256, (g, w, h) => {
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#5f9ad8'); gr.addColorStop(0.55, '#bcd8ee'); gr.addColorStop(1, '#e8eef0');
+  // dusk: deep blue overhead, a pink-orange band on the horizon, first stars, lit windows next door
+  const gr = g.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, '#141a3d'); gr.addColorStop(0.45, '#3b2f6b'); gr.addColorStop(0.68, '#c0587a'); gr.addColorStop(0.8, '#f29a5c'); gr.addColorStop(1, '#f6c27a');
   g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  const r = rng(9); g.fillStyle = 'rgba(255,255,255,0.85)';
-  for (let i = 0; i < 9; i++) { const cx = r() * w, cy = 20 + r() * 70; for (let j = 0; j < 6; j++) { g.beginPath(); g.arc(cx + j * 9 - 20, cy + Math.sin(j) * 4, 8 + r() * 10, 0, 7); g.fill(); } }
-  g.fillStyle = '#9c6b5a'; g.fillRect(150, 150, 70, 60); g.fillStyle = '#5b3a32'; g.beginPath(); g.moveTo(144, 152); g.lineTo(185, 122); g.lineTo(226, 152); g.fill();
-  g.fillStyle = '#f2ead0'; g.fillRect(162, 168, 14, 14); g.fillRect(196, 168, 14, 14);
-  g.fillStyle = '#2f5a2c';
+  const r = rng(9); g.fillStyle = '#fff';
+  for (let i = 0; i < 40; i++) { g.globalAlpha = 0.3 + r() * 0.7; g.fillRect(r() * w, r() * 110, 1, 1); }
+  g.globalAlpha = 1; g.fillStyle = '#f4f1e6'; g.beginPath(); g.arc(60, 50, 9, 0, 7); g.fill();
+  g.fillStyle = '#1d1430'; g.fillRect(150, 150, 70, 60); g.beginPath(); g.moveTo(144, 152); g.lineTo(185, 122); g.lineTo(226, 152); g.fill();
+  g.fillStyle = '#ffcf7a'; g.fillRect(162, 168, 14, 14); g.fillStyle = '#7ad8ff'; g.fillRect(196, 168, 14, 14);
+  g.fillStyle = '#120c1e';
   for (let x = -10; x < w + 20; x += 18) { g.beginPath(); g.arc(x, 196 + (x * 7 % 13), 18 + (x * 13 % 9), 0, 7); g.fill(); }
-  g.fillStyle = '#4c7a3a'; g.fillRect(0, 210, w, h - 210);
-  g.fillStyle = '#7a5a3a'; for (let x = 0; x < w; x += 10) g.fillRect(x, 200, 6, 26); g.fillRect(0, 206, w, 3); g.fillRect(0, 218, w, 3);
+  g.fillRect(0, 206, w, h - 206);
 });
 T.sky.wrapS = T.sky.wrapT = THREE.ClampToEdgeWrapping;
 T.foam = tex(32, 32, (g, w, h) => grain(g, w, h, [235, 235, 235], 40, 10));
@@ -257,15 +257,17 @@ const lam = (o) => new THREE.MeshLambertMaterial(o);
 
 /* ---------------- room: 20 ft x 20 ft ---------------- */
 const FT = 0.3048, ROOM = 20 * FT, HALF = ROOM / 2, WALL_H = 2.45;
-scene.add(new THREE.HemisphereLight(0xfff6e6, 0x6b5a44, 0.55));
-scene.add(new THREE.AmbientLight(0xffffff, 0.22));
+const hemi = new THREE.HemisphereLight(0xb8b4d8, 0x2a2438, 0.2); scene.add(hemi);
+scene.add(new THREE.AmbientLight(0xffffff, 0.08));
 const SUN_DIR = new THREE.Vector3(-0.62, -0.62, -0.48).normalize();
-const sun = new THREE.DirectionalLight(0xffe3b0, 0.75); sun.position.copy(SUN_DIR).multiplyScalar(-10); scene.add(sun);
-const bulb = new THREE.PointLight(0xfff0d8, 0.35, 7); bulb.position.set(0, WALL_H - 0.25, 0); scene.add(bulb);
+// last of the dusk light through the window
+const sun = new THREE.DirectionalLight(0x8a7ad0, 0.18); sun.position.copy(SUN_DIR).multiplyScalar(-10); scene.add(sun);
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), lam({ map: T.carpet }));
+
+const phong = (o) => new THREE.MeshPhongMaterial({ shininess: 6, specular: 0x111111, ...o });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), phong({ map: T.carpet }));
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
-const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), lam({ map: T.ceiling }));
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), phong({ map: T.ceiling }));
 ceil.rotation.x = Math.PI / 2; ceil.position.y = WALL_H; scene.add(ceil);
 
 // wall frames: u axis along wall, local +z points into room
@@ -276,14 +278,14 @@ const WALLS = {
   W: { pos: [-HALF, 0, 0], rot: Math.PI / 2 },
 };
 function wallGroup(k) { const g = new THREE.Group(); g.position.set(...WALLS[k].pos); g.rotation.y = WALLS[k].rot; scene.add(g); g.updateMatrixWorld(); return g; }
-const WIN = { N: { u: -0.75, w: 1.35, h: 1.25, sill: 0.85 }, E: { u: -0.35, w: 1.2, h: 1.25, sill: 0.85 } };
+const WIN = { N: { u: -0.75, w: 1.35, h: 1.25, sill: 0.85 } };
 const wallGroups = {};
 for (const k of Object.keys(WALLS)) {
   const g = wallGroups[k] = wallGroup(k);
   const s = new THREE.Shape(); s.moveTo(-HALF, 0); s.lineTo(HALF, 0); s.lineTo(HALF, WALL_H); s.lineTo(-HALF, WALL_H); s.closePath();
   const win = WIN[k];
   if (win) { const p = new THREE.Path(); const x0 = win.u - win.w / 2, x1 = win.u + win.w / 2, y0 = win.sill, y1 = win.sill + win.h; p.moveTo(x0, y0); p.lineTo(x0, y1); p.lineTo(x1, y1); p.lineTo(x1, y0); p.closePath(); s.holes.push(p); }
-  g.add(new THREE.Mesh(new THREE.ShapeGeometry(s), lam({ map: T.wall })));
+  g.add(new THREE.Mesh(new THREE.ShapeGeometry(s), phong({ map: T.wall })));
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(ROOM, 0.11, 0.018), lam({ map: T.paint, color: 0xf2efe6 })); skirt.position.set(0, 0.055, 0.009); g.add(skirt);
   const cornice = new THREE.Mesh(new THREE.BoxGeometry(ROOM, 0.06, 0.04), lam({ map: T.paint })); cornice.position.set(0, WALL_H - 0.03, 0.02); g.add(cornice);
 }
@@ -302,16 +304,8 @@ for (const k of Object.keys(WIN)) {
   for (const side of [-1, 1]) { const c = box(0.32, y1 + 0.12, 0.06, lam({ map: T.curtain }), cx + side * (w.w / 2 + 0.2), (y1 + 0.12) / 2 + 0.02, 0.07, g); c.position.y = WALL_H - 0.12 - (y1 + 0.12) / 2 + 0.02; }
   box(w.w + 1.0, 0.025, 0.025, lam({ color: 0x6b4a2a }), cx, WALL_H - 0.1, 0.09, g); // rail
   const rad = box(w.w * 0.8, 0.5, 0.08, lam({ map: T.radiator }), cx, 0.38, 0.06, g);
-  // light shaft + floor patch, in world space
-  const corners = [[cx - w.w / 2, y1], [cx + w.w / 2, y1], [cx + w.w / 2, y0], [cx - w.w / 2, y0]].map(([u, y]) => g.localToWorld(new THREE.Vector3(u, y, 0)));
-  const proj = corners.map(p => p.clone().addScaledVector(SUN_DIR, -p.y / SUN_DIR.y).setY(0.006));
-  const quad = (a, b, c, d, uv) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute([...a.toArray(), ...b.toArray(), ...c.toArray(), ...d.toArray()], 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex([0, 1, 2, 0, 2, 3]); return geo; };
-  const sm = new THREE.MeshBasicMaterial({ map: T.shaft, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, opacity: 0.35, fog: false });
-  shaftMats.push(sm);
-  scene.add(new THREE.Mesh(quad(corners[0], corners[1], proj[1], proj[0], [0, 1, 1, 1, 1, 0, 0, 0]), sm));
-  scene.add(new THREE.Mesh(quad(corners[3], corners[2], proj[2], proj[3], [0, 1, 1, 1, 1, 0, 0, 0]), sm));
-  const pm = new THREE.MeshBasicMaterial({ map: T.patch, color: 0xffe2a8, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.32, polygonOffset: true, polygonOffsetFactor: -2 });
-  const patch = new THREE.Mesh(quad(proj[0], proj[1], proj[2], proj[3], [0, 1, 1, 1, 1, 0, 0, 0]), pm); patch.renderOrder = 2; scene.add(patch);
+  // no sun shafts at dusk
+
 }
 // west wall: door + bookshelf
 {
@@ -356,11 +350,88 @@ for (const k of Object.keys(WIN)) {
 }
 // ceiling light
 {
-  const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.14, 16, 1, true), lam({ color: 0xf2e6c8, side: THREE.DoubleSide, emissive: 0x403a2a }));
+  const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.14, 16, 1, true), lam({ color: 0xf2f0ea, side: THREE.DoubleSide }));
   sh.position.set(0, WALL_H - 0.22, 0); scene.add(sh);
-  const bulbM = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff6e0 })); bulbM.position.set(0, WALL_H - 0.25, 0); scene.add(bulbM);
+  const bulbM = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), lam({ color: 0xdddddd })); bulbM.position.set(0, WALL_H - 0.25, 0); scene.add(bulbM);
   box(0.01, 0.15, 0.01, lam({ color: 0x222222 }), 0, WALL_H - 0.08, 0);
 }
+
+/* ---------------- mood lighting: colour-changing LED strips + sunset lamp ----------------
+   Four zones (one per wall) drift through a palette with offset phases. Each zone is a visible
+   LED strip under the cornice, an additive glow washed down the wall and across the ceiling,
+   and a coloured point light that actually lights the room, the track and the car. */
+const MOODS = [
+  { name: 'DREAM', hues: [0.76, 0.88, 0.62, 0.52], sat: 0.8, speed: 0.022 },
+  { name: 'SUNSET', hues: [0.02, 0.07, 0.95, 0.86], sat: 0.85, speed: 0.016 },
+  { name: 'OCEAN', hues: [0.5, 0.56, 0.62, 0.7], sat: 0.75, speed: 0.02 },
+  { name: 'PARTY', hues: [0.0, 0.16, 0.33, 0.55, 0.72, 0.86], sat: 1, speed: 0.12 },
+  { name: 'LIGHTS ON', hues: [0.1], sat: 0.15, speed: 0 },
+];
+let moodIdx = 0;
+try { const v = parseInt(localStorage.getItem('cc-mood'), 10); if (v >= 0 && v < MOODS.length) moodIdx = v; } catch (e) {}
+T.washDown = tex(16, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+T.washUp = tex(16, 64, (g, w, h) => { const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+T.halo = tex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(64, 64, 4, 64, 64, 63); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+for (const k of ['washDown', 'washUp', 'halo']) T[k].wrapS = T[k].wrapT = THREE.ClampToEdgeWrapping;
+const glowMat = (map, op) => new THREE.MeshBasicMaterial({ map, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+const moodZones = [];
+['N', 'E', 'S', 'W'].forEach((k, zi) => {
+  const g = wallGroups[k], zone = { strip: null, mats: [], light: null, phase: zi * 0.25 };
+  const stripM = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+  zone.strip = stripM;
+  box(ROOM - 0.1, 0.012, 0.012, stripM, 0, WALL_H - 0.068, 0.034, g);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, 1.1), glowMat(T.washDown, 0.34)); wall.position.set(0, WALL_H - 0.6, 0.006); g.add(wall);
+  const ceilW = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, 0.9), glowMat(T.washUp, 0.3)); ceilW.rotation.x = Math.PI / 2; ceilW.position.set(0, WALL_H - 0.004, 0.45); g.add(ceilW);
+  zone.mats.push(wall.material, ceilW.material);
+  const L = new THREE.PointLight(0xffffff, 0.6, 7.5, 1); L.position.copy(g.localToWorld(new THREE.Vector3(0, WALL_H - 0.35, 0.5))); scene.add(L);
+  zone.light = L;
+  moodZones.push(zone);
+});
+// floor-level strip behind the sofa (south wall), washing up the wall in a second colour
+{
+  const g = wallGroups.S, stripM = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+  box(2.2, 0.012, 0.012, stripM, 0.9, 0.12, 0.02, g);
+  const up = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.9), glowMat(T.washUp, 0.5)); up.position.set(0.9, 0.55, 0.005); g.add(up);
+  const L = new THREE.PointLight(0xffffff, 0.5, 3.5, 1); L.position.copy(g.localToWorld(new THREE.Vector3(0.9, 0.35, 0.95))); scene.add(L);
+  moodZones.push({ strip: stripM, mats: [up.material], light: L, phase: 0.6 });
+}
+// sunset projector lamp on the pit table, throwing a glowing disc onto the east wall
+{
+  const tx = HALF - 0.42, tz = HALF - 0.62;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.03, 12), lam({ color: 0x1b1b20 })); base.position.set(tx + 0.12, 0.75, tz + 0.05); scene.add(base);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.18, 6), lam({ color: 0x1b1b20 })); stem.position.set(tx + 0.12, 0.84, tz + 0.05); scene.add(stem);
+  const headM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, 12), headM); head.rotation.z = Math.PI / 2; head.position.set(tx + 0.15, 0.93, tz + 0.05); scene.add(head);
+  const g = wallGroups.E;
+  const disc = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.7), glowMat(T.halo, 0.42)); disc.position.set(-1.6, 1.55, 0.007); g.add(disc);
+  const L = new THREE.PointLight(0xffffff, 0.7, 4, 1); L.position.copy(g.localToWorld(new THREE.Vector3(-1.6, 1.4, 0.5))); scene.add(L);
+  moodZones.push({ strip: headM, mats: [disc.material], light: L, phase: 0.1, warm: true });
+}
+const _c = new THREE.Color(), _fog = new THREE.Color();
+function moodHue(M, t) {
+  const n = M.hues.length, x = ((t % 1) + 1) % 1 * n, i = Math.floor(x), f = x - i;
+  const a = M.hues[i], b = M.hues[(i + 1) % n];
+  let d = b - a; if (d > 0.5) d -= 1; if (d < -0.5) d += 1;
+  const e = f * f * (3 - 2 * f);
+  return ((a + d * e) % 1 + 1) % 1;
+}
+function updateMood(time) {
+  const M = MOODS[moodIdx];
+  _fog.setRGB(0, 0, 0);
+  for (const z of moodZones) {
+    let h = moodHue(M, time * M.speed + z.phase);
+    if (z.warm && M.sat > 0.5) h = moodHue(MOODS[1], time * 0.016 + z.phase); // the sunset lamp stays sunset
+    _c.setHSL(h, z.warm ? Math.max(M.sat, 0.8) : M.sat, 0.55);
+    z.strip.color.copy(_c).lerp(new THREE.Color(1, 1, 1), 0.35);
+    for (const m of z.mats) m.color.copy(_c).multiplyScalar(0.85);
+    z.light.color.copy(_c);
+    _fog.add(_c);
+  }
+  const on = M.name === 'LIGHTS ON';
+  scene.fog.color.copy(_fog.multiplyScalar(1 / moodZones.length)).multiplyScalar(on ? 0.5 : 0.16);
+  hemi.intensity = on ? 0.7 : 0.2;
+}
+function actMood() { moodIdx = (moodIdx + 1) % MOODS.length; try { localStorage.setItem('cc-mood', String(moodIdx)); } catch (e) {} flash('LIGHTS · ' + MOODS[moodIdx].name, 1.2); }
 
 /* ---------------- track: foam barriers on a green carpet ribbon ---------------- */
 const TRACK_W = 0.9, HW = TRACK_W / 2;
@@ -382,11 +453,11 @@ const TRACK_LEN = curve.getLength();
     if (i > 0) acc += P[k].distanceTo(P[(i - 1) % N]);
     pos.push(p.x + n.x * (HW + 0.06), 0.002, p.z + n.z * (HW + 0.06), p.x - n.x * (HW + 0.06), 0.002, p.z - n.z * (HW + 0.06));
     uv.push(0, acc / 1.0, 1, acc / 1.0);
-    if (i < N) { const j = i * 2; idx.push(j, j + 2, j + 1, j + 1, j + 2, j + 3); }
+    if (i < N) { const j = i * 2; idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2); }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, j) => j % 3 === 1 ? 1 : 0), 3));
-  const m = new THREE.Mesh(geo, lam({ map: T.track, side: THREE.DoubleSide })); scene.add(m);
+  const m = new THREE.Mesh(geo, phong({ map: T.track })); scene.add(m);
   // start / finish
   const sf = new THREE.Mesh(new THREE.PlaneGeometry(TRACK_W, 0.1), lam({ map: T.checker, polygonOffset: true, polygonOffsetFactor: -1 }));
   sf.rotation.x = -Math.PI / 2; sf.rotation.z = Math.atan2(TAN[0].x, TAN[0].z) - Math.PI / 2 + Math.PI / 2; sf.position.set(P[0].x, 0.004, P[0].z);
@@ -886,6 +957,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyM') actMusic();
   if (e.code === 'KeyG') toggleGarage();
   if (e.code === 'KeyT') actTele();
+  if (e.code === 'KeyL') actMood();
   if (e.code === 'Escape' && garageOpen) toggleGarage(false);
   if (e.code === 'KeyP') actPause();
 });
@@ -915,6 +987,7 @@ function padButtons(gp) {
     if (hit(8)) toggleGarage(true);
     if (hit(4)) actTele();
     if (hit(5)) actMusic();
+    if (hit(12)) actMood();
   }
   padPrev = now;
 }
@@ -1052,7 +1125,7 @@ function frame(now) {
   audio.update(car.wheelSurf / MOTORS[setup.motor].vFree, car.thr, car.slide, race.state !== 'menu', MOTORS[setup.motor]);
   if (telemetryOn) drawTelemetry();
   chargerLed.visible = (clock % 1.2) < 0.6;
-  for (const m of shaftMats) m.opacity = 0.3 + Math.sin(clock * 0.4) * 0.04;
+  updateMood(performance.now() / 1000);
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0 && !race.paused) $('msg').textContent = ''; }
   hudT -= dt;
   if (hudT <= 0) {

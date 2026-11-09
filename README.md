@@ -1,6 +1,6 @@
 # Carpet Circuit
 
-Browser RC racer: a 1/10 electric touring car with a GT coupe shell, lapping a foam-barrier carpet track in a 20 ft x 20 ft living room. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC racer: a 1/10 electric touring car with a GT coupe shell, lapping a foam-barrier carpet track in a 20 ft x 20 ft white room with one window at dusk, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -10,11 +10,11 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), G car setup, T telemetry, C camera, R reset car, M music, P pause, Enter start.
+Arrows/WASD drive (hold Down at a stop to reverse), G car setup, T telemetry, L mood lights (Dream, Sunset, Ocean, Party, Lights on), C camera, R reset car, M music, P pause, Enter start.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
-Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, RB music, Menu/Options pause. Barrier hits rumble.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, RB music, D-pad up mood lights, Menu/Options pause. Barrier hits rumble.
 
 ## Driving model
 Real 1/10 electric touring car numbers (SI units), stepped at 720 Hz:
