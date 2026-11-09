@@ -10,16 +10,23 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, N next track, G car setup, T telemetry, L lights (Party, Lights on), C camera, R reset car, P pause, Enter start.
+Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, G car setup, T telemetry, L lights (Party, Lights on), C camera, R reset car, Esc/P pause menu.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
-Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up lights, D-pad down drift/grip, Menu/Options pause. Barrier hits rumble.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up lights, D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
-## Layouts and modes
-- **Layouts** (car setup, G): DRIFT CIRCUIT (default, 1.2 m lane, long straight, sweepers and a transition at the top), MINAMI-STYLE (inspired by Ebisu Minami: long straight into a big fast sweeper, S-bend, hairpins), MEIHAN-STYLE (inspired by Meihan Sportsland: big flowing sweepers), TECHNICAL (inspired by Japanese RC courses like Iroha and Team Tetsujin: back-to-back transitions), CLASSIC (the original 0.9 m grip circuit), OPEN FLOOR (no track, one cone in the middle; score is your longest drift and orbits of the cone; hit the cone hard and it tips over, then resets).
-- **Track**: N (or d-pad left/right, or the TRACK button on the start screen) cycles the layouts.
-- **Mode**: V (or d-pad down, or the MODE button on the start screen) switches DRIFT (RWD, gyro, plastic tires) and GRIP (regular RC driving: 4WD on rubber tires).
+## Menu
+A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+
+## Courses
+Drive through the gates in order (the next gate glows on the floor and on the minimap); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
+- **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
+- **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
+- **LIVING ROOM**: furniture course past the sofa, between the pouf and the TV stand, under the coffee table between its legs and past the armchair. The rug grips like carpet.
+
+## Sound
+Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (idle, steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide.
 
 ## Cameras (C)
 Chase, DRIVER POV (standing in the corner at 1.65 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), bumper, ceiling.
