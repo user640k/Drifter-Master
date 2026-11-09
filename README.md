@@ -20,7 +20,7 @@ Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A sta
 A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
 ## Courses
-Drive through the gates in order (the next gate glows on the floor and on the minimap); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
+Drive through the gates in order (the next gate glows on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
 - **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
 - **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
 - **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.3 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
@@ -31,6 +31,8 @@ Drive through the gates in order (the next gate glows on the floor and on the mi
 Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide. The motor is silent off the throttle.
 
 ## Cameras (C)
+The HUD is plain text: lap, time, last, best and gate count top left, speed and drift angle bottom right; no minimap.
+
 Chase, DRIVER POV (standing in the corner at 1.65 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), bumper, ceiling.
 
 ## Driving model

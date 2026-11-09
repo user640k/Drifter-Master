@@ -28,24 +28,20 @@ body {
 }
 .stage {
   position: relative; width: min(100%, calc((100dvh - 80px) * 16 / 9)); aspect-ratio: 16 / 9; max-width: 100%;
-  background: #000; container-type: inline-size; box-shadow: 0 0 0 1px #233042, 0 20px 60px rgba(0,0,0,.6);
+  background: #000; container-type: inline-size; box-shadow: 0 20px 60px rgba(0,0,0,.6);
 }
 canvas#view { width: 100%; height: 100%; display: block; }
 .hud { position: absolute; inset: 0; pointer-events: none; font-family: var(--ui); }
-.box { position: absolute; background: var(--panel); border: 1px solid rgba(143,180,216,.45); transform: skewX(-12deg); padding: .5cqw 1.2cqw; }
-.box > * { transform: skewX(12deg); }
+.box { position: absolute; text-shadow: 0 .1cqw .25cqw rgba(0,0,0,.85), 0 0 .8cqw rgba(0,0,0,.45); }
 .laps { left: 2cqw; top: 2cqw; display: grid; grid-template-columns: auto auto; column-gap: 1.2cqw; row-gap: .1cqw; align-items: baseline; }
 .lbl { font-size: 1.05cqw; letter-spacing: .12em; color: var(--dim); font-weight: 700; }
 .val { font-family: var(--display); font-size: 1.7cqw; font-variant-numeric: tabular-nums; text-align: right; }
 .val.big { font-size: 2.6cqw; color: var(--hot); }
-.speed { right: 2cqw; bottom: 2cqw; text-align: right; padding: .6cqw 1.6cqw; }
+.speed { right: 2cqw; bottom: 2cqw; text-align: right; }
 .speed .num { font-family: var(--display); font-size: 5cqw; line-height: 1; font-variant-numeric: tabular-nums; font-style: italic; }
 .speed .unit { font-size: 1.2cqw; color: var(--dim); letter-spacing: .1em; font-weight: 700; }
 .speed .scale { font-size: 1.05cqw; color: var(--edge); letter-spacing: .08em; font-weight: 700; }
-.bar { height: .55cqw; margin-top: .4cqw; background: rgba(255,255,255,.12); }
-.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3fd1ff, var(--hot) 70%, var(--red)); }
 .cam { left: 2cqw; bottom: 2cqw; font-size: 1.1cqw; letter-spacing: .12em; font-weight: 700; color: var(--edge); }
-canvas#map { position: absolute; right: 2cqw; top: 2cqw; width: 13cqw; height: 13cqw; opacity: .9; }
 .center { position: absolute; left: 50%; top: 28%; transform: translate(-50%, -50%); text-align: center; }
 .lights { display: flex; gap: 1cqw; justify-content: center; }
 .lights b { width: 3.4cqw; height: 3.4cqw; border-radius: 50%; background: #2a0d0d; border: .3cqw solid #111; box-shadow: inset 0 0 .6cqw #000; }
@@ -57,8 +53,10 @@ canvas#map { position: absolute; right: 2cqw; top: 2cqw; width: 13cqw; height: 1
 .mtitle { font-family: var(--display); font-size: 3.6cqw; font-style: italic; letter-spacing: .02em; color: #fff; line-height: 1; }
 .mkind { font-size: 1.15cqw; letter-spacing: .32em; color: var(--hot); font-weight: 700; margin-top: .5cqw; }
 .mlist { list-style: none; margin: 1cqw 0 0; padding: 0; display: flex; flex-direction: column; gap: .25cqw; }
-.mitem { display: flex; justify-content: space-between; align-items: center; gap: 1cqw; padding: .55cqw 1.2cqw .55cqw 1.4cqw; font-family: var(--display); font-size: 1.75cqw; letter-spacing: .04em; color: #aab4c2; cursor: pointer; border-left: .35cqw solid transparent; }
-.mitem.sel { color: #fff; background: linear-gradient(90deg, rgba(255,178,30,.22), rgba(255,178,30,0)); border-left-color: var(--hot); }
+.mitem { display: flex; justify-content: space-between; align-items: center; gap: 1cqw; padding: .4cqw 0; font-family: var(--display); font-size: 1.75cqw; letter-spacing: .04em; color: #8b95a3; cursor: pointer; text-shadow: 0 .1cqw .3cqw rgba(0,0,0,.6); }
+.mitem .mlabel::before { content: '\25B8'; display: inline-block; width: 1.6cqw; color: transparent; }
+.mitem.sel { color: #fff; }
+.mitem.sel .mlabel::before { color: var(--hot); }
 .mval { display: flex; align-items: center; gap: .6cqw; font-family: var(--ui); font-weight: 700; font-size: 1.3cqw; letter-spacing: .08em; color: var(--hot); }
 .marr { font: inherit; font-size: 1.7cqw; line-height: 1; color: inherit; background: none; border: 0; padding: 0 .3cqw; cursor: pointer; opacity: .7; }
 .marr:hover, .marr:focus-visible { opacity: 1; outline: none; }
@@ -68,25 +66,25 @@ canvas#map { position: absolute; right: 2cqw; top: 2cqw; width: 13cqw; height: 1
 .mcol { display: flex; flex-direction: column; gap: .5cqw; }
 .mcol b { font-family: var(--display); font-weight: 400; letter-spacing: .1em; color: var(--hot); font-size: 1.2cqw; }
 .mback { grid-column: 1 / -1; color: var(--dim); font-size: 1cqw; letter-spacing: .1em; }
-.mcontrols kbd { font-family: var(--display); font-size: .9em; background: #1b2635; border: 1px solid #3b5470; border-bottom-width: 3px; padding: .05em .45em; color: var(--fg); border-radius: 3px; }
+.mcontrols kbd { font-family: var(--display); font-size: .95em; color: var(--hot); }
 .hud.dim > :not(.center) { opacity: 0 !important; }
 .speed .motor { color: var(--hot); margin-top: .2cqw; }
-button.ghost, #gclose { font-family: var(--display); font-size: 1.4cqw; font-style: italic; padding: .7cqw 2.4cqw; color: var(--fg); background: rgba(20,32,48,.8);
-  border: 1px solid var(--edge); transform: skewX(-12deg); cursor: pointer; }
-button.ghost:focus-visible, #gclose:focus-visible, .chip:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.chip:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 #tele { position: absolute; left: 2cqw; bottom: 5.4cqw; width: 26.5cqw; height: 19.5cqw; }
-.garage { position: absolute; inset: 6% 12%; background: rgba(8,13,22,.94); border: 1px solid var(--edge); padding: 1.6cqw 2.4cqw; display: flex; flex-direction: column; gap: 1.1cqw; pointer-events: auto; overflow: auto; }
-.ghead { display: flex; justify-content: space-between; align-items: baseline; gap: 1cqw; flex-wrap: wrap; font-family: var(--display); font-style: italic; font-size: 2.4cqw; color: var(--hot); }
-.gsub { font-family: var(--ui); font-style: normal; font-size: 1.1cqw; color: var(--dim); }
-.grows { display: grid; grid-template-columns: 11cqw 1fr; gap: .8cqw 1.4cqw; align-items: center; }
-.grows .lbl { font-size: 1.15cqw; }
-.grows .lbl.sel { color: var(--hot); }
-.grows .lbl.sel::before { content: '\25B8  '; }
-.chips { display: flex; gap: .6cqw; flex-wrap: wrap; }
-.chip { font-family: var(--ui); font-weight: 700; font-size: 1.1cqw; letter-spacing: .06em; padding: .45cqw 1.1cqw; background: #142030; color: var(--dim); border: 1px solid #2c4058; cursor: pointer; }
-.chip[aria-pressed="true"] { background: var(--hot); color: #10131a; border-color: var(--hot); }
-.gnote { font-size: 1.1cqw; color: var(--dim); line-height: 1.5; min-height: 3.3em; }
-#gclose { align-self: flex-end; }
+.garage { position: absolute; inset: 0; padding: 6cqw 5cqw 4cqw; background: linear-gradient(90deg, rgba(5,7,12,.94) 0%, rgba(5,7,12,.82) 45%, rgba(5,7,12,.2) 80%); display: flex; flex-direction: column; gap: 1.2cqw; pointer-events: auto; overflow: auto; }
+.ghead { display: flex; flex-direction: column; gap: .4cqw; font-family: var(--display); font-style: italic; font-size: 3.2cqw; color: #fff; }
+.gsub { font-family: var(--ui); font-style: normal; font-size: 1.05cqw; letter-spacing: .14em; color: var(--hot); font-weight: 700; }
+.grows { display: grid; grid-template-columns: 14cqw auto; gap: .5cqw 2cqw; align-items: baseline; justify-content: start; }
+.grows .lbl { font-family: var(--display); font-size: 1.45cqw; letter-spacing: .04em; color: #aab4c2; }
+.grows .lbl.sel { color: #fff; }
+.grows .lbl.sel::before { content: '\25B8  '; color: var(--hot); }
+.chips { display: flex; gap: 1.6cqw; flex-wrap: wrap; }
+.chip { font-family: var(--ui); font-weight: 700; font-size: 1.2cqw; letter-spacing: .08em; padding: .2cqw 0; background: none; color: #6b7686; border: 0; border-bottom: .2cqw solid transparent; cursor: pointer; }
+.chip:hover { color: var(--fg); }
+.chip[aria-pressed="true"] { color: var(--hot); border-bottom-color: var(--hot); }
+.gnote { font-size: 1.1cqw; color: var(--dim); line-height: 1.5; min-height: 3.3em; max-width: 46cqw; }
+#gclose { align-self: flex-start; font-family: var(--display); font-size: 1.6cqw; font-style: italic; color: #fff; background: none; border: 0; padding: 0; cursor: pointer; }
+#gclose:hover, #gclose:focus-visible { color: var(--hot); outline: none; }
 @media (prefers-reduced-motion: reduce) { .lights b { box-shadow: none !important; } }
 </style>
 
@@ -100,13 +98,11 @@ button.ghost:focus-visible, #gclose:focus-visible, .chip:focus-visible { outline
       <span class="lbl" id="l3">BEST</span><span class="val" id="best">-:--.---</span>
       <span class="lbl">GATE</span><span class="val" id="gate">0/0</span>
     </div>
-    <canvas id="map" width="200" height="200"></canvas>
     <div class="box speed">
       <div><span class="num" id="spd">0</span> <span class="unit">KM/H</span></div>
       <div class="scale" id="scale">SCALE SPEED 0 KM/H</div>
       <div class="scale" id="angle">DRIFT ANGLE 0°</div>
       <div class="scale motor" id="motorname">BRUSHED 540 RTR</div>
-      <div class="bar"><i id="thr"></i></div>
     </div>
     <div class="box cam" id="camname">CAM · CHASE</div>
     <canvas id="tele" width="340" height="250" hidden></canvas>
@@ -132,10 +128,10 @@ button.ghost:focus-visible, #gclose:focus-visible, .chip:focus-visible { outline
     </div>
   </div>
   <div class="garage" id="garage" hidden>
-    <div class="ghead"><span>CAR SETUP</span><span class="gsub">Changes apply instantly. <kbd>G</kbd> to close. Gamepad: d-pad to choose, <kbd>B</kbd> to close.</span></div>
+    <div class="ghead"><span>CAR SETUP</span><span class="gsub">CHANGES APPLY INSTANTLY · G / B TO CLOSE</span></div>
     <div class="grows" id="grows"></div>
     <div class="gnote" id="gnote"></div>
-    <button id="gclose" type="button">DONE</button>
+    <button id="gclose" type="button">‹ BACK</button>
   </div>
 </div>
 
@@ -690,7 +686,7 @@ function buildCourse(ci) {
   course = COURSES[ci] || COURSES[0];
   if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry && !Object.values(coneGeo).includes(o.geometry)) o.geometry.dispose(); }); }
   courseGroup = new THREE.Group(); scene.add(courseGroup);
-  cones.length = 0; RUG = null; mapBounds = null;
+  cones.length = 0; RUG = null; 
   OBST = STATIC_OBST.concat(course.furniture ? buildFurniture(courseGroup) : []);
   TRACK = null; RAMPS = course.ramps || [];
   for (const r of RAMPS) buildRamp(r, courseGroup);
@@ -762,7 +758,6 @@ function resetCones() { for (const c of cones) { Object.assign(c, { x: c.hx, z: 
   const mm = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, fog: false }));
   mm.rotation.x = -Math.PI / 2; mm.position.y = 0.003; mm.renderOrder = 1; scene.add(mm);
 }
-let mapBounds = null;
 
 /* ---------------- the car: 1/10 chassis, red S14-style drift shell ---------------- */
 const CAR = { wb: 0.257, track: 0.17, wheelR: 0.032, wheelW: 0.032 };
@@ -1296,25 +1291,6 @@ function gateLogic(px, pz) {
   race.next = (race.next + 1) % n; setGateBar(race.next);
 }
 
-// minimap: the room, furniture, cones, the next gate and the car
-const mapCtx = $('map').getContext('2d');
-let mx, mz;
-function drawMap() {
-  if (!mapBounds) { const sc = 180 / ROOM; mapBounds = { sc }; mx = x => 100 - x * sc; mz = z => 100 - z * sc; }
-  const g = mapCtx, sc = mapBounds.sc; g.clearRect(0, 0, 200, 200);
-  g.fillStyle = 'rgba(8,12,20,0.55)'; g.fillRect(10, 10, 180, 180); g.strokeStyle = '#cfe2f5'; g.lineWidth = 2; g.strokeRect(10, 10, 180, 180);
-  g.fillStyle = 'rgba(207,226,245,0.35)';
-  for (const [x0, z0, x1, z1] of OBST) g.fillRect(mx(x1), mz(z1), (x1 - x0) * sc, (z1 - z0) * sc);
-  if (RUG) { g.strokeStyle = 'rgba(180,150,230,0.6)'; g.lineWidth = 1; g.strokeRect(mx(RUG[2]), mz(RUG[3]), (RUG[2] - RUG[0]) * sc, (RUG[3] - RUG[1]) * sc); }
-  if (TRACK) { g.strokeStyle = 'rgba(207,226,245,0.55)'; g.lineWidth = TRACK.hw * 2 * sc; g.lineJoin = 'round'; g.beginPath(); TP.forEach((p, i) => i ? g.lineTo(mx(p.x), mz(p.z)) : g.moveTo(mx(p.x), mz(p.z))); g.closePath(); g.stroke(); }
-  for (const r of RAMPS) { const L = r.prof[r.prof.length - 1][0], fx = Math.sin(r.ang), fz = Math.cos(r.ang), lx = Math.cos(r.ang), lz = -Math.sin(r.ang), hw = r.w / 2;
-    g.fillStyle = 'rgba(230,200,150,0.75)'; g.beginPath(); [[0, -hw], [L, -hw], [L, hw], [0, hw]].forEach(([u, v], k) => { const x = r.x + fx * u + lx * v, z = r.z + fz * u + lz * v; k ? g.lineTo(mx(x), mz(z)) : g.moveTo(mx(x), mz(z)); }); g.fill(); }
-  const ng = course.gates[race.next];
-  g.strokeStyle = '#ffb21e'; g.lineWidth = 4; g.beginPath(); g.moveTo(mx(ng[0]), mz(ng[1])); g.lineTo(mx(ng[2]), mz(ng[3])); g.stroke();
-  for (const c of cones) { g.fillStyle = c.kind === 'c' ? '#ff5a14' : '#ffd21a'; g.fillRect(mx(c.x) - 2, mz(c.z) - 2, 4, 4); }
-  g.fillStyle = '#ff3b30'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(mx(car.x), mz(car.z), 5, 0, 7); g.fill(); g.stroke();
-}
-
 /* ---------------- cameras ---------------- */
 const CAMS = ['CHASE', 'DRIVER POV', 'BUMPER', 'CEILING'];
 // the driver: standing in the near-left corner like at home, eyes at 1.65 m, head turning to follow the car
@@ -1580,7 +1556,7 @@ function buildGarage() {
 }
 function saveSetup() { try { localStorage.setItem('cc-setup3', JSON.stringify(setup)); } catch (e) {} applySurface(); }
 function toggleGarage(open = !garageOpen) {
-  garageOpen = open; $('garage').hidden = !open;
+  garageOpen = open; $('garage').hidden = !open; $('hud').classList.toggle('dim', open || menu.open);
   if (open) { buildGarage(); $('gnote').textContent = 'Pick a part to see what it changes.'; audio.suspend(true); }
   else { audio.suspend(race.paused); document.activeElement && document.activeElement.blur(); }
 }
@@ -1593,7 +1569,7 @@ let telemetryOn = false;
 const tctx = $('tele').getContext('2d');
 function drawTelemetry() {
   const g = tctx, W = 340, H = 250; g.clearRect(0, 0, W, H);
-  g.fillStyle = 'rgba(10,16,28,0.78)'; g.fillRect(0, 0, W, H); g.strokeStyle = 'rgba(143,180,216,0.45)'; g.strokeRect(0.5, 0.5, W - 1, H - 1);
+  g.shadowColor = 'rgba(0,0,0,0.85)'; g.shadowBlur = 4;
   g.font = 'bold 12px "Chakra Petch", sans-serif'; g.fillStyle = '#8a97a8'; g.fillText('TELEMETRY', 12, 18);
   // chassis, top view: front up. Wheel squares sized and coloured by load.
   const cx = 70, cy = 130, Nref = VEH.m * GRAV / 4;
@@ -1663,9 +1639,7 @@ function frame(now) {
     $('spd').textContent = kmh.toFixed(0);
     $('scale').textContent = `SCALE SPEED ${(kmh * 10).toFixed(0)} KM/H`;
     const ba = Math.abs(car.beta * 180 / Math.PI); $('angle').textContent = `DRIFT ANGLE ${ba.toFixed(0)}°`; $('angle').style.color = ba > 15 ? 'var(--hot)' : '';
-    $('thr').style.width = (car.thr * 100).toFixed(0) + '%';
     if (race.state === 'race') { $('lap').textContent = String(race.lap); $('cur').textContent = race.lap > 0 ? fmt(clock - race.lapStart + race.pen) : fmt(0); $('gate').textContent = `${race.next}/${course.gates.length}`; }
-    drawMap();
   }
   renderer.render(scene, camera);
 }
