@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the game for itch.io as an HTML5 upload: dist/carpet-circuit-itch.zip
+"""Package the game for itch.io as an HTML5 upload: dist/drift-master-itch.zip
 
 index.html is written as a page fragment (it is also published as a claude.ai artifact), so this
 wraps it in a full HTML document and swaps the three.js CDN script for a bundled local copy,
@@ -16,7 +16,7 @@ doc = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
        '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
        '<style>html,body{margin:0}</style>\n</head>\n<body>\n' + page + '\n</body>\n</html>\n')
 dist = root / 'dist'; dist.mkdir(exist_ok=True)
-out = dist / 'carpet-circuit-itch.zip'
+out = dist / 'drift-master-itch.zip'
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     z.writestr('index.html', doc)
     z.write(root / 'tools' / 'vendor' / 'three.r128.min.js', 'three.min.js')
