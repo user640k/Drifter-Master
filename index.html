@@ -112,18 +112,17 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
     <div class="box cam" id="camname">CAM · CHASE</div>
     <canvas id="tele" width="340" height="250" hidden></canvas>
     <div class="center">
-      <div class="lights" id="lights" hidden><b></b><b></b><b></b></div>
       <div class="msg" id="msg"></div>
     </div>
   </div>
   <div class="overlay" id="overlay">
-    <div class="sub">1/10 RWD DRIFT · POLISHED CONCRETE · 20 FT ROOM AFTER DARK</div>
+    <div class="sub">1/10 RWD DRIFT · POLISHED CONCRETE · 20 FT ROOM</div>
     <h1>CARPET<br>CIRCUIT</h1>
     <div class="spec">Rear-wheel-drive drift chassis, 1.45 kg, 257 mm wheelbase, hard plastic tires, 57° steering lock, steering gyro, GT coupe shell. Throttle sets the angle. Grip car and other surfaces in car setup.</div>
     <div class="keys">
       <span><kbd>↑</kbd>/<kbd>W</kbd> throttle</span><span><kbd>↓</kbd>/<kbd>S</kbd> brake, hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd>/<kbd>A</kbd><kbd>D</kbd> steer</span>
       <span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span>
-      <span><kbd>L</kbd> mood lights</span><span><kbd>V</kbd> drift / grip</span><span><kbd>N</kbd> next track</span><span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
+      <span><kbd>L</kbd> mood lights</span><span><kbd>V</kbd> drift / grip</span><span><kbd>N</kbd> next track</span><span><kbd>R</kbd> reset car</span><span><kbd>P</kbd> pause</span>
     </div>
     <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>D-pad up</b> lights · <b>D-pad down</b> drift/grip · <b>D-pad left/right</b> track · <b>Menu</b> pause</div>
     <div class="btns"><button id="go" type="button">START ENGINE</button><button id="modebtn" class="ghost" type="button">MODE: DRIFT</button><button id="trackbtn" class="ghost" type="button">TRACK: DRIFT CIRCUIT</button><button id="setupbtn" class="ghost" type="button">CAR SETUP</button></div>
@@ -137,7 +136,7 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
 </div>
 <footer>
   <span id="padhint" hidden>Controller: stick + <kbd>RT</kbd>/<kbd>LT</kbd></span>
-  <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>V</kbd> drift/grip</span><span><kbd>N</kbd> track</span><span><kbd>L</kbd> lights</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
+  <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>V</kbd> drift/grip</span><span><kbd>N</kbd> track</span><span><kbd>L</kbd> lights</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>P</kbd> pause</span>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -222,25 +221,14 @@ T.fabric = tex(64, 64, (g, w, h) => {
   grain(g, w, h, [112, 42, 50], 22, 8);
   g.fillStyle = 'rgba(0,0,0,0.15)'; for (let i = 0; i < w; i += 2) g.fillRect(i, 0, 1, h);
 }, 4, 4);
+T.sheer = tex(64, 64, (g, w, h) => {
+  for (let x = 0; x < w; x++) { const f = 0.78 + 0.22 * Math.sin(x / w * Math.PI * 8); g.fillStyle = `rgb(${232 * f | 0},${228 * f | 0},${236 * f | 0})`; g.fillRect(x, 0, 1, h); }
+  g.fillStyle = 'rgba(255,255,255,0.08)'; for (let y = 0; y < h; y += 3) g.fillRect(0, y, w, 1);
+}, 1.2, 1);
 T.curtain = tex(64, 64, (g, w, h) => {
   for (let x = 0; x < w; x++) { const s = 0.65 + 0.35 * Math.sin(x / w * Math.PI * 6); g.fillStyle = `rgb(${46 * s | 0},${76 * s | 0},${60 * s | 0})`; g.fillRect(x, 0, 1, h); }
 });
 T.radiator = tex(64, 32, (g, w, h) => { g.fillStyle = '#e9e7df'; g.fillRect(0, 0, w, h); g.fillStyle = '#b8b5aa'; for (let x = 0; x < w; x += 6) g.fillRect(x, 0, 2, h); }, 4, 1);
-T.sky = tex(256, 256, (g, w, h) => {
-  // dusk: deep blue overhead, a pink-orange band on the horizon, first stars, lit windows next door
-  const gr = g.createLinearGradient(0, 0, 0, h);
-  gr.addColorStop(0, '#141a3d'); gr.addColorStop(0.45, '#3b2f6b'); gr.addColorStop(0.68, '#c0587a'); gr.addColorStop(0.8, '#f29a5c'); gr.addColorStop(1, '#f6c27a');
-  g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  const r = rng(9); g.fillStyle = '#fff';
-  for (let i = 0; i < 40; i++) { g.globalAlpha = 0.3 + r() * 0.7; g.fillRect(r() * w, r() * 110, 1, 1); }
-  g.globalAlpha = 1; g.fillStyle = '#f4f1e6'; g.beginPath(); g.arc(60, 50, 9, 0, 7); g.fill();
-  g.fillStyle = '#1d1430'; g.fillRect(150, 150, 70, 60); g.beginPath(); g.moveTo(144, 152); g.lineTo(185, 122); g.lineTo(226, 152); g.fill();
-  g.fillStyle = '#ffcf7a'; g.fillRect(162, 168, 14, 14); g.fillStyle = '#7ad8ff'; g.fillRect(196, 168, 14, 14);
-  g.fillStyle = '#120c1e';
-  for (let x = -10; x < w + 20; x += 18) { g.beginPath(); g.arc(x, 196 + (x * 7 % 13), 18 + (x * 13 % 9), 0, 7); g.fill(); }
-  g.fillRect(0, 206, w, h - 206);
-});
-T.sky.wrapS = T.sky.wrapT = THREE.ClampToEdgeWrapping;
 T.foam = tex(32, 32, (g, w, h) => grain(g, w, h, [235, 235, 235], 40, 10));
 T.checker = tex(64, 16, (g, w, h) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#111' : '#f4f4f4'; g.fillRect(x * 8, y * 8, 8, 8); } }, 1, 1);
 T.blob = tex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, 'rgba(0,0,0,0.75)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
@@ -326,14 +314,16 @@ const frameMat = lam({ map: T.paint, color: 0xf6f4ee });
 const shaftMats = [];
 for (const k of Object.keys(WIN)) {
   const g = wallGroups[k], w = WIN[k], D = 0.14, y0 = w.sill, y1 = w.sill + w.h, cx = w.u, cy = (y0 + y1) / 2;
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(w.w * 2.2, w.h * 2), new THREE.MeshBasicMaterial({ map: T.sky, fog: false }));
-  sky.position.set(cx, cy, -D - 0.5); g.add(sky);
+  // curtains are drawn: nothing outside is visible, just a dark backing behind the glass
+  box(w.w + 0.04, w.h + 0.04, 0.01, new THREE.MeshBasicMaterial({ color: 0x0c0a12 }), cx, cy, -D - 0.01, g);
   box(w.w, 0.02, D, frameMat, cx, y1 + 0.01, -D / 2, g); box(w.w, 0.02, D, frameMat, cx, y0 - 0.01, -D / 2, g);
   box(0.02, w.h, D, frameMat, cx - w.w / 2 - 0.01, cy, -D / 2, g); box(0.02, w.h, D, frameMat, cx + w.w / 2 + 0.01, cy, -D / 2, g);
   box(w.w + 0.12, 0.035, 0.2, frameMat, cx, y0 - 0.02, 0.03, g); // sill
   box(w.w + 0.1, 0.05, 0.03, frameMat, cx, y1 + 0.025, 0.015, g);
   box(0.04, w.h, 0.04, frameMat, cx, cy, -0.07, g); box(w.w, 0.035, 0.04, frameMat, cx, y0 + w.h * 0.62, -0.07, g);
-  for (const side of [-1, 1]) { const c = box(0.32, y1 + 0.12, 0.06, lam({ map: T.curtain }), cx + side * (w.w / 2 + 0.2), (y1 + 0.12) / 2 + 0.02, 0.07, g); c.position.y = WALL_H - 0.12 - (y1 + 0.12) / 2 + 0.02; }
+  // two full-height curtain panels, closed, meeting in the middle; pale fabric that picks up the mood lights
+  const curtH = WALL_H - 0.12 - (y0 - 0.18), curtY = (WALL_H - 0.12 + y0 - 0.18) / 2, panelW = w.w / 2 + 0.32;
+  for (const side of [-1, 1]) box(panelW, curtH, 0.04, lam({ map: T.sheer }), cx + side * (panelW / 2 - 0.01), curtY, 0.075, g);
   box(w.w + 1.0, 0.025, 0.025, lam({ color: 0x6b4a2a }), cx, WALL_H - 0.1, 0.09, g); // rail
   const rad = box(w.w * 0.8, 0.5, 0.08, lam({ map: T.radiator }), cx, 0.38, 0.06, g);
   // no sun shafts at dusk
@@ -506,6 +496,12 @@ function kidney() {
 }
 const LAYOUTS = [
   { name: 'DRIFT CIRCUIT', ctrl: kidney(), width: 1.2 },
+  // inspired by Ebisu Minami (the D1 course): long straight into a big fast first sweeper, an S, hairpins back
+  { name: 'MINAMI-STYLE', ctrl: [[-1.3, -1.45], [0.5, -1.45], [1.6, -1.2], [2.1, -0.3], [2.0, 0.7], [1.4, 1.35], [0.6, 1.1], [-0.15, 1.6], [-0.8, 2.0], [-1.6, 1.85], [-2.0, 1.1], [-1.65, 0.15], [-1.95, -0.75], [-1.6, -1.38]], width: 1.1 },
+  // inspired by Meihan Sportsland: big, flowing high-speed sweepers, no tight corners
+  { name: 'MEIHAN-STYLE', ctrl: [[-1.2, -1.45], [0.6, -1.45], [1.8, -0.9], [2.1, 0.4], [1.6, 1.6], [0.4, 2.0], [-0.9, 1.8], [-1.8, 1.0], [-2.0, -0.2], [-1.8, -1.1]], width: 1.2 },
+  // inspired by Japanese RC courses like Iroha and Team Tetsujin: technical, back-to-back transitions (manji)
+  { name: 'TECHNICAL', ctrl: [[-1.2, -1.45], [0.8, -1.45], [1.85, -1.0], [2.05, -0.05], [1.55, 0.6], [1.9, 1.45], [1.1, 2.0], [0.3, 1.55], [-0.5, 2.05], [-1.45, 1.75], [-1.8, 0.85], [-1.5, 0.05], [-1.95, -0.7], [-1.7, -1.32]], width: 1.05 },
   { name: 'CLASSIC', ctrl: [[0, -1.6], [1.45, -1.6], [2.05, -1.12], [2.1, -0.2], [1.55, 0.45], [1.95, 1.3], [1.5, 1.95], [0.85, 2.0], [0, 1.32], [-0.85, 2.0], [-1.5, 1.98], [-2.05, 1.4], [-2.1, -1.1], [-1.45, -1.6]], width: 0.9 },
   { name: 'OPEN FLOOR', open: true },
 ];
@@ -798,7 +794,7 @@ const SURFACES = [
   { name: 'CARPET', plastic: 0.8, rubber: 1.32 },
 ];
 const SETUP_OPTS = {
-  layout: { label: 'LAYOUT', opts: ['DRIFT CIRCUIT', 'CLASSIC', 'OPEN FLOOR · CONE'] },
+  layout: { label: 'LAYOUT', opts: ['DRIFT CIRCUIT', 'MINAMI-STYLE', 'MEIHAN-STYLE', 'TECHNICAL', 'CLASSIC', 'OPEN FLOOR · CONE'] },
   car: { label: 'MODE', opts: ['DRIFT', 'GRIP'] },
   surface: { label: 'SURFACE', opts: SURFACES.map(s => s.name) },
   motor: { label: 'MOTOR', opts: MOTORS.map(m => m.short) },
@@ -1004,7 +1000,7 @@ buildTrack(setup.layout);
 
 /* ---------------- synth audio ---------------- */
 const audio = (() => {
-  let ctx = null, master, motor = {}, skid = {}, musicGain, musicOn = true, seq = null;
+  let ctx = null, master, motor = {}, skid = {};
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
   function init() {
     if (ctx) { ctx.resume(); return; }
@@ -1025,8 +1021,6 @@ const audio = (() => {
     skid.f = ctx.createBiquadFilter(); skid.f.type = 'bandpass'; skid.f.frequency.value = 2600; skid.f.Q.value = 3;
     skid.g = ctx.createGain(); skid.g.gain.value = 0; skid.src.connect(skid.f); skid.f.connect(skid.g); skid.g.connect(master); skid.src.start();
     skid.buf = nb;
-    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.16 : 0; musicGain.connect(master);
-    startMusic();
   }
   // rpm: motor speed as a fraction of free speed (wheel surface speed / vFree)
   function update(rpm, thr, slide, active, M) {
@@ -1057,38 +1051,14 @@ const audio = (() => {
     const n = ctx.createBufferSource(), f = ctx.createBiquadFilter(), ng = ctx.createGain(); n.buffer = skid.buf; f.type = 'lowpass'; f.frequency.value = 900;
     ng.gain.setValueAtTime(0.25 * k, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.09); n.connect(f); f.connect(ng); ng.connect(master); n.start(t, Math.random() * 0.5); n.stop(t + 0.1);
   }
-  // little four-chord synth loop, Am - F - C - G
-  function startMusic() {
-    const bpm = 126, step = 60 / bpm / 4;
-    const chords = [[57, 60, 64, 69], [53, 57, 60, 65], [55, 60, 64, 67], [55, 59, 62, 67]], bass = [33, 29, 36, 31];
-    const pat = [0, 1, 2, 3, 2, 1, 0, 2, 3, 2, 1, 3, 0, 1, 2, 3];
-    let next = ctx.currentTime + 0.1, i = 0;
-    function voice(freq, t, dur, type, vol, cut) {
-      const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-      o.type = type; o.frequency.value = freq; f.type = 'lowpass'; f.frequency.setValueAtTime(cut, t); f.frequency.exponentialRampToValueAtTime(cut * 0.25, t + dur); f.Q.value = 5;
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(f); f.connect(g); g.connect(musicGain); o.start(t); o.stop(t + dur + 0.02);
-    }
-    seq = setInterval(() => {
-      while (next < ctx.currentTime + 0.12) {
-        const bar = Math.floor(i / 16) % 4, s = i % 16, ch = chords[bar];
-        voice(mtof(ch[pat[s]] + 12), next, step * 0.9, 'square', 0.18, 3200);
-        if (s % 2 === 0) voice(mtof(bass[bar] + (s % 4 === 2 ? 12 : 0)), next, step * 1.8, 'sawtooth', 0.32, 900);
-        if (s % 4 === 0) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(140, next); o.frequency.exponentialRampToValueAtTime(40, next + 0.12); g.gain.setValueAtTime(0.7, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.16); o.connect(g); g.connect(musicGain); o.start(next); o.stop(next + 0.18); }
-        if (s % 4 === 2) { const n = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); n.buffer = skid.buf; f.type = 'highpass'; f.frequency.value = 7000; g.gain.setValueAtTime(0.25, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.05); n.connect(f); f.connect(g); g.connect(musicGain); n.start(next, Math.random() * 0.5); n.stop(next + 0.06); }
-        next += step; i++;
-      }
-    }, 25);
-  }
-  function toggleMusic() { musicOn = !musicOn; if (musicGain) musicGain.gain.setTargetAtTime(musicOn ? 0.16 : 0, ctx.currentTime, 0.1); return musicOn; }
   function suspend(on) { if (ctx) on ? ctx.suspend() : ctx.resume(); }
-  return { init, update, blip, bump, toggleMusic, suspend };
+  return { init, update, blip, bump, suspend };
 })();
 
 /* ---------------- race state + HUD ---------------- */
 const fmt = t => { if (t == null) return '-:--.---'; const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s.toFixed(3).padStart(6, '0')}`; };
 // best lap per layout; on the open floor the score is the longest unbroken drift
-const bestKey = () => 'cc-best-' + setup.layout;
+const bestKey = () => 'cc-best-' + LAYOUTS[setup.layout].name;
 let best = null;
 const fmtS = t => t == null ? '-.--s' : t.toFixed(2) + 's';
 function loadBest() { best = null; try { const b = parseFloat(localStorage.getItem(bestKey())); if (b > 0) best = b; } catch (e) {} }
@@ -1104,9 +1074,9 @@ function startRace() {
   $('overlay').hidden = true;
   audio.init();
   placeCar(N - 14); resetCone();
-  Object.assign(race, { state: 'count', countdown: 3.6, lap: 0, last: null, cp: [false, false], prevIdx: car.idx });
+  Object.assign(race, { state: 'race', countdown: 0, lap: 0, last: null, cp: [false, false], prevIdx: car.idx });
   resetDrift(); setHudLabels();
-  $('lights').hidden = false; $('lights').className = 'lights'; $('msg').textContent = '';
+  $('msg').textContent = '';
 }
 let msgTimer = 0;
 function flash(text, secs = 1.6) { $('msg').textContent = text; msgTimer = secs; }
@@ -1138,7 +1108,7 @@ function lapLogic() {
   if (i > N * 0.3 && i < N * 0.45) race.cp[0] = true;
   if (i > N * 0.6 && i < N * 0.8 && race.cp[0]) race.cp[1] = true;
   if (prev > N * 0.85 && i < N * 0.15) {
-    if (race.lap === 0) { race.lap = 1; race.lapStart = clock; flash('GO GO GO', 0.8); }
+    if (race.lap === 0) { race.lap = 1; race.lapStart = clock; }
     else if (race.cp[1]) {
       const t = clock - race.lapStart; race.last = t; race.lap++; race.lapStart = clock;
       $('last').textContent = fmt(t);
@@ -1176,7 +1146,30 @@ function drawMap() {
 }
 
 /* ---------------- cameras ---------------- */
-const CAMS = ['CHASE', 'DRIVER STAND', 'BUMPER', 'CEILING'];
+const CAMS = ['CHASE', 'DRIVER POV', 'BUMPER', 'CEILING'];
+// the driver: standing in the near-left corner like at home, eyes at 1.65 m, head turning to follow the car
+// with a human lag, a 55° field of view (no zoom), and the transmitter held in front at chest height
+const POV = { eye: new THREE.Vector3(-HALF + 0.5, 1.65, -HALF + 0.5), look: new THREE.Vector3(), fov: 55 };
+const tx = new THREE.Group();
+{
+  const dark = lam({ color: 0x24262c, fog: false }), mid = lam({ color: 0x3a3e46, fog: false }), skin = lam({ color: 0xc8957a, fog: false });
+  const add = (geo, mat, x, y, z, parent = tx) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  add(new THREE.BoxGeometry(0.07, 0.05, 0.17), dark, 0, 0, 0);                         // top case
+  add(new THREE.BoxGeometry(0.05, 0.03, 0.06), mid, 0, 0.035, 0.03);                    // display housing
+  const scr = add(new THREE.PlaneGeometry(0.04, 0.022), new THREE.MeshBasicMaterial({ color: 0x5fd0ff, fog: false }), 0, 0.0505, 0.03); scr.rotation.x = -Math.PI / 2;
+  const grip = add(new THREE.BoxGeometry(0.042, 0.12, 0.05), dark, 0, -0.08, 0.045); grip.rotation.x = -0.25;
+  tx.userData.trigger = add(new THREE.BoxGeometry(0.014, 0.034, 0.018), mid, 0, -0.04, 0.0);
+  const wheelPivot = new THREE.Group(); wheelPivot.position.set(0.06, 0.01, -0.035); tx.add(wheelPivot);
+  const wheel = add(new THREE.CylinderGeometry(0.044, 0.044, 0.016, 18), lam({ color: 0x15161a, fog: false }), 0, 0, 0, wheelPivot); wheel.rotation.z = Math.PI / 2;
+  add(new THREE.BoxGeometry(0.018, 0.014, 0.01), lam({ color: 0xff5a14, fog: false }), 0.002, 0.04, 0, wheelPivot); // grip knob on the wheel rim
+  tx.userData.wheel = wheelPivot;
+  add(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 6), dark, -0.02, 0.045, 0.08);    // antenna stub
+  add(new THREE.BoxGeometry(0.06, 0.09, 0.07), skin, -0.005, -0.085, 0.07);            // left hand on the grip
+  add(new THREE.BoxGeometry(0.02, 0.03, 0.025), skin, 0, -0.04, 0.025);                 // index finger on the trigger
+  add(new THREE.BoxGeometry(0.05, 0.035, 0.08), skin, 0.085, -0.01, -0.03);           // right hand on the wheel
+  tx.position.set(0.05, -0.215, -0.42); tx.rotation.set(0.75, -0.12, 0); tx.scale.setScalar(0.85);
+  tx.visible = false; camera.add(tx); scene.add(camera);
+}
 let camAng = 0;
 let camMode = 0;
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
@@ -1194,10 +1187,12 @@ function updateCamera(dt, snap) {
     camLook.lerp(new THREE.Vector3(car.x + fx * 0.35, 0.07, car.z + fz * 0.35), snap ? 1 : 1 - Math.exp(-dt * 12));
     camera.fov = 62 + Math.min(10, Math.abs(car.vF) * 0.9);
   } else if (camMode === 1) {
-    camPos.set(-HALF + 0.45, 1.55, -HALF + 0.55);
-    camLook.lerp(target, snap ? 1 : 1 - Math.exp(-dt * 9));
-    const dist = camPos.distanceTo(target);
-    camera.fov = clamp(2 * Math.atan(0.7 / dist) * 180 / Math.PI, 16, 55);
+    // head follows the car with a slight lag; a little idle sway; eyes aim just ahead of the car
+    const t = performance.now() / 1000;
+    camPos.set(POV.eye.x + Math.sin(t * 0.7) * 0.008, POV.eye.y + Math.sin(t * 1.3) * 0.004, POV.eye.z + Math.cos(t * 0.5) * 0.008);
+    const ahead = new THREE.Vector3(car.x + car.vx * 0.15, 0.03, car.z + car.vz * 0.15);
+    camLook.lerp(ahead, snap ? 1 : 1 - Math.exp(-dt * 5));
+    camera.fov = POV.fov;
   } else if (camMode === 2) {
     const hx = Math.sin(car.h), hz = Math.cos(car.h);
     camPos.set(car.x + hx * 0.06, 0.13, car.z + hz * 0.06);
@@ -1208,6 +1203,8 @@ function updateCamera(dt, snap) {
     camLook.lerp(target, snap ? 1 : 1 - Math.exp(-dt * 8));
     camera.fov = 70;
   }
+  tx.visible = camMode === 1;
+  if (tx.visible) { tx.userData.wheel.rotation.x = input.steer * 0.55; tx.userData.trigger.position.z = -input.thr * 0.012 + input.brk * 0.012; }
   camera.position.copy(camPos); camera.lookAt(camLook); camera.updateProjectionMatrix();
 }
 
@@ -1225,7 +1222,6 @@ function actReset() {
 function actMode() { setOpt('car', setup.car ? 0 : 1); if (garageOpen) buildGarage(); updateModeUI(); flash((setup.car ? 'GRIP' : 'DRIFT') + ' MODE', 1.2); }
 function actTrack() { setOpt('layout', (setup.layout + 1) % LAYOUTS.length); if (garageOpen) buildGarage(); flash(LAYOUTS[setup.layout].name, 1.2); }
 function updateModeUI() { const b = $('modebtn'); if (b) b.textContent = 'MODE: ' + (setup.car ? 'GRIP' : 'DRIFT'); const tb = $('trackbtn'); if (tb) tb.textContent = 'TRACK: ' + LAYOUTS[setup.layout].name; $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short; }
-function actMusic() { flash(audio.toggleMusic() ? 'MUSIC ON' : 'MUSIC OFF', 0.9); }
 function actTele() { telemetryOn = !telemetryOn; $('tele').hidden = !telemetryOn; }
 function actPause() { if (race.state === 'menu') return; race.paused = !race.paused; audio.suspend(race.paused); $('msg').textContent = race.paused ? 'PAUSED' : ''; }
 window.addEventListener('keydown', e => {
@@ -1235,7 +1231,6 @@ window.addEventListener('keydown', e => {
   if (e.code === 'Enter' && race.state === 'menu' && !garageOpen) startRace();
   if (e.code === 'KeyC') actCamera();
   if (e.code === 'KeyR') actReset();
-  if (e.code === 'KeyM') actMusic();
   if (e.code === 'KeyG') toggleGarage();
   if (e.code === 'KeyT') actTele();
   if (e.code === 'KeyL') actMood();
@@ -1271,7 +1266,6 @@ function padButtons(gp) {
     if (hit(2)) actReset();
     if (hit(8)) toggleGarage(true);
     if (hit(4)) actTele();
-    if (hit(5)) actMusic();
     if (hit(12)) actMood();
     if (hit(13)) actMode();
     if (hit(14) || hit(15)) actTrack();
@@ -1306,7 +1300,7 @@ $('camname').textContent = 'CAM · CHASE';
 
 /* ---------------- car setup (garage) ---------------- */
 const NOTES = {
-  layout: ['Wide 1.2 m lane: a long straight, sweepers to link drifts, and a transition at the top where you flick from one direction to the other.', 'The original 0.9 m grip circuit with a chicane and a dip.', 'No track. Open floor with one cone in the middle: circle it, figure-eight it, chase your longest drift.'],
+  layout: ['Wide 1.2 m lane: a long straight, sweepers to link drifts, and a transition at the top where you flick from one direction to the other.', 'Inspired by Ebisu Minami, the D1 course: a long straight into a big, fast first sweeper, then an S-bend and hairpins back. Scaled to the room.', 'Inspired by Meihan Sportsland: big, flowing high-speed sweepers with no tight corners. The easiest to link end to end.', 'Inspired by Japanese RC courses such as Iroha and Team Tetsujin: technical, with back-to-back left-right transitions (manji) and tight hairpins.', 'The original 0.9 m grip circuit with a chicane and a dip.', 'No track. Open floor with one cone in the middle: circle it, figure-eight it, chase your longest drift.'],
   car: ['Drift: rear-wheel drive on hard plastic tires, ~57° of steering lock and a steering gyro. Throttle sets the drift angle.', 'Grip: regular RC driving. 4WD touring setup on rubber tires that stick; brakes, turns and accelerates like a normal RC car.'],
   surface: ['Sealed, polished concrete: the most common drift surface. Low, consistent grip.', 'P-tile: polished vinyl tiles used at dedicated drift tracks. A little more bite than concrete.', 'Short-pile carpet. Great for grip racing; drift tires catch and the car hooks up.'],
   gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro. Turns in hardest, catches slides late.', 'Typical gyro gain. The stick sets how tight the drift is; the gyro counter-steers to hold it.', 'Strong gyro (default). Most stable; full lock still gives a tight ~1.5 m circle.'],
@@ -1406,14 +1400,6 @@ function frame(now) {
   pollInput(dt);
   if (race.paused || garageOpen) { renderer.render(scene, camera); return; }
   clock += dt;
-  if (race.state === 'count') {
-    const before = race.countdown; race.countdown -= dt;
-    const lit = clamp(3 - Math.ceil(race.countdown - 0.6), 0, 3);
-    [...$('lights').children].forEach((b, i) => b.classList.toggle('on', i < lit));
-    for (const th of [3.0, 2.0, 1.0]) if (before + 0.6 > th && race.countdown + 0.6 <= th) audio.blip(660, 0.18);
-    if (race.countdown <= 0.6 && before > 0.6) { audio.blip(1320, 0.45); $('lights').className = 'lights go'; flash('GO!', 0.9); race.state = 'race'; race.t0 = clock; }
-  }
-  if (race.state === 'race' && race.countdown > 0) { race.countdown -= dt; if (race.countdown <= 0) $('lights').hidden = true; }
   acc += dt;
   const canDrive = race.state === 'race';
   while (acc >= DT) { stepCar(DT, canDrive); stepCone(DT); if (canDrive) lapLogic(); acc -= DT; }

@@ -1,6 +1,6 @@
 # Carpet Circuit
 
-Browser RC drift game: a 1/10 RWD drift car with a purple-and-black late-90s Japanese coupe shell (swan-neck GT wing, deep-dish wheels), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with one window at dusk, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car with a purple-and-black late-90s Japanese coupe shell (swan-neck GT wing, deep-dish wheels), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -10,16 +10,19 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, N next track, G car setup, T telemetry, L mood lights (Dream, Sunset, Ocean, Party, Lights on), C camera, R reset car, M music, P pause, Enter start.
+Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, N next track, G car setup, T telemetry, L mood lights (Dream, Sunset, Ocean, Party, Lights on), C camera, R reset car, P pause, Enter start.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
-Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, RB music, D-pad up mood lights, D-pad down drift/grip, Menu/Options pause. Barrier hits rumble.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up mood lights, D-pad down drift/grip, Menu/Options pause. Barrier hits rumble.
 
 ## Layouts and modes
-- **Layouts** (car setup, G): DRIFT CIRCUIT (default, 1.2 m lane, long straight, sweepers and a transition at the top), CLASSIC (the original 0.9 m grip circuit), OPEN FLOOR (no track, one cone in the middle; score is your longest drift and orbits of the cone; hit the cone hard and it tips over, then resets).
+- **Layouts** (car setup, G): DRIFT CIRCUIT (default, 1.2 m lane, long straight, sweepers and a transition at the top), MINAMI-STYLE (inspired by Ebisu Minami: long straight into a big fast sweeper, S-bend, hairpins), MEIHAN-STYLE (inspired by Meihan Sportsland: big flowing sweepers), TECHNICAL (inspired by Japanese RC courses like Iroha and Team Tetsujin: back-to-back transitions), CLASSIC (the original 0.9 m grip circuit), OPEN FLOOR (no track, one cone in the middle; score is your longest drift and orbits of the cone; hit the cone hard and it tips over, then resets).
 - **Track**: N (or d-pad left/right, or the TRACK button on the start screen) cycles the layouts.
 - **Mode**: V (or d-pad down, or the MODE button on the start screen) switches DRIFT (RWD, gyro, plastic tires) and GRIP (regular RC driving: 4WD on rubber tires).
+
+## Cameras (C)
+Chase, DRIVER POV (standing in the corner at 1.65 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), bumper, ceiling.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz.
