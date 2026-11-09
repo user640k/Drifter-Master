@@ -10,11 +10,11 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, N next track, G car setup, T telemetry, L mood lights (Dream, Sunset, Ocean, Party, Lights on), C camera, R reset car, P pause, Enter start.
+Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, N next track, G car setup, T telemetry, L lights (Party, Lights on), C camera, R reset car, P pause, Enter start.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
-Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up mood lights, D-pad down drift/grip, Menu/Options pause. Barrier hits rumble.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up lights, D-pad down drift/grip, Menu/Options pause. Barrier hits rumble.
 
 ## Layouts and modes
 - **Layouts** (car setup, G): DRIFT CIRCUIT (default, 1.2 m lane, long straight, sweepers and a transition at the top), MINAMI-STYLE (inspired by Ebisu Minami: long straight into a big fast sweeper, S-bend, hairpins), MEIHAN-STYLE (inspired by Meihan Sportsland: big flowing sweepers), TECHNICAL (inspired by Japanese RC courses like Iroha and Team Tetsujin: back-to-back transitions), CLASSIC (the original 0.9 m grip circuit), OPEN FLOOR (no track, one cone in the middle; score is your longest drift and orbits of the cone; hit the cone hard and it tips over, then resets).

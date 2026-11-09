@@ -122,7 +122,7 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
     <div class="keys">
       <span><kbd>↑</kbd>/<kbd>W</kbd> throttle</span><span><kbd>↓</kbd>/<kbd>S</kbd> brake, hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd>/<kbd>A</kbd><kbd>D</kbd> steer</span>
       <span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span>
-      <span><kbd>L</kbd> mood lights</span><span><kbd>V</kbd> drift / grip</span><span><kbd>N</kbd> next track</span><span><kbd>R</kbd> reset car</span><span><kbd>P</kbd> pause</span>
+      <span><kbd>L</kbd> lights: party / on</span><span><kbd>V</kbd> drift / grip</span><span><kbd>N</kbd> next track</span><span><kbd>R</kbd> reset car</span><span><kbd>P</kbd> pause</span>
     </div>
     <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>D-pad up</b> lights · <b>D-pad down</b> drift/grip · <b>D-pad left/right</b> track · <b>Menu</b> pause</div>
     <div class="btns"><button id="go" type="button">START ENGINE</button><button id="modebtn" class="ghost" type="button">MODE: DRIFT</button><button id="trackbtn" class="ghost" type="button">TRACK: DRIFT CIRCUIT</button><button id="setupbtn" class="ghost" type="button">CAR SETUP</button></div>
@@ -383,14 +383,11 @@ for (const k of Object.keys(WIN)) {
    LED strip under the cornice, an additive glow washed down the wall and across the ceiling,
    and a coloured point light that actually lights the room, the track and the car. */
 const MOODS = [
-  { name: 'DREAM', hues: [0.76, 0.88, 0.62, 0.52], sat: 0.8, speed: 0.022 },
-  { name: 'SUNSET', hues: [0.02, 0.07, 0.95, 0.86], sat: 0.85, speed: 0.016 },
-  { name: 'OCEAN', hues: [0.5, 0.56, 0.62, 0.7], sat: 0.75, speed: 0.02 },
   { name: 'PARTY', hues: [0.0, 0.16, 0.33, 0.55, 0.72, 0.86], sat: 1, speed: 0.12 },
   { name: 'LIGHTS ON', hues: [0.1], sat: 0.15, speed: 0 },
 ];
 let moodIdx = 0;
-try { const v = parseInt(localStorage.getItem('cc-mood'), 10); if (v >= 0 && v < MOODS.length) moodIdx = v; } catch (e) {}
+try { const v = parseInt(localStorage.getItem('cc-mood2'), 10); if (v >= 0 && v < MOODS.length) moodIdx = v; } catch (e) {}
 T.washDown = tex(16, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
 T.washUp = tex(16, 64, (g, w, h) => { const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
 T.halo = tex(128, 128, (g, w, h) => { const gr = g.createRadialGradient(64, 64, 4, 64, 64, 63); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
@@ -442,7 +439,7 @@ function updateMood(time) {
   _fog.setRGB(0, 0, 0);
   for (const z of moodZones) {
     let h = moodHue(M, time * M.speed + z.phase);
-    if (z.warm && M.sat > 0.5) h = moodHue(MOODS[1], time * 0.016 + z.phase); // the sunset lamp stays sunset
+    if (z.warm && M.sat > 0.5) h = moodHue({ hues: [0.02, 0.07, 0.95, 0.86] }, time * 0.016 + z.phase); // the sunset lamp stays sunset
     _c.setHSL(h, z.warm ? Math.max(M.sat, 0.8) : M.sat, 0.55);
     z.strip.color.copy(_c).lerp(new THREE.Color(1, 1, 1), 0.35);
     for (const m of z.mats) m.color.copy(_c).multiplyScalar(0.85);
@@ -453,7 +450,7 @@ function updateMood(time) {
   scene.fog.color.copy(_fog.multiplyScalar(1 / moodZones.length)).multiplyScalar(on ? 0.5 : 0.16);
   hemi.intensity = on ? 0.7 : 0.2;
 }
-function actMood() { moodIdx = (moodIdx + 1) % MOODS.length; try { localStorage.setItem('cc-mood', String(moodIdx)); } catch (e) {} flash('LIGHTS · ' + MOODS[moodIdx].name, 1.2); }
+function actMood() { moodIdx = (moodIdx + 1) % MOODS.length; try { localStorage.setItem('cc-mood2', String(moodIdx)); } catch (e) {} flash('LIGHTS · ' + MOODS[moodIdx].name, 1.2); }
 
 /* ---------------- track: foam barriers on a ribbon of drift surface ---------------- */
 let trackMat = null, markCtx = null, markTex = null, markDirty = false, markPrev = null, markFade = 0;
