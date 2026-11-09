@@ -61,7 +61,7 @@ canvas#map { position: absolute; right: 2cqw; top: 2cqw; width: 13cqw; height: 1
   filter: drop-shadow(.35cqw .35cqw 0 #000); }
 .overlay .sub { font-size: 1.5cqw; letter-spacing: .3em; color: var(--hot); font-weight: 700; }
 .overlay .spec { font-size: 1.15cqw; color: var(--dim); max-width: 60cqw; line-height: 1.5; }
-.keys { display: grid; grid-template-columns: repeat(3, auto); gap: .6cqw 2.4cqw; font-size: 1.2cqw; text-align: left; }
+.keys { display: grid; grid-template-columns: repeat(4, auto); gap: .6cqw 2.4cqw; font-size: 1.2cqw; text-align: left; }
 .keys kbd, footer kbd { font-family: var(--display); font-size: .9em; background: #1b2635; border: 1px solid #3b5470; border-bottom-width: 3px; padding: .05em .45em; color: var(--fg); border-radius: 3px; }
 button#go {
   font-family: var(--display); font-size: 2cqw; font-style: italic; padding: .8cqw 4cqw; color: #10131a; background: linear-gradient(180deg, #ffd56a, var(--hot) 55%, #d9850a);
@@ -123,10 +123,10 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
     <div class="keys">
       <span><kbd>↑</kbd>/<kbd>W</kbd> throttle</span><span><kbd>↓</kbd>/<kbd>S</kbd> brake, hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd>/<kbd>A</kbd><kbd>D</kbd> steer</span>
       <span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span>
-      <span><kbd>L</kbd> mood lights</span><span><kbd>V</kbd> drift / grip</span><span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
+      <span><kbd>L</kbd> mood lights</span><span><kbd>V</kbd> drift / grip</span><span><kbd>N</kbd> next track</span><span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
     </div>
-    <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>D-pad up</b> lights · <b>D-pad down</b> drift/grip · <b>Menu</b> pause</div>
-    <div class="btns"><button id="go" type="button">START ENGINE</button><button id="modebtn" class="ghost" type="button">MODE: DRIFT</button><button id="setupbtn" class="ghost" type="button">CAR SETUP</button></div>
+    <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>D-pad up</b> lights · <b>D-pad down</b> drift/grip · <b>D-pad left/right</b> track · <b>Menu</b> pause</div>
+    <div class="btns"><button id="go" type="button">START ENGINE</button><button id="modebtn" class="ghost" type="button">MODE: DRIFT</button><button id="trackbtn" class="ghost" type="button">TRACK: DRIFT CIRCUIT</button><button id="setupbtn" class="ghost" type="button">CAR SETUP</button></div>
   </div>
   <div class="garage" id="garage" hidden>
     <div class="ghead"><span>CAR SETUP</span><span class="gsub">Changes apply instantly. <kbd>G</kbd> to close. Gamepad: d-pad to choose, <kbd>B</kbd> to close.</span></div>
@@ -137,7 +137,7 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
 </div>
 <footer>
   <span id="padhint" hidden>Controller: stick + <kbd>RT</kbd>/<kbd>LT</kbd></span>
-  <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>V</kbd> drift/grip</span><span><kbd>L</kbd> lights</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
+  <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>V</kbd> drift/grip</span><span><kbd>N</kbd> track</span><span><kbd>L</kbd> lights</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -819,7 +819,9 @@ const VEH = {
   loadSens: 0.12,
   rubber: { B: 19, C: 1.35 },   // touring rubber: peak at ~7°, drops to ~85% sliding
   plastic: { B: 12, C: 1.1 },   // hard plastic: builds early, then slides at nearly constant friction
-  gyroK: 1.5,                   // rad of counter-steer per rad/s of yaw at 100% gain
+  gyroK: 1.2,                   // rad of steering per rad/s of yaw-rate error at 100% gain
+  rCmdMax: 3.0,                 // yaw rate asked for at full stick (rad/s)
+  gyroMix: 0.6,                 // how much of the direct steering the gyro replaces at full gain
   mEq: { plastic: 0.25, rubber: 0.4 }, // wheel + rotor inertia as an equivalent mass at the tire surface
 };
 const GRAV = 9.81;
@@ -828,7 +830,8 @@ function placeCar(i) {
   i = (i + N) % N;
   const open = layout.open;
   Object.assign(car, {
-    x: open ? -1.2 : P[i].x, z: open ? -1.45 : P[i].z, h: open ? Math.PI / 2 : Math.atan2(TAN[i].x, TAN[i].z), idx: i,
+    // open floor: start in the near-left corner facing up the room, so turning left circles the cone
+    x: open ? -1.7 : P[i].x, z: open ? -1.5 : P[i].z, h: open ? 0.35 : Math.atan2(TAN[i].x, TAN[i].z), idx: i,
     u: 0, v: 0, r: 0, w: 0, vx: 0, vz: 0, vF: 0, steer: 0, thr: 0, gyroOut: 0, beta: 0,
     roll: 0, rollV: 0, pitch: 0, pitchV: 0, ax: 0, ay: 0,
     spin: 0, wheelSurf: 0, spinning: false, alphaF: 0, alphaR: 0, slide: 0, rearSlip: 0,
@@ -855,7 +858,10 @@ function stepCar(dt, canDrive, walls = true) {
   // drift assist on keyboard: an on/off key can't feather, so it becomes a wheelspin governor that holds
   // the rear tires at a set slip: a little when going straight, more the harder you steer (a drift)
   if (drift && assist && input.thrDigital && thrIn > 0) {
-    const slipTarget = 0.12 + 0.3 * Math.abs(st);
+    // aim for a drift angle set by the steering (~35° at full lock): less wheelspin if the angle runs
+    // past it, more if it's short, so holding the key keeps a drift without spinning
+    const betaT = 0.6 * Math.abs(st), betaNow = Math.abs(car.beta);
+    const slipTarget = clamp(0.12 + 0.3 * Math.abs(st) + 1.2 * (betaT - betaNow) * Math.abs(st), 0.04, 0.9);
     const wTarget = Math.max(car.u, 0) * (1 + slipTarget) + 0.5;
     thrIn = car.w < wTarget ? 1 : Math.min(1, wTarget / M.vFree);
   }
@@ -865,9 +871,13 @@ function stepCar(dt, canDrive, walls = true) {
   // steering: driver input + gyro counter-steer against yaw rate, through a rate-limited servo
   let lock = C.steerMax;
   if (!drift && assist) lock = clamp(L * mu0 * GRAV * 0.9 / (u * u + 0.01) + 0.1, 0.1, C.steerMax);
+  // gyro with steering mixing: the stick asks for a yaw rate (up to ~3 rad/s, less at walking pace) and
+  // the gyro steers to hold it, damping any extra rotation that would become a spin
   const gyroGain = drift ? O.gyro.g[setup.gyro] : 0; // grip touring cars don't run a steering gyro
-  const gyro = -gyroGain * VEH.gyroK * r * Math.min(1, Math.abs(u) / 1.5);
-  const target = clamp(st * lock + gyro, -C.steerMax, C.steerMax);
+  const Vg = Math.hypot(u, v), fade = Math.min(1, Vg / 1.2);
+  const rCmd = st * Math.min(VEH.rCmdMax, Vg / 1.1);
+  const gyro = gyroGain * VEH.gyroK * (rCmd - r) * fade;
+  const target = clamp(st * lock * (1 - gyroGain * fade * VEH.gyroMix) + gyro, -C.steerMax, C.steerMax);
   const servoRate = (Math.PI / 3) / C.servo;
   car.steer += clamp(target - car.steer, -servoRate * dt, servoRate * dt);
   car.gyroOut = gyro;
@@ -1213,7 +1223,8 @@ function actReset() {
 }
 // drive mode: DRIFT (RWD, gyro) or GRIP (regular 4WD touring car)
 function actMode() { setOpt('car', setup.car ? 0 : 1); if (garageOpen) buildGarage(); updateModeUI(); flash((setup.car ? 'GRIP' : 'DRIFT') + ' MODE', 1.2); }
-function updateModeUI() { const b = $('modebtn'); if (b) b.textContent = 'MODE: ' + (setup.car ? 'GRIP' : 'DRIFT'); $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short; }
+function actTrack() { setOpt('layout', (setup.layout + 1) % LAYOUTS.length); if (garageOpen) buildGarage(); flash(LAYOUTS[setup.layout].name, 1.2); }
+function updateModeUI() { const b = $('modebtn'); if (b) b.textContent = 'MODE: ' + (setup.car ? 'GRIP' : 'DRIFT'); const tb = $('trackbtn'); if (tb) tb.textContent = 'TRACK: ' + LAYOUTS[setup.layout].name; $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short; }
 function actMusic() { flash(audio.toggleMusic() ? 'MUSIC ON' : 'MUSIC OFF', 0.9); }
 function actTele() { telemetryOn = !telemetryOn; $('tele').hidden = !telemetryOn; }
 function actPause() { if (race.state === 'menu') return; race.paused = !race.paused; audio.suspend(race.paused); $('msg').textContent = race.paused ? 'PAUSED' : ''; }
@@ -1229,6 +1240,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyT') actTele();
   if (e.code === 'KeyL') actMood();
   if (e.code === 'KeyV') actMode();
+  if (e.code === 'KeyN') actTrack();
   if (e.code === 'Escape' && garageOpen) toggleGarage(false);
   if (e.code === 'KeyP') actPause();
 });
@@ -1252,6 +1264,7 @@ function padButtons(gp) {
     if (hit(0) || hit(9)) startRace();
     if (hit(8)) toggleGarage(true);
     if (hit(13)) actMode();
+    if (hit(14) || hit(15)) actTrack();
   } else {
     if (hit(9)) actPause();
     if (hit(3)) actCamera();
@@ -1261,6 +1274,7 @@ function padButtons(gp) {
     if (hit(5)) actMusic();
     if (hit(12)) actMood();
     if (hit(13)) actMode();
+    if (hit(14) || hit(15)) actTrack();
   }
   padPrev = now;
 }
@@ -1295,7 +1309,7 @@ const NOTES = {
   layout: ['Wide 1.2 m lane: a long straight, sweepers to link drifts, and a transition at the top where you flick from one direction to the other.', 'The original 0.9 m grip circuit with a chicane and a dip.', 'No track. Open floor with one cone in the middle: circle it, figure-eight it, chase your longest drift.'],
   car: ['Drift: rear-wheel drive on hard plastic tires, ~57° of steering lock and a steering gyro. Throttle sets the drift angle.', 'Grip: regular RC driving. 4WD touring setup on rubber tires that stick; brakes, turns and accelerates like a normal RC car.'],
   surface: ['Sealed, polished concrete: the most common drift surface. Low, consistent grip.', 'P-tile: polished vinyl tiles used at dedicated drift tracks. A little more bite than concrete.', 'Short-pile carpet. Great for grip racing; drift tires catch and the car hooks up.'],
-  gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro. Some help catching slides; you still steer the angle.', 'Typical gyro gain. Catches most slides and holds angle steady.', 'Strong gyro. Very stable, but the car resists changing direction.'],
+  gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro. Turns in hardest, catches slides late.', 'Typical gyro gain. The stick sets how tight the drift is; the gyro counter-steers to hold it.', 'Strong gyro (default). Most stable; full lock still gives a tight ~1.5 m circle.'],
   motor: ['Out-of-the-box RTR motor on a 2S LiPo. About 40 km/h, gentle punch.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.', 'Drift-geared 13.5T brushless. Tops out near 35 km/h with smooth, controllable wheelspin.'],
   tire: ['Soft carpet rubber. Most grip, best on short tracks.', 'Medium compound. A balanced starting point.', 'Hard compound. Less grip, slides earlier and more progressively.'],
   spring: ['Soft springs. More roll and slower weight transfer; forgiving.', 'Medium springs. Kit standard.', 'Hard springs. Little roll, sharp response, less forgiving over the limit.'],
@@ -1345,6 +1359,7 @@ function toggleGarage(open = !garageOpen) {
 }
 $('setupbtn').addEventListener('click', () => toggleGarage(true));
 $('modebtn').addEventListener('click', () => { actMode(); $('modebtn').blur(); });
+$('trackbtn').addEventListener('click', () => { actTrack(); $('trackbtn').blur(); });
 updateModeUI();
 $('gclose').addEventListener('click', () => toggleGarage(false));
 buildGarage();
