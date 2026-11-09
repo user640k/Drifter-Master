@@ -1,6 +1,6 @@
 # Carpet Circuit
 
-Browser RC drift game: a 1/10 RWD drift car with a purple-and-black late-90s Japanese coupe shell (swan-neck GT wing, deep-dish wheels), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car with a gloss red S14-style shell (deep bumper with a dark mouth, slanted headlights with amber corners, bolt-on overfenders, silver 5-spoke deep-dish wheels), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
