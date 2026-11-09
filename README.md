@@ -10,7 +10,7 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, G car setup, T telemetry, L lights (Party, Lights on), C camera, R reset car, Esc/P pause menu.
+Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, G car setup, T telemetry, L lights (Party, Lights on), M mute (volume is in the menu, saved between sessions), C camera, R reset car, Esc/P pause menu.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
