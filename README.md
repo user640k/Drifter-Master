@@ -1,6 +1,6 @@
 # Carpet Circuit
 
-Browser RC drift game: a 1/10 RWD drift car with a gloss red S14-style shell (deep bumper with a dark mouth, slanted headlights with amber corners, bolt-on overfenders, silver 5-spoke deep-dish wheels), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car with an original widebody shell, the TK-06 (mid-2000s street-drift style: long curved bonnet, fastback roof, blister fenders, big mesh mouth, slim projector lights, round twin tail lamps, centre exhaust, GT wing, neon underglow), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -16,8 +16,11 @@ Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, G car set
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up lights, D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
+## Customize
+Menu → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour), underglow colour or off, racing stripes on/off, and sliders for wing height (0 = no wing), body width, ride height, camber and window tint. Looks only; handling is unchanged. Saved in the browser.
+
 ## Menu
-A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CUSTOMIZE, CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
 ## Courses
 Drive through the gates in order (the next gate glows on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
@@ -48,7 +51,7 @@ Real 1/10 numbers (SI units), stepped at 720 Hz.
 - **Tire marks**: the rear tires draw into a canvas over the floor while sliding.
 
 ## Car viewer
-`viewer.html` is a rotatable studio view of the car with numbered parts and the reference photo, for reviewing the shell. It is generated from the car code in `index.html`:
+`viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:
 
     python3 tools/make_viewer.py
 

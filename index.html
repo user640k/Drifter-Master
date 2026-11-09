@@ -72,6 +72,25 @@ canvas#view { width: 100%; height: 100%; display: block; }
 .speed .motor { color: var(--hot); margin-top: .2cqw; }
 .chip:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 #tele { position: absolute; left: 2cqw; bottom: 5.4cqw; width: 26.5cqw; height: 19.5cqw; }
+.crows { display: grid; grid-template-columns: 14cqw auto; gap: .55cqw 2cqw; align-items: center; justify-content: start; }
+.crows .lbl { font-family: var(--display); font-size: 1.9cqw; letter-spacing: .04em; color: #8b95a3; }
+.crows .lbl.sel { color: #fff; }
+.crows .lbl.sel::before { content: '\25B8  '; color: var(--hot); }
+.sw { display: flex; gap: .7cqw; align-items: center; flex-wrap: wrap; }
+.swb { width: 2.2cqw; height: 2.2cqw; padding: 0; border: .25cqw solid transparent; outline: 1px solid rgba(255,255,255,.28); outline-offset: -1px; cursor: pointer; }
+.swb.off { outline: 0; }
+.swb[aria-pressed="true"] { border-color: #fff; }
+.swb.off { background: none; color: #8b95a3; width: auto; font-family: var(--display); font-size: 1.6cqw; border: 0; border-bottom: .2cqw solid transparent; }
+.swb.off[aria-pressed="true"] { color: var(--hot); border-bottom-color: var(--hot); }
+.pick { width: 2.6cqw; height: 2.2cqw; padding: 0; border: 0; background: none; cursor: pointer; }
+.sl { display: flex; align-items: center; gap: 1cqw; font-family: var(--display); font-size: 1.6cqw; color: #fff; }
+.sl input { -webkit-appearance: none; appearance: none; width: 22cqw; height: .3cqw; background: #6b7686; outline: none; cursor: pointer; }
+.sl input::-webkit-slider-thumb { -webkit-appearance: none; width: 1.2cqw; height: 1.8cqw; background: var(--hot); border: 0; }
+.sl input::-moz-range-thumb { width: 1.2cqw; height: 1.8cqw; background: var(--hot); border: 0; border-radius: 0; }
+.sl input:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.gback { align-self: flex-start; font-family: var(--display); font-size: 2.1cqw; color: #fff; background: none; border: 0; padding: 0; cursor: pointer; }
+.gback:hover, .gback:focus-visible { color: var(--hot); outline: none; }
+.custom { background: linear-gradient(90deg, rgba(5,7,12,.92) 0%, rgba(5,7,12,.7) 42%, rgba(5,7,12,0) 62%); }
 .garage { position: absolute; inset: 0; padding: 6cqw 5cqw 4cqw; background: linear-gradient(90deg, rgba(5,7,12,.94) 0%, rgba(5,7,12,.82) 45%, rgba(5,7,12,.2) 80%); display: flex; flex-direction: column; gap: 1.2cqw; pointer-events: auto; overflow: auto; }
 .ghead { display: flex; flex-direction: column; gap: .4cqw; font-family: var(--display); font-size: 4.16cqw; color: #fff; }
 .gsub { font-family: var(--ui); font-style: normal; font-size: 1.37cqw; letter-spacing: .14em; color: var(--hot); font-weight: 400; }
@@ -127,6 +146,11 @@ canvas#view { width: 100%; height: 100%; display: block; }
       <div class="mnote" id="mnote"></div>
       <div class="mhint">↑↓ select · ←→ change · Enter / A confirm</div>
     </div>
+  </div>
+  <div class="garage custom" id="custom" hidden>
+    <div class="ghead"><span>CUSTOMIZE</span><span class="gsub">TK-06 BODY · LOOKS ONLY, HANDLING UNCHANGED · ESC / B TO CLOSE</span></div>
+    <div class="crows" id="crows"></div>
+    <button id="cclose" class="gback" type="button">‹ BACK</button>
   </div>
   <div class="garage" id="garage" hidden>
     <div class="ghead"><span>CAR SETUP</span><span class="gsub">CHANGES APPLY INSTANTLY · G / B TO CLOSE</span></div>
@@ -760,161 +784,183 @@ function resetCones() { for (const c of cones) { Object.assign(c, { x: c.hx, z: 
   mm.rotation.x = -Math.PI / 2; mm.position.y = 0.003; mm.renderOrder = 1; scene.add(mm);
 }
 
-/* ---------------- the car: 1/10 chassis, red S14-style drift shell ---------------- */
+/* ---------------- the car: 1/10 chassis, original "TK-06" widebody drift shell ----------------
+   An original mid-2000s-street-scene coupe: long curved bonnet, fastback roof, smooth blister
+   widebody fenders blended into the body, big mesh mouth, slim projector lights with LED strips,
+   round twin tail lamps, centre exhaust, two-tone paint with racing stripes, optional GT wing and
+   neon underglow. Every look parameter comes from CAR_STYLE (customize screen). */
 const CAR = { wb: 0.257, track: 0.17, wheelR: 0.032, wheelW: 0.032 };
-function buildCar() {
-  // 1/10 drift shell modeled on a red S14-style coupe (late-model front): deep bumper with a big dark
-  // mouth and outer pockets, red lip, thin grille slot, narrow slanted headlights with amber corners,
-  // bolt-on overfenders, low skirts, black-trimmed dark glass, small ducktail, no wing, slammed on
-  // silver 5-spoke deep-dish wheels with stretched tires
+const CAR_STYLE_DEFAULT = { paint: '#ff6a13', accent: '#141416', wheel: '#c9cdd4', glow: '#00e5ff', glowOn: 1, stripes: 1, wing: 0.6, width: 0.6, ride: 0.35, camber: 0.5, tint: 0.7 };
+const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
+try { const st = JSON.parse(localStorage.getItem('cc-style') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+function wheelTex(hex) {
+  return tex(128, 128, (g, w, h) => {
+    const c = 64; g.fillStyle = '#121212'; g.fillRect(0, 0, w, h);
+    const lip = g.createRadialGradient(54, 50, 8, c, c, 57); lip.addColorStop(0, '#ffffff'); lip.addColorStop(0.75, '#dfe2e8'); lip.addColorStop(1, '#a0a4ac');
+    g.fillStyle = lip; g.beginPath(); g.arc(c, c, 56, 0, 7); g.fill();                              // polished lip
+    g.fillStyle = '#1e2026'; g.beginPath(); g.arc(c, c, 45, 0, 7); g.fill();                        // deep barrel
+    g.fillStyle = hex;
+    for (let i = 0; i < 6; i++) { g.save(); g.translate(c, c); g.rotate(i / 6 * Math.PI * 2); g.beginPath(); g.moveTo(-5, 8); g.lineTo(5, 8); g.lineTo(11, 45); g.lineTo(3, 45); g.closePath(); g.fill(); g.beginPath(); g.moveTo(-5, 8); g.lineTo(-11, 45); g.lineTo(-3, 45); g.closePath(); g.fill(); g.restore(); }
+    g.beginPath(); g.arc(c, c, 13, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.arc(c - 3, c - 3, 7, 0, 7); g.fill();
+    g.fillStyle = '#c8ccd4'; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.52; g.beginPath(); g.arc(c + Math.cos(a) * 30, c + Math.sin(a) * 30, 1.6, 0, 7); g.fill(); }
+  });
+}
+function buildCar(S = CAR_STYLE) {
   const root = new THREE.Group();
   const model = new THREE.Group(); model.rotation.y = -Math.PI / 2; root.add(model); // model space: +x forward, +z right
   const body = new THREE.Group(); model.add(body);
-  const W = 0.186, D = W - 0.016, BELT = 0.094, ROOF = 0.129;
-  const RED = 0xc8121e;
+  const paintC = new THREE.Color(S.paint), accentC = new THREE.Color(S.accent);
+  const W = 0.186, D = W - 0.016, BELT = 0.094, ROOF = 0.131;
   const s = new THREE.Shape();
-  s.moveTo(-0.2, 0.024);
-  s.lineTo(-0.214, 0.03); s.quadraticCurveTo(-0.221, 0.05, -0.219, 0.074);           // rear bumper
-  s.quadraticCurveTo(-0.217, 0.09, -0.207, 0.096); s.lineTo(-0.2, 0.099);            // tail, ducktail
-  s.lineTo(-0.15, 0.097); s.lineTo(-0.135, 0.098);                                      // trunk deck
-  s.quadraticCurveTo(-0.1, 0.116, -0.066, 0.127);                                       // rear screen
-  s.quadraticCurveTo(-0.02, 0.134, 0.018, 0.128);                                       // roof
-  s.lineTo(0.092, 0.093);                                                               // windscreen
-  s.quadraticCurveTo(0.16, 0.086, 0.214, 0.074);                                        // bonnet
-  s.quadraticCurveTo(0.226, 0.0715, 0.228, 0.067);                                      // rounded bonnet edge
-  s.lineTo(0.2305, 0.052); s.lineTo(0.233, 0.03);                                        // front face
-  s.lineTo(0.228, 0.021); s.lineTo(0.19, 0.022); s.closePath();                          // chin
-  const geo = new THREE.ExtrudeGeometry(s, { depth: D, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.005, bevelSegments: 3, curveSegments: 8 });
+  s.moveTo(-0.205, 0.024);
+  s.lineTo(-0.218, 0.032); s.quadraticCurveTo(-0.225, 0.055, -0.221, 0.077);           // rear bumper
+  s.quadraticCurveTo(-0.215, 0.094, -0.199, 0.1);                                        // integrated ducktail
+  s.lineTo(-0.165, 0.097);                                                                // short deck
+  s.quadraticCurveTo(-0.115, 0.108, -0.07, 0.124);                                       // long fastback glass
+  s.quadraticCurveTo(-0.03, 0.135, 0.018, 0.131);                                        // roof
+  s.quadraticCurveTo(0.06, 0.116, 0.096, 0.095);                                         // curved windscreen
+  s.quadraticCurveTo(0.16, 0.085, 0.206, 0.069);                                         // long bonnet
+  s.quadraticCurveTo(0.231, 0.061, 0.236, 0.045);                                        // rounded nose
+  s.lineTo(0.237, 0.03); s.quadraticCurveTo(0.236, 0.019, 0.222, 0.017);                // chin
+  s.lineTo(0.19, 0.021); s.closePath();
+  const geo = new THREE.ExtrudeGeometry(s, { depth: D, steps: 14, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.005, bevelSegments: 3, curveSegments: 10 });
   geo.translate(0, 0, -D / 2);
   const pos = geo.attributes.position, cnt = pos.count;
-  // dark glass on the top surface (windscreen and rear screen), by vertex colour
-  const col = new Float32Array(cnt * 3).fill(1);
+  // paint by vertex colour on the top surface: glass, twin stripes, everything else body colour
+  const col = new Float32Array(cnt * 3), WHITE = new THREE.Color(1, 1, 1);
+  // top-surface UVs: v runs across the body width, so stripes are a simple texture band
+  const uvA = geo.attributes.uv, sg0 = geo.groups.find(g => g.materialIndex === 1);
+  for (let i = sg0.start; i < sg0.start + sg0.count; i++) uvA.setXY(i, pos.getX(i) * 4, (pos.getZ(i) + D / 2 + 0.01) / (D + 0.02));
+  const glassC = new THREE.Color(0x0b0b10).lerp(new THREE.Color(0x3a4250), 1 - S.tint);
   const sideGroup = geo.groups.find(g => g.materialIndex === 1);
-  for (let i = sideGroup.start; i < sideGroup.start + sideGroup.count; i += 3) {
-    let cx = 0, cy = 0;
-    for (let k = 0; k < 3; k++) { cx += pos.getX(i + k) / 3; cy += pos.getY(i + k) / 3; }
-    const zi = Math.max(Math.abs(pos.getZ(i)), Math.abs(pos.getZ(i + 1)), Math.abs(pos.getZ(i + 2)));
-    if (zi <= D / 2 + 0.0001 && cy > 0.097 && ((cx > 0.02 && cx < 0.09) || (cx > -0.132 && cx < -0.068))) for (let k = 0; k < 3; k++) col.set([0.035, 0.032, 0.04], (i + k) * 3);
+  for (let i = 0; i < cnt; i += 3) {
+    let cx = 0, cy = 0, cz = 0;
+    for (let k = 0; k < 3; k++) { cx += pos.getX(i + k) / 3; cy += pos.getY(i + k) / 3; cz += pos.getZ(i + k) / 3; }
+    let c = WHITE;
+    if (i >= sideGroup.start && i < sideGroup.start + sideGroup.count) {
+      const inner = Math.abs(cz) < D / 2 - 0.004;
+      if (inner && cy > 0.097 && ((cx > 0.022 && cx < 0.093) || (cx > -0.16 && cx < -0.072))) c = glassC;
+    }
+    for (let k = 0; k < 3; k++) col.set([c.r, c.g, c.b], (i + k) * 3);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  // shape the shell: tumblehome, rounded nose and tail in plan, blister fenders over each axle, bonnet bulge
+  const flare = 0.004 + S.width * 0.014;
   for (let i = 0; i < cnt; i++) {
     const x = pos.getX(i), y = pos.getY(i); let z = pos.getZ(i);
-    if (y > BELT) z *= 1 - 0.27 * clamp((y - BELT) / (ROOF - BELT), 0, 1);              // tumblehome
-    if (x > 0.17) z *= 1 - 0.12 * clamp((x - 0.17) / 0.065, 0, 1) ** 1.5;                // rounded nose corners
-    if (x < -0.185) z *= 1 - 0.06 * clamp((-0.185 - x) / 0.036, 0, 1);
-    if (x > 0.1 && y > 0.06) pos.setY(i, y + 0.0025 * Math.cos(z / (D / 2) * Math.PI / 2));  // slight bonnet crown
+    const side = Math.abs(z) / (D / 2 + 0.008);
+    if (y > BELT) z *= 1 - 0.3 * clamp((y - BELT) / (ROOF - BELT), 0, 1);
+    if (x > 0.16) z *= 1 - 0.16 * clamp((x - 0.16) / 0.08, 0, 1) ** 1.6;
+    if (x < -0.18) z *= 1 - 0.09 * clamp((-0.18 - x) / 0.045, 0, 1) ** 1.4;
+    const bump = ax => Math.exp(-(((x - ax) / 0.072) ** 2));
+    const fy = clamp((y - 0.018) / 0.03, 0, 1) * clamp((0.092 - y) / 0.028, 0, 1);
+    z += Math.sign(z) * flare * (bump(CAR.wb / 2) + bump(-CAR.wb / 2) * 1.15) * fy * side;
+    if (x > 0.1 && x < 0.21 && y > 0.06) pos.setY(i, y + 0.004 * Math.cos(Math.min(1, Math.abs(z) / 0.045) * Math.PI / 2) * Math.sin((x - 0.1) / 0.11 * Math.PI));
     pos.setZ(i, z);
   }
-  smoothNormals(geo, 0.72);
+  smoothNormals(geo, 0.6);
+  const stripeTex = tex(4, 512, (g, w, h) => {
+    g.fillStyle = S.paint; g.fillRect(0, 0, w, h);
+    if (S.stripes) { g.fillStyle = S.accent; const px = z => (1 - (z + D / 2 + 0.01) / (D + 0.02)) * h;
+      for (const sg of [-1, 1]) { const a = px(sg * 0.012), b = px(sg * 0.03); g.fillRect(0, Math.min(a, b), w, Math.abs(b - a)); }
+      g.fillStyle = 'rgba(255,255,255,0.5)'; for (const sg of [-1, 1]) for (const z of [0.0105, 0.0315]) g.fillRect(0, px(sg * z) - 1, w, 2); }
+  });
+  const hx = c => '#' + c.getHexString();
+  const pLight = hx(paintC.clone().lerp(new THREE.Color(1, 1, 1), 0.22)), pDark = hx(paintC.clone().multiplyScalar(0.62));
   const livery = tex(1024, 320, (g, w, h) => {
     const X = x => (x + 0.235) / 0.47 * w, Y = y => (1 - y / 0.155) * h, SX = 1 / 0.47 * w, SY = 1 / 0.155 * h;
-    const base = g.createLinearGradient(0, Y(0.13), 0, Y(0.02));
-    base.addColorStop(0, '#e2283a'); base.addColorStop(0.45, '#cc1420'); base.addColorStop(0.62, '#e0303e'); base.addColorStop(0.7, '#b80f1b'); base.addColorStop(1, '#8e0a14');
+    const base = g.createLinearGradient(0, Y(0.13), 0, Y(0.02)); base.addColorStop(0, pLight); base.addColorStop(0.5, S.paint); base.addColorStop(1, pDark);
     g.fillStyle = base; g.fillRect(0, 0, w, h);
-    // shoulder highlight above the character line
-    g.strokeStyle = 'rgba(255,170,175,0.35)'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(0.21), Y(0.072)); g.quadraticCurveTo(X(0.0), Y(0.086), X(-0.2), Y(0.089)); g.stroke();
-    // wheel arches (the overfenders sit around these)
-    for (const ax of [-CAR.wb / 2, CAR.wb / 2]) { g.fillStyle = '#0a0809'; g.beginPath(); g.ellipse(X(ax), Y(0.031), 0.037 * SX, 0.036 * SY, 0, 0, 7); g.fill(); }
-    // side glass with black trim and B-pillar
-    const glass = () => { g.beginPath(); g.moveTo(X(-0.127), Y(0.097)); g.quadraticCurveTo(X(-0.095), Y(0.112), X(-0.062), Y(0.121)); g.quadraticCurveTo(X(-0.02), Y(0.128), X(0.014), Y(0.124)); g.lineTo(X(0.083), Y(0.096)); g.closePath(); };
-    g.fillStyle = '#0c0b0e'; g.lineWidth = 7; g.strokeStyle = '#0c0b0e'; glass(); g.fill(); g.stroke();
-    g.fillStyle = 'rgba(150,150,170,0.22)'; g.beginPath(); g.moveTo(X(0.0), Y(0.122)); g.lineTo(X(0.03), Y(0.118)); g.lineTo(X(-0.02), Y(0.099)); g.lineTo(X(-0.05), Y(0.099)); g.fill();
-    g.fillStyle = '#060507'; g.fillRect(X(-0.046), Y(0.124), 8, Y(0.096) - Y(0.124));
-    // door shut lines, handle, fuel flap
-    g.strokeStyle = 'rgba(60,0,8,0.75)'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(X(-0.046), Y(0.096)); g.lineTo(X(-0.052), Y(0.036)); g.moveTo(X(0.084), Y(0.094)); g.quadraticCurveTo(X(0.09), Y(0.06), X(0.086), Y(0.036)); g.lineTo(X(-0.052), Y(0.036)); g.stroke();
-    g.fillStyle = '#7a0a12'; g.fillRect(X(-0.036), Y(0.084), 14, 4);
-    g.strokeStyle = 'rgba(60,0,8,0.6)'; g.strokeRect(X(-0.17), Y(0.088), 14, 12);
-    // side skirt: darker underside and a black shadow line
-    g.fillStyle = '#7d0911'; g.fillRect(0, Y(0.032), w, h); g.fillStyle = '#100607'; g.fillRect(0, Y(0.024), w, h);
-    // side marker in the front bumper corner
-    g.fillStyle = '#ff9a1f'; g.fillRect(X(0.205), Y(0.058), 10, 5);
+    // two-tone blade: accent colour low on the nose, sweeping up across the doors into the rear quarter
+    g.fillStyle = S.accent; g.beginPath();
+    g.moveTo(X(0.235), Y(0.035)); g.quadraticCurveTo(X(0.08), Y(0.03), X(-0.02), Y(0.06)); g.quadraticCurveTo(X(-0.12), Y(0.085), X(-0.235), Y(0.086));
+    g.lineTo(X(-0.235), Y(0.0)); g.lineTo(X(0.235), Y(0.0)); g.closePath(); g.fill();
+    g.strokeStyle = pLight; g.lineWidth = 3; g.beginPath(); g.moveTo(X(0.2), Y(0.043)); g.quadraticCurveTo(X(0.06), Y(0.04), X(-0.03), Y(0.069)); g.quadraticCurveTo(X(-0.12), Y(0.093), X(-0.235), Y(0.094)); g.stroke();
+    // arches
+    for (const ax of [-CAR.wb / 2, CAR.wb / 2]) { g.fillStyle = '#060507'; g.beginPath(); g.ellipse(X(ax), Y(0.031), 0.038 * SX, 0.037 * SY, 0, 0, 7); g.fill(); }
+    // side glass, frameless look with a thin dark surround
+    const glassCss = hx(glassC);
+    g.fillStyle = glassCss; g.beginPath();
+    g.moveTo(X(-0.152), Y(0.098)); g.quadraticCurveTo(X(-0.11), Y(0.11), X(-0.068), Y(0.121)); g.quadraticCurveTo(X(-0.025), Y(0.13), X(0.016), Y(0.126)); g.quadraticCurveTo(X(0.055), Y(0.112), X(0.088), Y(0.097)); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.moveTo(X(-0.02), Y(0.125)); g.lineTo(X(0.01), Y(0.123)); g.lineTo(X(-0.03), Y(0.1)); g.lineTo(X(-0.06), Y(0.1)); g.fill();
+    // door line, flush handle, side vent behind the front wheel
+    g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(X(-0.06), Y(0.098)); g.quadraticCurveTo(X(-0.066), Y(0.06), X(-0.062), Y(0.034)); g.moveTo(X(0.084), Y(0.096)); g.lineTo(X(0.074), Y(0.036)); g.stroke();
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(X(-0.045), Y(0.083), 16, 3);
+    g.fillStyle = '#0a0a0c'; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(X(0.074 - k * 0.012), Y(0.06)); g.lineTo(X(0.08 - k * 0.012), Y(0.06)); g.lineTo(X(0.068 - k * 0.012), Y(0.04)); g.lineTo(X(0.062 - k * 0.012), Y(0.04)); g.fill(); }
+    // original model badge on the rear quarter
   });
-  livery.wrapS = livery.wrapT = THREE.ClampToEdgeWrapping; livery.repeat.set(1 / 0.47, 1 / 0.155); livery.offset.set(0.235 / 0.47, 0);
-  livery.anisotropy = 4;
-  const paint = new THREE.MeshPhongMaterial({ color: RED, shininess: 90, specular: 0x9a8a8a, side: THREE.DoubleSide });
-  const shell = new THREE.Mesh(geo, [
-    new THREE.MeshPhongMaterial({ map: livery, shininess: 90, specular: 0x9a8a8a }),
-    new THREE.MeshPhongMaterial({ color: RED, vertexColors: true, shininess: 90, specular: 0x9a8a8a }),
-  ]);
+  livery.wrapS = livery.wrapT = THREE.ClampToEdgeWrapping; livery.repeat.set(1 / 0.47, 1 / 0.155); livery.offset.set(0.235 / 0.47, 0); livery.anisotropy = 4;
+  const gloss = { shininess: 110, specular: 0xb0b0b0 };
+  const paint = new THREE.MeshPhongMaterial({ color: S.paint, ...gloss, side: THREE.DoubleSide });
+  const shell = new THREE.Mesh(geo, [new THREE.MeshPhongMaterial({ map: livery, ...gloss }), new THREE.MeshPhongMaterial({ map: stripeTex, color: 0xffffff, vertexColors: true, ...gloss })]);
   body.add(shell);
   const black = new THREE.MeshPhongMaterial({ color: 0x0d0c0f, shininess: 40 });
-  const mesh = tex(32, 16, (g, w, h) => { g.fillStyle = '#060506'; g.fillRect(0, 0, w, h); g.fillStyle = '#25232a'; for (let y = 0; y < h; y += 3) for (let x = (y / 3 % 2) * 2; x < w; x += 4) g.fillRect(x, y, 2, 1); });
-  mesh.wrapS = mesh.wrapT = THREE.RepeatWrapping; mesh.repeat.set(3, 1);
+  const accentM = new THREE.MeshPhongMaterial({ color: S.accent, ...gloss });
+  const mesh = tex(32, 16, (g, w, h) => { g.fillStyle = '#050506'; g.fillRect(0, 0, w, h); g.fillStyle = '#2a2a30'; for (let y = 0; y < h; y += 3) for (let x = (y / 3 % 2) * 2; x < w; x += 4) g.fillRect(x, y, 2, 1); });
+  mesh.wrapS = mesh.wrapT = THREE.RepeatWrapping; mesh.repeat.set(4, 2);
   const meshM = new THREE.MeshPhongMaterial({ map: mesh, shininess: 10 });
-  // ---- front end (from the photo): under the bonnet edge a band of clear headlights with chrome
-  // reflectors and amber outer corners, a dark grille between them; below, a thick red bumper bar,
-  // a big dark lower opening, red dividers, dark outer vents wrapping the corners, and a thick red lip
-  const FX = (y) => 0.2355 + (0.052 - y) * 0.11 + 0.0006;     // front-face x at height y (incl. bevel)
-  const darkM = new THREE.MeshPhongMaterial({ color: 0x0b0a0d, shininess: 20 });
-  const openM = new THREE.MeshPhongMaterial({ map: mesh, color: 0x8a8890, shininess: 10 });
-  // bonnet shut line casting a shadow over the light band
-  box(0.003, 0.0018, 0.15, darkM, FX(0.066) - 0.001, 0.0664, 0, body);
-  // grille band between the lights
-  { const gs = new THREE.Shape(); gs.moveTo(-0.033, 0.0); gs.lineTo(0.033, 0.0); gs.lineTo(0.029, -0.0085); gs.lineTo(-0.029, -0.0085); gs.closePath();
-    const gm = new THREE.Mesh(new THREE.ShapeGeometry(gs), darkM); gm.rotation.y = Math.PI / 2; gm.position.set(FX(0.06) + 0.0004, 0.0655, 0); body.add(gm); }
-  // headlights: clear glass over chrome reflectors, two lamp bowls, amber corner wrapping round
-  const chromeM = new THREE.MeshPhongMaterial({ color: 0xd8dde4, shininess: 200, specular: 0xffffff, emissive: 0x2a2c30 });
-  const bowlM = new THREE.MeshPhongMaterial({ color: 0x9aa0aa, shininess: 220, specular: 0xffffff });
-  const bulbM = new THREE.MeshBasicMaterial({ color: 0xf4f6fa });
-  const amberM = new THREE.MeshPhongMaterial({ color: 0xff8a12, emissive: 0x7a3a00, shininess: 160, specular: 0xffffff });
-  const glassM = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, shininess: 250, specular: 0xffffff, depthWrite: false });
+  // ---- front: one big rounded mesh mouth, small corner intakes, accent splitter
+  const FX = y => 0.2415 - Math.max(0, y - 0.045) * 0.9;
+  { const m = new THREE.Shape(), w2 = 0.058, h0 = 0.022, h1 = 0.041, r = 0.008;
+    m.moveTo(-w2 + r, h0); m.lineTo(w2 - r, h0); m.quadraticCurveTo(w2, h0, w2, h0 + r); m.lineTo(w2 - 0.004, h1 - r); m.quadraticCurveTo(w2 - 0.004, h1, w2 - 0.004 - r, h1); m.lineTo(-w2 + 0.004 + r, h1); m.quadraticCurveTo(-w2 + 0.004, h1, -w2 + 0.004, h1 - r); m.lineTo(-w2, h0 + r); m.quadraticCurveTo(-w2, h0, -w2 + r, h0);
+    const mm = new THREE.Mesh(new THREE.ShapeGeometry(m), meshM); mm.rotation.y = Math.PI / 2; mm.position.set(FX(0.03) + 0.0005, 0, 0); body.add(mm); }
+  for (const sg of [-1, 1]) { const ci = box(0.003, 0.012, 0.016, meshM, FX(0.03) - 0.006, 0.03, sg * 0.072, body); ci.rotation.y = -sg * 0.5; }
+  { const sp = box(0.016, 0.003, 0.17, accentM, 0.232, 0.017, 0, body); }
+  // ---- slim swept projector lights on the nose corners, with an LED strip under each
+  const lensM = new THREE.MeshPhongMaterial({ color: 0x9aa6b8, emissive: 0x1c2230, shininess: 220, specular: 0xffffff }), projM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const ledM = new THREE.MeshBasicMaterial({ color: 0xbfe6ff });
   for (const sg of [-1, 1]) {
-    const hl = new THREE.Group(); hl.position.set(FX(0.061), 0.0612, sg * 0.0575); hl.rotation.y = sg * 0.22; body.add(hl);
-    const hs = new THREE.Shape(); // slim, inner end cut on a slant, top edge following the bonnet
-    hs.moveTo(-0.026, -0.0045); hs.lineTo(0.02, -0.0045); hs.lineTo(0.022, 0.0042); hs.lineTo(-0.02, 0.0046); hs.closePath();
-    const plate = new THREE.Mesh(new THREE.ShapeGeometry(hs), chromeM); plate.rotation.y = Math.PI / 2; plate.scale.x = -sg; hl.add(plate);
-    for (const dz of [-0.012, 0.004]) { const b = new THREE.Mesh(new THREE.CircleGeometry(0.0042, 14), bowlM); b.rotation.y = Math.PI / 2; b.position.set(0.0004, -0.0002, sg * -dz); hl.add(b);
-      const c = new THREE.Mesh(new THREE.CircleGeometry(0.0017, 10), bulbM); c.rotation.y = Math.PI / 2; c.position.set(0.0007, -0.0002, sg * -dz); hl.add(c); }
-    const glass = new THREE.Mesh(new THREE.ShapeGeometry(hs), glassM); glass.rotation.y = Math.PI / 2; glass.scale.x = -sg; glass.position.x = 0.0012; hl.add(glass);
-    box(0.0015, 0.0084, 0.0095, amberM, 0.0009, 0.0, sg * 0.0165, hl);                                   // amber corner
-    const wrap = box(0.0015, 0.0078, 0.008, amberM, -0.003, 0.0, sg * 0.0215, hl); wrap.rotation.y = sg * 0.9; // wrapping round the side
+    const hl = new THREE.Group(); hl.position.set(0.212, 0.069, sg * 0.055); hl.rotation.set(0, sg * 0.42, -0.4); body.add(hl);
+    box(0.036, 0.004, 0.04, black, 0, -0.0005, 0, hl);
+    box(0.033, 0.0042, 0.036, lensM, 0, 0, 0, hl);
+    for (const dz of [0.0075, -0.004]) { const pj = new THREE.Mesh(new THREE.CircleGeometry(0.0048, 16), projM); pj.rotation.x = -Math.PI / 2; pj.position.set(0.003, 0.0023, sg * dz); hl.add(pj); }
+    box(0.03, 0.0016, 0.004, ledM, 0.0, 0.0023, -sg * 0.0155, hl);
   }
-  // lower openings: a big central mouth and two outer vents, separated by red dividers
-  const mouth = new THREE.Shape(); mouth.moveTo(-0.052, 0.0); mouth.lineTo(0.052, 0.0); mouth.lineTo(0.047, -0.0175); mouth.lineTo(-0.047, -0.0175); mouth.closePath();
-  const mm2 = new THREE.Mesh(new THREE.ShapeGeometry(mouth), openM); mm2.rotation.y = Math.PI / 2; mm2.position.set(FX(0.04) + 0.0005, 0.0485, 0); body.add(mm2);
-  for (const sg of [-1, 1]) {
-    const v = new THREE.Shape(); v.moveTo(0, 0); v.lineTo(0.022, 0); v.lineTo(0.022, -0.0125); v.lineTo(0.003, -0.0135); v.closePath();
-    const vm = new THREE.Mesh(new THREE.ShapeGeometry(v), openM); vm.rotation.y = Math.PI / 2 + sg * 0.42; vm.scale.x = -sg; vm.position.set(FX(0.04) - 0.006, 0.0455, sg * 0.0595); body.add(vm);
+  // ---- rear: dark tail panel, round twin lamps each side, big centre exhaust, diffuser
+  box(0.004, 0.022, 0.15, black, -0.2235, 0.072, 0, body);
+  const lampM = new THREE.MeshBasicMaterial({ color: 0xb81a12 }), ringM = new THREE.MeshPhongMaterial({ color: 0xd8dce2, shininess: 160, specular: 0xffffff });
+  for (const sg of [-1, 1]) for (const dz of [0.052, 0.03]) {
+    const ring = new THREE.Mesh(new THREE.CircleGeometry(0.0105, 18), ringM); ring.rotation.y = -Math.PI / 2; ring.position.set(-0.2259, 0.073, sg * dz); body.add(ring);
+    const l = new THREE.Mesh(new THREE.CircleGeometry(0.0088, 18), lampM); l.rotation.y = -Math.PI / 2; l.position.set(-0.2262, 0.073, sg * dz); body.add(l);
   }
-  // thick red lip: a rounded slab sticking out ahead of the face and round the corners
-  { const ls = new THREE.Shape(), Lx = 0.01, Lz = 0.084, rr = 0.03;
-    ls.moveTo(-0.01, -Lz + rr); ls.lineTo(-0.01, Lz - rr); ls.quadraticCurveTo(-0.01, Lz, rr - 0.01, Lz); ls.quadraticCurveTo(Lx, Lz, Lx, Lz - 0.02); ls.quadraticCurveTo(Lx + 0.005, 0, Lx, -Lz + 0.02); ls.quadraticCurveTo(Lx, -Lz, rr - 0.01, -Lz); ls.quadraticCurveTo(-0.01, -Lz, -0.01, -Lz + rr); ls.closePath();
-    const lg = new THREE.ExtrudeGeometry(ls, { depth: 0.006, bevelEnabled: true, bevelThickness: 0.0015, bevelSize: 0.0015, bevelSegments: 2, curveSegments: 6 });
-    const lip = new THREE.Mesh(lg, paint); lip.rotation.x = Math.PI / 2; lip.position.set(0.226, 0.0255, 0); body.add(lip); }
-  // ---- rear: wide smoked tail lights split by a garnish, small ducktail, dark diffuser
-  const lampM = new THREE.MeshBasicMaterial({ color: 0xb81a12 });
-  for (const sg of [-1, 1]) box(0.004, 0.015, 0.06, lampM, -0.2215, 0.08, sg * 0.05, body);
-  box(0.004, 0.015, 0.04, new THREE.MeshPhongMaterial({ color: 0x5a0810, shininess: 120 }), -0.2215, 0.08, 0, body);
-  box(0.004, 0.01, 0.06, black, -0.2205, 0.04, 0, body);
-  const duck = box(0.018, 0.004, 0.16, paint, -0.205, 0.1005, 0, body); duck.rotation.z = 0.18;
   root.userData.lampM = lampM;
-  // ---- bolt-on overfenders: a ring-sector shell around each wheel, flared out past the body side
-  const flareShape = () => {
-    const f = new THREE.Shape(), ro = 0.046, ri = 0.0375;
-    f.moveTo(ro, -0.008); f.absarc(0, 0, ro, -0.16, Math.PI + 0.16, false); f.lineTo(-ri, -0.008); f.absarc(0, 0, ri, Math.PI, 0, true); f.closePath();
-    return f;
-  };
-  const flareGeo = new THREE.ExtrudeGeometry(flareShape(), { depth: 0.008, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.002, bevelSegments: 2, curveSegments: 14 });
-  for (const ax of [-CAR.wb / 2, CAR.wb / 2]) for (const sg of [-1, 1]) {
-    const fl = new THREE.Mesh(flareGeo, paint); fl.position.set(ax, 0.031, sg * (W / 2 - 0.004)); fl.scale.z = sg; body.add(fl);
+  { const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.02, 18, 1, true), ringM); ex.rotation.z = Math.PI / 2; ex.position.set(-0.226, 0.038, 0); body.add(ex);
+    const inner = new THREE.Mesh(new THREE.CircleGeometry(0.0095, 18), black); inner.rotation.y = -Math.PI / 2; inner.position.set(-0.2355, 0.038, 0); body.add(inner); }
+  for (const dz of [-0.06, -0.035, 0.035, 0.06]) box(0.02, 0.012, 0.003, black, -0.222, 0.026, dz, body);
+  // ---- GT wing (height from the slider; 0 = no wing)
+  if (S.wing > 0.02) {
+    const wingM = new THREE.MeshPhongMaterial({ color: S.accent, shininess: 90, specular: 0x666666 });
+    const hgt = 0.022 + S.wing * 0.06, wy = 0.1 + hgt;
+    const plane = box(0.05, 0.004, 0.2, wingM, -0.188, wy, 0, body); plane.rotation.z = 0.1;
+    box(0.012, 0.004, 0.2, wingM, -0.211, wy + 0.004, 0, body);                                   // gurney
+    for (const z of [-0.1, 0.1]) box(0.056, 0.024, 0.003, wingM, -0.19, wy + 0.004, z, body);       // endplates
+    for (const z of [-0.055, 0.055]) box(0.016, hgt, 0.003, wingM, -0.188, 0.1 + hgt / 2, z, body); // uprights
   }
-  // skirts: red sills running between the overfenders
-  for (const sg of [-1, 1]) box(0.168, 0.01, 0.008, paint, 0.0, 0.026, sg * (W / 2 + 0.001), body);
+  // aero mirrors
+  for (const sg of [-1, 1]) { const mi = box(0.016, 0.009, 0.012, paint, 0.072, 0.104, sg * 0.093, body); box(0.006, 0.003, 0.012, black, 0.074, 0.098, sg * 0.088, body); }
+  body.userData.baseY = (S.ride - 0.5) * 0.014;
+  body.position.y = body.userData.baseY;
   // chassis plate peeking under
-  box(0.36, 0.006, 0.16, new THREE.MeshPhongMaterial({ color: 0x222428, shininess: 80 }), 0, 0.014, 0, model);
-  // wheels: silver 5-spoke deep dish, stretched tires, negative camber
+  box(0.36, 0.006, 0.16, new THREE.MeshPhongMaterial({ color: 0x222428, shininess: 80 }), 0, 0.014 + body.userData.baseY * 0.5, 0, model);
+  // wheels: deep-dish six-spoke in the chosen colour, pushed out to fill the widebody, negative camber
   const wGeo = new THREE.CylinderGeometry(CAR.wheelR, CAR.wheelR, CAR.wheelW, 24); wGeo.rotateX(Math.PI / 2);
-  const tireM = new THREE.MeshLambertMaterial({ map: T.tire }), rimM = new THREE.MeshPhongMaterial({ map: T.fivespoke, shininess: 120, specular: 0xffffff });
-  const wheels = [];
+  const tireM = new THREE.MeshLambertMaterial({ map: T.tire }), rimM = new THREE.MeshPhongMaterial({ map: wheelTex(S.wheel), shininess: 120, specular: 0xffffff });
+  const wheels = [], trackZ = 0.1 - CAR.wheelW / 2 + flare * 0.9;
   for (const [x, front] of [[CAR.wb / 2, true], [-CAR.wb / 2, false]]) for (const sg of [-1, 1]) {
-    const pivot = new THREE.Group(); pivot.position.set(x, CAR.wheelR, sg * (0.1 - CAR.wheelW / 2)); model.add(pivot);
-    const camber = new THREE.Group(); camber.rotation.x = -sg * (front ? 0.1 : 0.06); pivot.add(camber);
+    const pivot = new THREE.Group(); pivot.position.set(x, CAR.wheelR, sg * trackZ); model.add(pivot);
+    const camber = new THREE.Group(); camber.rotation.x = -sg * ((front ? 0.03 : 0.015) + S.camber * (front ? 0.14 : 0.08)); pivot.add(camber);
     const m = new THREE.Mesh(wGeo, [tireM, rimM, rimM]); camber.add(m);
     wheels.push({ pivot, m, front });
   }
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = 1; root.add(shadow);
+  // neon underglow: a coloured pool of light on the floor under the car
+  if (S.glowOn) {
+    const gm = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.62), new THREE.MeshBasicMaterial({ map: T.halo, color: S.glow, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    gm.rotation.x = -Math.PI / 2; gm.position.y = 0.0045; gm.renderOrder = 2; shadow.add(gm); gm.rotation.x = 0; gm.position.set(0, 0, 0.0005);
+    for (const sg of [-1, 1]) box(0.3, 0.003, 0.004, new THREE.MeshBasicMaterial({ color: S.glow }), 0, 0.012, sg * 0.07, model);
+  }
   root.userData = { ...root.userData, body, wheels, model, shadow };
   return root;
 }
@@ -938,7 +984,9 @@ function smoothNormals(geo, cosLimit) {
   }
   nor.needsUpdate = true;
 }
-const carObj = buildCar(); scene.add(carObj);
+let carObj = buildCar(); scene.add(carObj);
+// rebuild the car with a new look (customize screen)
+function rebuildCar() { scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style', JSON.stringify(CAR_STYLE)); } catch (e) {} }
 
 /* ---------------- driving model: 1/10 electric on-road (RWD drift or 4WD grip) ----------------
    SI units (m, kg, s, N). Body frame: x forward, y left, yaw rate r positive turning left.
@@ -1321,6 +1369,15 @@ let camAng = 0;
 let camMode = 0;
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
 function updateCamera(dt, snap) {
+  if (customOpen) {
+    // slow orbit round the car, framed to the right of the options list
+    orbitT += (dt || 0.016) * 0.3;
+    const a = car.h + 0.9 + orbitT, d = 0.95;
+    camera.position.set(car.x + Math.sin(a) * d, 0.3, car.z + Math.cos(a) * d);
+    camera.lookAt(car.x, 0.06, car.z); camera.fov = 40; camera.setViewOffset(1280, 720, -300, 0, 1280, 720); camera.updateProjectionMatrix(); tx.visible = false; return;
+  }
+  if (camera.view && camera.view.enabled) { camera.clearViewOffset();
+  }
   if (race.state === 'menu') {
     // menu: slow orbit round the room, looking at the course
     const t = performance.now() / 1000 * 0.06;
@@ -1383,6 +1440,7 @@ function menuItems() {
   const shared = [
     opt('COURSE', COURSES[setup.layout].name, d => { setCourse(setup.layout + d); if (menu.kind === 'pause') resetRun(); }),
     opt('MODE', setup.car ? 'GRIP' : 'DRIFT', () => actMode()),
+    act('CUSTOMIZE', () => toggleCustom(true)),
     opt('CAMERA', CAMS[camMode], d => { camMode = (camMode + d + CAMS.length) % CAMS.length; actCamera(); camMode = (camMode - 1 + CAMS.length) % CAMS.length; actCamera(); }),
     opt('LIGHTS', MOODS[moodIdx].name, () => actMood()),
     act('CAR SETUP', () => toggleGarage(true)),
@@ -1439,6 +1497,12 @@ window.addEventListener('keydown', e => {
   if (GAME_KEYS.includes(e.code) || e.code === 'Enter') e.preventDefault();
   keys[e.code] = true;
   if (garageOpen) { if (!e.repeat && (e.code === 'Escape' || e.code === 'KeyG')) toggleGarage(false); return; }
+  if (customOpen) {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'range' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return;
+    const dy = e.code === 'ArrowUp' ? -1 : e.code === 'ArrowDown' ? 1 : 0, dx = e.code === 'ArrowLeft' ? -1 : e.code === 'ArrowRight' ? 1 : 0;
+    if (!e.repeat && (e.code === 'Escape' || e.code === 'Backspace')) toggleCustom(false); else customNav(dy, dx, !e.repeat && e.code === 'Enter');
+    return;
+  }
   if (menu.open) {
     const dy = e.code === 'ArrowUp' || e.code === 'KeyW' ? -1 : e.code === 'ArrowDown' || e.code === 'KeyS' ? 1 : 0;
     const dx = e.code === 'ArrowLeft' || e.code === 'KeyA' ? -1 : e.code === 'ArrowRight' || e.code === 'KeyD' ? 1 : 0;
@@ -1466,7 +1530,10 @@ function rumble(strong, weak, ms) {
 let padPrev = [], stickHeld = 0;
 function padButtons(gp, dt) {
   const now = gp.buttons.map(b => b.pressed), hit = i => now[i] && !padPrev[i];
-  if (garageOpen) {
+  if (customOpen) {
+    customNav(hit(12) ? -1 : hit(13) ? 1 : 0, hit(14) ? -1 : hit(15) ? 1 : 0, hit(0));
+    if (hit(1) || hit(9)) toggleCustom(false);
+  } else if (garageOpen) {
     if (hit(12)) garageMove(-1, 0); if (hit(13)) garageMove(1, 0);
     if (hit(14)) garageMove(0, -1); if (hit(15)) garageMove(0, 1);
     if (hit(0) || hit(1) || hit(8) || hit(9)) toggleGarage(false);
@@ -1556,6 +1623,66 @@ function buildGarage() {
   $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short;
 }
 function saveSetup() { try { localStorage.setItem('cc-setup3', JSON.stringify(setup)); } catch (e) {} applySurface(); }
+/* ---------------- customize: colours and sliders for the TK-06 body ---------------- */
+const SWATCH = {
+  paint: [['SUNSET ORANGE', '#ff6a13'], ['MIDNIGHT PURPLE', '#3b1f5e'], ['PEARL WHITE', '#f2f0ea'], ['GUNMETAL', '#4a4f57'], ['ACID LIME', '#9be22d'], ['CANDY RED', '#c8121e'], ['ELECTRIC BLUE', '#1f6bff'], ['SATIN BLACK', '#1a1a1d']],
+  accent: [['BLACK', '#141416'], ['CARBON GREY', '#2b2d33'], ['WHITE', '#f2f0ea'], ['GOLD', '#c9a24a'], ['ORANGE', '#ff6a13'], ['TEAL', '#12c2b4']],
+  wheel: [['SILVER', '#c9cdd4'], ['GOLD', '#c9a24a'], ['BRONZE', '#8a6a3a'], ['BLACK', '#1d1e22'], ['WHITE', '#eeeeee'], ['GUNMETAL', '#5a5f68']],
+  glow: [['CYAN', '#00e5ff'], ['PURPLE', '#a24bff'], ['GREEN', '#39ff6a'], ['PINK', '#ff3fb4'], ['ORANGE', '#ff8a1f']],
+};
+const CROWS = [
+  { key: 'paint', label: 'PAINT', kind: 'color' }, { key: 'accent', label: 'ACCENT', kind: 'color' }, { key: 'wheel', label: 'WHEELS', kind: 'color' },
+  { key: 'glow', label: 'UNDERGLOW', kind: 'glow' }, { key: 'stripes', label: 'STRIPES', kind: 'toggle' },
+  { key: 'wing', label: 'WING', kind: 'slider' }, { key: 'width', label: 'BODY WIDTH', kind: 'slider' }, { key: 'ride', label: 'RIDE HEIGHT', kind: 'slider' },
+  { key: 'camber', label: 'CAMBER', kind: 'slider' }, { key: 'tint', label: 'WINDOW TINT', kind: 'slider' }, { key: 'reset', label: 'RESET LOOK', kind: 'action' },
+];
+let customOpen = false, customRow = 0, rebuildTimer = 0;
+function queueRebuild() { if (rebuildTimer) return; rebuildTimer = setTimeout(() => { rebuildTimer = 0; rebuildCar(); }, 90); }
+function setStyle(k, v) { CAR_STYLE[k] = v; queueRebuild(); }
+function renderCustom() {
+  const rows = $('crows'); rows.innerHTML = '';
+  CROWS.forEach((r, ri) => {
+    const lab = document.createElement('span'); lab.className = 'lbl' + (ri === customRow ? ' sel' : ''); lab.textContent = r.label;
+    const ctl = document.createElement('div');
+    if (r.kind === 'color' || r.kind === 'glow') {
+      ctl.className = 'sw';
+      if (r.kind === 'glow') { const off = document.createElement('button'); off.type = 'button'; off.className = 'swb off'; off.textContent = 'OFF'; off.setAttribute('aria-pressed', String(!CAR_STYLE.glowOn)); off.addEventListener('click', () => { customRow = ri; setStyle('glowOn', 0); renderCustom(); }); ctl.appendChild(off); }
+      for (const [name, hex] of SWATCH[r.key]) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'swb'; b.style.background = hex; b.title = name; b.setAttribute('aria-label', r.label.toLowerCase() + ' ' + name.toLowerCase());
+        const on = CAR_STYLE[r.key].toLowerCase() === hex && (r.kind !== 'glow' || CAR_STYLE.glowOn); b.setAttribute('aria-pressed', String(on));
+        b.addEventListener('click', () => { customRow = ri; setStyle(r.key, hex); if (r.kind === 'glow') setStyle('glowOn', 1); renderCustom(); }); ctl.appendChild(b);
+      }
+      if (r.kind === 'color') { const pk = document.createElement('input'); pk.type = 'color'; pk.className = 'pick'; pk.id = 'pick-' + r.key; pk.value = CAR_STYLE[r.key]; pk.title = 'Any colour'; pk.setAttribute('aria-label', 'custom ' + r.label.toLowerCase() + ' colour');
+        pk.addEventListener('input', () => { customRow = ri; setStyle(r.key, pk.value); }); pk.addEventListener('change', () => renderCustom()); ctl.appendChild(pk); }
+    } else if (r.kind === 'slider') {
+      ctl.className = 'sl'; const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0; inp.max = 100; inp.step = 5; inp.id = 'sl-' + r.key; inp.value = Math.round(CAR_STYLE[r.key] * 100); inp.setAttribute('aria-label', r.label.toLowerCase());
+      const out = document.createElement('span'); out.textContent = r.key === 'wing' && CAR_STYLE.wing <= 0.02 ? 'OFF' : String(inp.value).padStart(3, ' ');
+      inp.addEventListener('input', () => { customRow = ri; setStyle(r.key, inp.value / 100); out.textContent = r.key === 'wing' && inp.value <= 2 ? 'OFF' : String(inp.value).padStart(3, ' '); });
+      ctl.append(inp, out);
+    } else if (r.kind === 'toggle') {
+      ctl.className = 'sw'; for (const [t, v] of [['ON', 1], ['OFF', 0]]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'swb off'; b.textContent = t; b.setAttribute('aria-pressed', String(CAR_STYLE[r.key] === v)); b.addEventListener('click', () => { customRow = ri; setStyle(r.key, v); renderCustom(); }); ctl.appendChild(b); }
+    } else { ctl.className = 'sw'; const b = document.createElement('button'); b.type = 'button'; b.className = 'swb off'; b.textContent = 'RESET TO DEFAULT'; b.addEventListener('click', () => { Object.assign(CAR_STYLE, CAR_STYLE_DEFAULT); rebuildCar(); renderCustom(); }); ctl.appendChild(b); }
+    rows.append(lab, ctl);
+  });
+}
+function customNav(dy, dx, ok) {
+  if (dy) { customRow = (customRow + dy + CROWS.length) % CROWS.length; renderCustom(); }
+  const r = CROWS[customRow];
+  if (dx && r.kind === 'slider') { setStyle(r.key, clamp(Math.round((CAR_STYLE[r.key] + dx * 0.05) * 20) / 20, 0, 1)); renderCustom(); }
+  else if (dx && (r.kind === 'color' || r.kind === 'glow')) {
+    const list = SWATCH[r.key].map(x => x[1]); if (r.kind === 'glow') list.unshift('off');
+    let cur = r.kind === 'glow' && !CAR_STYLE.glowOn ? 0 : list.indexOf(CAR_STYLE[r.key].toLowerCase()); const nx = list[(Math.max(0, cur) + dx + list.length) % list.length];
+    if (nx === 'off') setStyle('glowOn', 0); else { setStyle(r.key, nx); if (r.kind === 'glow') setStyle('glowOn', 1); } renderCustom();
+  } else if ((dx || ok) && r.kind === 'toggle') { setStyle(r.key, CAR_STYLE[r.key] ? 0 : 1); renderCustom(); }
+  else if (ok && r.kind === 'action') { Object.assign(CAR_STYLE, CAR_STYLE_DEFAULT); rebuildCar(); renderCustom(); }
+}
+function toggleCustom(open = !customOpen) {
+  customOpen = open; $('custom').hidden = !open; $('overlay').hidden = open || !menu.open;
+  $('hud').classList.toggle('dim', open || menu.open);
+  if (open) { customRow = 0; renderCustom(); orbitT = 0; } else if (menu.open) renderMenu();
+}
+$('cclose').addEventListener('click', () => toggleCustom(false));
+let orbitT = 0;
 function toggleGarage(open = !garageOpen) {
   garageOpen = open; $('garage').hidden = !open; $('hud').classList.toggle('dim', open || menu.open);
   if (open) { buildGarage(); $('gnote').textContent = 'Pick a part to see what it changes.'; audio.suspend(true); }
@@ -1604,7 +1731,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
   pollInput(dt);
-  if (race.paused || garageOpen || race.state === 'menu') { if (race.state === 'menu') { updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
+  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
   clock += dt;
   acc += dt;
   const canDrive = race.state === 'race';
@@ -1621,7 +1748,7 @@ function frame(now) {
   const ud = carObj.userData;
   // body sits on its springs: roll, pitch, and a little heave from total compression
   ud.body.rotation.x = car.roll; ud.body.rotation.z = car.pitch;
-  ud.body.position.y = -Math.abs(car.roll) * 0.02;
+  ud.body.position.y = ud.body.userData.baseY - Math.abs(car.roll) * 0.02;
   for (const w of ud.wheels) { w.m.rotation.z = -car.spin; if (w.front) w.pivot.rotation.y = car.steer; }
   ud.lampM.color.setHex(car.braking && canDrive ? 0xff6a50 : (car.reversing ? 0xffe8d8 : 0xb81a12));
   updateCamera(dt, false);

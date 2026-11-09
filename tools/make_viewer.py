@@ -20,14 +20,13 @@ def line(prefix):
 parts = [
     line('const clamp = '), line('function rng(seed)'),
     between('function tex(', 'const T = {};', True),
-    line('T.blob = tex('), line('T.blob.wrapS'), line('T.tire = tex('),
+    line('T.blob = tex('), line('T.blob.wrapS'), line('T.tire = tex('), line('T.halo = tex('),
     between('T.fivespoke = tex(', 'T.fivespoke.wrapS = T.fivespoke.wrapT = THREE.ClampToEdgeWrapping;', True),
     line('const lam = '), line('function box('),
-    between('const CAR = {', 'const carObj = buildCar();'),
+    between('const CAR = {', 'let carObj = buildCar();'),
 ]
 car_code = '\n'.join(parts)
-ref = base64.b64encode((root / 'tools' / 'reference-s14.jpg').read_bytes()).decode()
 tpl = (root / 'tools' / 'viewer_template.html').read_text()
-out = tpl.replace('/*__CAR_CODE__*/', car_code).replace('__REF_JPG__', ref)
+out = tpl.replace('/*__CAR_CODE__*/', car_code)
 (root / 'viewer.html').write_text(out)
 print('wrote viewer.html', len(out) // 1024, 'KB')
