@@ -373,12 +373,6 @@ for (const k of Object.keys(WIN)) {
   for (const [y] of [[0.5], [1.5]]) { box(0.32, 0.36, 0.01, lam({ map: T.wood, color: 0xbfa483 }), 0.62, y, 0.045, g); box(0.32, 0.36, 0.01, lam({ map: T.wood, color: 0xbfa483 }), 0.62 + 0, y, 0.045, g); }
   const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), lam({ color: 0xd4b04a })); knob.position.set(0.4, 1.0, 0.08); g.add(knob);
 }
-// south wall: poster
-{
-  const g = wallGroups.S;
-  const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.7), lam({ map: T.poster })); poster.position.set(-1.6, 1.5, 0.006); g.add(poster);
-  box(0.54, 0.74, 0.01, lam({ color: 0x1a1a1a }), -1.6, 1.5, 0.002, g);
-}
 // ceiling light
 {
   const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.14, 16, 1, true), lam({ color: 0xf2f0ea, side: THREE.DoubleSide }));
