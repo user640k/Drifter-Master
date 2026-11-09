@@ -105,6 +105,7 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
     <div class="box speed">
       <div><span class="num" id="spd">0</span> <span class="unit">KM/H</span></div>
       <div class="scale" id="scale">SCALE SPEED 0 KM/H</div>
+      <div class="scale" id="angle">DRIFT ANGLE 0°</div>
       <div class="scale motor" id="motorname">BRUSHED 540 RTR</div>
       <div class="bar"><i id="thr"></i></div>
     </div>
@@ -116,9 +117,9 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
     </div>
   </div>
   <div class="overlay" id="overlay">
-    <div class="sub">1/10 ELECTRIC TOURING · 20 FT ROOM AFTER DARK</div>
+    <div class="sub">1/10 RWD DRIFT · POLISHED CONCRETE · 20 FT ROOM AFTER DARK</div>
     <h1>CARPET<br>CIRCUIT</h1>
-    <div class="spec">Shaft-drive 4WD touring chassis, 1.45 kg, 257 mm wheelbase, 190 mm body, GT coupe shell. Brushed 540 out of the box: about 40 km/h. Foam barriers on green carpet.</div>
+    <div class="spec">Rear-wheel-drive drift chassis, 1.45 kg, 257 mm wheelbase, hard plastic tires, 57° steering lock, steering gyro, GT coupe shell. Throttle sets the angle. Grip car and other surfaces in car setup.</div>
     <div class="keys">
       <span><kbd>↑</kbd>/<kbd>W</kbd> throttle</span><span><kbd>↓</kbd>/<kbd>S</kbd> brake, hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd>/<kbd>A</kbd><kbd>D</kbd> steer</span>
       <span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span>
@@ -179,6 +180,26 @@ T.carpet = tex(128, 128, (g, w, h) => {
   const r = rng(7); g.globalAlpha = 0.18;
   for (let i = 0; i < 90; i++) { g.fillStyle = r() < .5 ? '#5f5d66' : '#dcdae0'; g.fillRect(r() * w, r() * h, 2, 2); }
 }, 14, 14);
+function concreteTex(seed, rx, ry, sawCut) {
+  return tex(256, 256, (g, w, h) => {
+    grain(g, w, h, [146, 146, 150], 12, seed);
+    const r = rng(seed + 5);
+    for (let i = 0; i < 14; i++) { const x = r() * w, y = r() * h, rad = 30 + r() * 70, gr = g.createRadialGradient(x, y, 0, x, y, rad); const c = r() < 0.5 ? '255,255,255' : '40,40,48'; gr.addColorStop(0, `rgba(${c},0.07)`); gr.addColorStop(1, `rgba(${c},0)`); g.fillStyle = gr; g.fillRect(0, 0, w, h); }
+    for (let i = 0; i < 600; i++) { g.fillStyle = r() < 0.5 ? 'rgba(210,210,215,0.5)' : 'rgba(70,70,78,0.5)'; g.fillRect(r() * w, r() * h, 1 + (r() < 0.2), 1); }
+    g.strokeStyle = 'rgba(60,60,66,0.35)'; g.lineWidth = 1;
+    for (let i = 0; i < 2; i++) { g.beginPath(); let x = r() * w, y = r() * h; g.moveTo(x, y); for (let k = 0; k < 8; k++) { x += (r() - 0.5) * 30; y += r() * 16; g.lineTo(x, y); } g.stroke(); }
+    if (sawCut) { g.fillStyle = 'rgba(40,40,46,0.8)'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h); }
+  }, rx, ry);
+}
+T.concreteFloor = concreteTex(41, 4, 4, true);
+T.concreteTrack = concreteTex(43, 1, 1, false);
+T.ptile = tex(128, 128, (g, w, h) => {
+  const r = rng(51);
+  for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) { const v = 34 + r() * 10; g.fillStyle = `rgb(${v},${v},${v + 4})`; g.fillRect(tx * 32, ty * 32, 32, 32); }
+  const img = g.getImageData(0, 0, w, h), dd = img.data; for (let i = 0; i < dd.length; i += 4) { const n = (r() - 0.5) * 8; dd[i] += n; dd[i + 1] += n; dd[i + 2] += n; } g.putImageData(img, 0, 0);
+  g.fillStyle = 'rgba(0,0,0,0.8)'; for (let k = 0; k < w; k += 32) { g.fillRect(k, 0, 1, h); g.fillRect(0, k, w, 1); }
+  g.fillStyle = 'rgba(255,255,255,0.05)'; for (let k = 1; k < w; k += 32) { g.fillRect(k, 0, 1, h); g.fillRect(0, k, w, 1); }
+}, 1, 1.0);
 T.track = tex(128, 128, (g, w, h) => {
   grain(g, w, h, [62, 96, 74], 40, 2);
   g.globalAlpha = 0.08; g.fillStyle = '#000';
@@ -265,7 +286,7 @@ const sun = new THREE.DirectionalLight(0x8a7ad0, 0.18); sun.position.copy(SUN_DI
 
 
 const phong = (o) => new THREE.MeshPhongMaterial({ shininess: 6, specular: 0x111111, ...o });
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), phong({ map: T.carpet }));
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), phong({ map: T.concreteFloor, shininess: 40, specular: 0x2a2a30 }));
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
 const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), phong({ map: T.ceiling }));
 ceil.rotation.x = Math.PI / 2; ceil.position.y = WALL_H; scene.add(ceil);
@@ -433,7 +454,31 @@ function updateMood(time) {
 }
 function actMood() { moodIdx = (moodIdx + 1) % MOODS.length; try { localStorage.setItem('cc-mood', String(moodIdx)); } catch (e) {} flash('LIGHTS · ' + MOODS[moodIdx].name, 1.2); }
 
-/* ---------------- track: foam barriers on a green carpet ribbon ---------------- */
+/* ---------------- track: foam barriers on a ribbon of drift surface ---------------- */
+let trackMat = null, markCtx = null, markTex = null, markDirty = false, markPrev = null, markFade = 0;
+function drawMarks(dt) {
+  const RES = 1024, px = x => (x + HALF) / ROOM * RES, k = Math.min(1, car.slide * 0.9);
+  const fx = Math.sin(car.h), fz = Math.cos(car.h), lx = Math.cos(car.h), lz = -Math.sin(car.h);
+  const pts = [-1, 1].map(sd => [car.x - fx * 0.12 + lx * sd * 0.08, car.z - fz * 0.12 + lz * sd * 0.08]);
+  if (markPrev && k > 0.15) {
+    markCtx.strokeStyle = `rgba(14,14,18,${0.05 + k * 0.1})`; markCtx.lineWidth = 5; markCtx.lineCap = 'round';
+    for (let i = 0; i < 2; i++) { markCtx.beginPath(); markCtx.moveTo(px(markPrev[i][0]), px(markPrev[i][1])); markCtx.lineTo(px(pts[i][0]), px(pts[i][1])); markCtx.stroke(); }
+    markDirty = true;
+  }
+  markPrev = pts;
+  markFade += dt;
+  if (markFade > 4) { markFade = 0; markCtx.globalCompositeOperation = 'destination-out'; markCtx.fillStyle = 'rgba(0,0,0,0.04)'; markCtx.fillRect(0, 0, RES, RES); markCtx.globalCompositeOperation = 'source-over'; markDirty = true; }
+}
+function applySurface() {
+  if (!trackMat) return;
+  const k = typeof setup === 'undefined' ? 0 : setup.surface;
+  const look = [
+    { map: T.concreteTrack, shininess: 40, specular: 0x2a2a30, color: 0xd8d8dc },
+    { map: T.ptile, shininess: 80, specular: 0x55555c, color: 0xffffff },
+    { map: T.track, shininess: 6, specular: 0x111111, color: 0xffffff },
+  ][k];
+  trackMat.map = look.map; trackMat.shininess = look.shininess; trackMat.specular.setHex(look.specular); trackMat.color.setHex(look.color); trackMat.needsUpdate = true;
+}
 const TRACK_W = 0.9, HW = TRACK_W / 2;
 const ctrl = [[0, -1.6], [1.45, -1.6], [2.05, -1.12], [2.1, -0.2], [1.55, 0.45], [1.95, 1.3], [1.5, 1.95], [0.85, 2.0], [0, 1.32], [-0.85, 2.0], [-1.5, 1.98], [-2.05, 1.4], [-2.1, -1.1], [-1.45, -1.6]];
 const curve = new THREE.CatmullRomCurve3(ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal');
@@ -458,7 +503,14 @@ const TRACK_LEN = curve.getLength();
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, j) => j % 3 === 1 ? 1 : 0), 3));
   const m = new THREE.Mesh(geo, phong({ map: T.track })); scene.add(m);
+  trackMat = m.material;
   // start / finish
+  // tire marks: a canvas over the whole floor that the rear tires draw into while they slide
+  const RES = 1024;
+  const mc = document.createElement('canvas'); mc.width = mc.height = RES;
+  markCtx = mc.getContext('2d'); markTex = new THREE.CanvasTexture(mc);
+  const mm = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, fog: false }));
+  mm.rotation.x = -Math.PI / 2; mm.position.y = 0.003; mm.renderOrder = 1; scene.add(mm);
   const sf = new THREE.Mesh(new THREE.PlaneGeometry(TRACK_W, 0.1), lam({ map: T.checker, polygonOffset: true, polygonOffsetFactor: -1 }));
   sf.rotation.x = -Math.PI / 2; sf.rotation.z = Math.atan2(TAN[0].x, TAN[0].z) - Math.PI / 2 + Math.PI / 2; sf.position.set(P[0].x, 0.004, P[0].z);
   sf.rotation.set(-Math.PI / 2, 0, Math.atan2(-TAN[0].z, TAN[0].x) + Math.PI / 2); scene.add(sf);
@@ -615,35 +667,56 @@ function smoothNormals(geo, cosLimit) {
 }
 const carObj = buildCar(); scene.add(carObj);
 
-/* ---------------- driving model: 1/10 electric touring car ----------------
+/* ---------------- driving model: 1/10 electric on-road (RWD drift or 4WD grip) ----------------
    SI units (m, kg, s, N). Body frame: x forward, y left, yaw rate r positive turning left.
    Motor: DC torque curve F = Fstall * (throttle - wheelSpeed / vFree), traction-limited.
-   Tires: per-axle slip angle -> lateral force with a Pacejka-style curve, combined with
-   drive/brake force on a friction circle. Grip per wheel falls off with load (load sensitivity),
-   so weight transfer through the springs costs grip.
-   Suspension: roll and pitch are spring/damper systems; their deflection moves load between wheels. */
+   Driven wheels have their own surface speed w (motor + reflected rotor inertia). Each axle's tire
+   force uses combined slip: slip ratio from wheel vs ground speed, slip angle from the side velocity.
+   The force points against the combined slip vector (Pacejka-style magnitude), so a hard-spinning rear
+   tire turns most of its friction into forward thrust and little into side grip. That is what lets a
+   RWD drift car hold a slide, and why the throttle sets the drift angle. Grip per wheel falls off with load.
+   Drift car: RWD, hard plastic tires, ~57° steering lock, rear-biased weight, steering gyro that adds
+   counter-steer against yaw rate (like a Futaba/Yokomo drift gyro).
+   Suspension: roll and pitch spring/damper systems; their deflection moves load between wheels. */
 const MOTORS = [
   { name: 'BRUSHED 540 RTR', short: 'BRUSHED 540', vFree: 12.2, fStall: 34, pitch: 1.0, kind: 'brushed' },
   { name: '13.5T BRUSHLESS STOCK', short: '13.5T STOCK', vFree: 15.6, fStall: 52, pitch: 1.45, kind: 'brushless' },
   { name: '6.5T BRUSHLESS MOD', short: '6.5T MOD', vFree: 24, fStall: 85, pitch: 2.0, kind: 'brushless' },
+  { name: '13.5T DRIFT (HIGH FDR)', short: '13.5T DRIFT', vFree: 10.5, fStall: 24, pitch: 1.3, kind: 'brushless' },
+];
+const CARS = [
+  { name: 'RWD DRIFT', rwd: true, weightRear: 0.56, steerMax: 1.0, servo: 0.06, tire: 'plastic' },
+  { name: '4WD GRIP', rwd: false, weightRear: 0.5, steerMax: 0.42, servo: 0.1, tire: 'rubber' },
+];
+// base friction for each tire type on each surface (hard plastic drift tires vs touring rubber)
+const SURFACES = [
+  { name: 'POLISHED CONCRETE', plastic: 0.42, rubber: 1.0 },
+  { name: 'P-TILE', plastic: 0.5, rubber: 0.95 },
+  { name: 'CARPET', plastic: 0.8, rubber: 1.32 },
 ];
 const SETUP_OPTS = {
+  car: { label: 'CAR', opts: CARS.map(c => c.name) },
+  surface: { label: 'SURFACE', opts: SURFACES.map(s => s.name) },
   motor: { label: 'MOTOR', opts: MOTORS.map(m => m.short) },
-  tire: { label: 'TIRES', opts: ['SOFT', 'MEDIUM', 'HARD'], mu: [1.5, 1.32, 1.15] },
+  tire: { label: 'TIRES', opts: ['SOFT', 'MEDIUM', 'HARD'], mul: [1.12, 1, 0.88] },
+  gyro: { label: 'GYRO GAIN', opts: ['OFF', '40%', '70%', '90%'], g: [0, 0.4, 0.7, 0.9] },
   spring: { label: 'SPRINGS', opts: ['SOFT', 'MEDIUM', 'HARD'], k: [0.65, 1, 1.5] },
   oil: { label: 'SHOCK OIL', opts: ['300 CST', '400 CST', '550 CST'], c: [0.65, 1, 1.45] },
   arb: { label: 'ROLL BARS', opts: ['FRONT SOFT', 'BALANCED', 'FRONT STIFF'], f: [0.4, 0.5, 0.6] },
   assist: { label: 'DRIVING ASSIST', opts: ['ON', 'OFF'] },
 };
-const setup = { motor: 0, tire: 1, spring: 1, oil: 1, arb: 1, assist: 0 };
-try { const s = JSON.parse(localStorage.getItem('cc-setup') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < SETUP_OPTS[k].opts.length) setup[k] = s[k]; } catch (e) {}
+const setup = { car: 0, surface: 0, motor: 3, tire: 1, gyro: 3, spring: 1, oil: 1, arb: 1, assist: 0 };
+try { const s = JSON.parse(localStorage.getItem('cc-setup2') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < SETUP_OPTS[k].opts.length) setup[k] = s[k]; } catch (e) {}
 const VEH = {
-  m: 1.45, a: 0.1285, b: 0.1285, L: 0.257, tw: 0.165, h: 0.032, hrc: 0.012, hpc: 0.010,
+  m: 1.45, L: 0.257, tw: 0.165, h: 0.032, hrc: 0.012, hpc: 0.010,
   Iz: 0.021, Ixx: 0.0048, Iyy: 0.019, r: 0.032,
-  Kroll: 8.5, Kpitch: 16, zeta: 0.5,            // N·m/rad, damping ratio at 400 cSt
+  Kroll: 8.5, Kpitch: 16, zeta: 0.5,
   cdA: 0.0042, rr: 0.42, driveline: 0.035, dragBrake: 0.7, brakeF: 30,
-  steerMax: 0.42, servo: 0.1,                   // servo: seconds per 60°
-  loadSens: 0.12, B: 19, C: 1.35,              // tire curve: peak slip ~7°, slides at ~85% of peak
+  loadSens: 0.12,
+  rubber: { B: 19, C: 1.35 },   // touring rubber: peak at ~7°, drops to ~85% sliding
+  plastic: { B: 12, C: 1.1 },   // hard plastic: builds early, then slides at nearly constant friction
+  gyroK: 1.5,                   // rad of counter-steer per rad/s of yaw at 100% gain
+  mEq: { plastic: 0.25, rubber: 0.4 }, // wheel + rotor inertia as an equivalent mass at the tire surface
 };
 const GRAV = 9.81;
 const car = {};
@@ -651,14 +724,14 @@ function placeCar(i) {
   i = (i + N) % N;
   Object.assign(car, {
     x: P[i].x, z: P[i].z, h: Math.atan2(TAN[i].x, TAN[i].z), idx: i,
-    u: 0, v: 0, r: 0, vx: 0, vz: 0, vF: 0, steer: 0, thr: 0,
+    u: 0, v: 0, r: 0, w: 0, vx: 0, vz: 0, vF: 0, steer: 0, thr: 0, gyroOut: 0, beta: 0,
     roll: 0, rollV: 0, pitch: 0, pitchV: 0, ax: 0, ay: 0,
-    spin: 0, wheelSurf: 0, spinning: false, alphaF: 0, alphaR: 0, slide: 0,
+    spin: 0, wheelSurf: 0, spinning: false, alphaF: 0, alphaR: 0, slide: 0, rearSlip: 0,
     loads: [0, 0, 0, 0], gripF: 0, gripR: 0, revHold: 0, reversing: false, braking: false,
   });
 }
 const keys = {};
-const tireCurve = a => Math.sin(VEH.C * Math.atan(VEH.B * a));
+const tireCurve = (a, T) => Math.sin(T.C * Math.atan(T.B * a));
 function muAt(N, mu0, Nref) { return mu0 * Math.max(0.5, 1 - VEH.loadSens * (N / Nref - 1)); }
 function nearestLocal(x, z, i0) {
   let bi = i0, bd = 1e9;
@@ -666,36 +739,50 @@ function nearestLocal(x, z, i0) {
   return bi;
 }
 function stepCar(dt, canDrive, walls = true) {
-  const M = MOTORS[setup.motor], O = SETUP_OPTS;
-  const mu0 = O.tire.mu[setup.tire], kMul = O.spring.k[setup.spring], cMul = O.oil.c[setup.oil], fFront = O.arb.f[setup.arb], assist = setup.assist === 0;
-  const thrIn = canDrive ? input.thr : 0, brkIn = canDrive ? input.brk : 0, st = canDrive ? input.steer : 0;
+  const O = SETUP_OPTS, C = CARS[setup.car], M = MOTORS[setup.motor], S = SURFACES[setup.surface];
+  const TC = VEH[C.tire];
+  const mu0 = S[C.tire] * O.tire.mul[setup.tire];
+  const kMul = O.spring.k[setup.spring], cMul = O.oil.c[setup.oil], fFront = O.arb.f[setup.arb];
+  const assist = setup.assist === 0, drift = C.rwd;
+  const L = VEH.L, a = L * C.weightRear, b = L - a, m = VEH.m, W = m * GRAV;
+  let thrIn = canDrive ? input.thr : 0;
+  const brkIn = canDrive ? input.brk : 0, st = canDrive ? input.steer : 0;
+  // drift assist on keyboard: an on/off key can't feather, so it becomes a wheelspin governor that holds
+  // the rear tires at a set slip: a little when going straight, more the harder you steer (a drift)
+  if (drift && assist && input.thrDigital && thrIn > 0) {
+    const slipTarget = 0.12 + 0.3 * Math.abs(st);
+    const wTarget = Math.max(car.u, 0) * (1 + slipTarget) + 0.5;
+    thrIn = car.w < wTarget ? 1 : Math.min(1, wTarget / M.vFree);
+  }
   const up = thrIn > 0.02, dn = brkIn > 0.02;
-  const { m, a, b, L } = VEH, W = m * GRAV;
   let { u, v, r } = car;
 
-  // servo: rate-limited; keyboard assist trims lock as speed rises (like a speed-sensitive dual rate)
-  // assist: only as much lock as the front tires can use at this speed (kinematic angle for the
-  // tightest grip-limited radius, plus the slip angle where grip peaks)
-  const lock = assist ? clamp(L * mu0 * GRAV * 0.9 / (u * u + 0.01) + 0.1, 0.1, VEH.steerMax) : VEH.steerMax;
-  const servoRate = (Math.PI / 3) / VEH.servo;
-  car.steer += clamp(st * lock - car.steer, -servoRate * dt, servoRate * dt);
+  // steering: driver input + gyro counter-steer against yaw rate, through a rate-limited servo
+  let lock = C.steerMax;
+  if (!drift && assist) lock = clamp(L * mu0 * GRAV * 0.9 / (u * u + 0.01) + 0.1, 0.1, C.steerMax);
+  const gyroGain = drift ? O.gyro.g[setup.gyro] : 0; // grip touring cars don't run a steering gyro
+  const gyro = -gyroGain * VEH.gyroK * r * Math.min(1, Math.abs(u) / 1.5);
+  const target = clamp(st * lock + gyro, -C.steerMax, C.steerMax);
+  const servoRate = (Math.PI / 3) / C.servo;
+  car.steer += clamp(target - car.steer, -servoRate * dt, servoRate * dt);
+  car.gyroOut = gyro;
   const d = car.steer, cd = Math.cos(d), sd = Math.sin(d);
 
-  // trigger: keyboard throttle ramps in over ~0.12 s
   car.thr += clamp(thrIn - car.thr, -dt * 12, dt * 8);
 
   // ESC: forward, brake, then reverse after a short hold at standstill
   let Fdrive = 0, Fbrake = 0;
   if (up) car.reversing = false;
   if (dn) {
-    if (u > 0.15 && !car.reversing) Fbrake = VEH.brakeF * brkIn;
+    if (Math.max(u, car.w) > 0.15 && !car.reversing) Fbrake = VEH.brakeF * brkIn;
     else { car.revHold += dt; if (car.revHold > 0.2) car.reversing = true; }
   } else car.revHold = 0;
-  if (up) Fdrive = M.fStall * Math.max(0, car.thr - u / M.vFree);
-  else if (dn && car.reversing) Fdrive = -M.fStall * 0.45 * brkIn * Math.max(0, 1 + u / 3.5); // ESC reverse limited to ~12 km/h
+  // motor torque falls as the wheels spin up; above the throttle's speed the ESC drags them back
+  // (synchronous rectification), so the trigger effectively sets wheel speed
+  if (up) Fdrive = M.fStall * clamp(car.thr - car.w / M.vFree, -0.3, 1);
+  else if (dn && car.reversing) Fdrive = -M.fStall * 0.45 * brkIn * Math.max(0, 1 + car.w / 3.5);
   else if (!dn) Fbrake = VEH.dragBrake;
   car.braking = Fbrake > 1;
-  let Fx_dem = Fdrive - Fbrake * Math.tanh(u * 8);
 
   // wheel loads: static + longitudinal and lateral transfer (geometric part + through the springs)
   const Kr = VEH.Kroll * kMul, Kp = VEH.Kpitch * kMul;
@@ -708,23 +795,30 @@ function stepCar(dt, canDrive, walls = true) {
   const Df = muAt(FL, mu0, Nref) * FL + muAt(FR, mu0, Nref) * FR;
   const Dr = muAt(RL, mu0, Nref) * RL + muAt(RR, mu0, Nref) * RR;
   car.loads = [FL, FR, RL, RR];
-  // assist: traction control and ABS keep each axle just under the point where it spins or locks
-  if (assist && !car.reversing) Fx_dem = clamp(Fx_dem, -1.7 * Math.min(Df, Dr), 1.7 * Math.min(Df, Dr));
 
-  // 4WD shaft drive, 50/50: each axle gets half the drive/brake force, capped by its grip
-  let spinning = false;
-  const axleX = (dem, D) => { if (Math.abs(dem) > 0.95 * D) { spinning = true; return Math.sign(dem) * 0.85 * D; } return dem; };
-  const Fxf = axleX(Fx_dem / 2, Df), Fxr = axleX(Fx_dem / 2, Dr);
-  const circ = (Fx, D) => D > 1e-6 ? Math.sqrt(Math.max(0.05, 1 - (Fx / D) ** 2)) : 0;
-
-  // slip angles (wheel frame), lateral forces
+  // slip angles and slip ratios in each wheel's frame
   const wfx = u, wfy = v + a * r;
   const uwf = wfx * cd + wfy * sd, vwf = -wfx * sd + wfy * cd;
-  const alphaF = Math.atan2(vwf, Math.max(Math.abs(uwf), 0.8));
-  const alphaR = Math.atan2(v - b * r, Math.max(Math.abs(u), 0.8));
-  const Fyw_f = -Df * circ(Fxf, Df) * tireCurve(alphaF);
-  const Fyr = -Dr * circ(Fxr, Dr) * tireCurve(alphaR);
-  const FxF = Fxf * cd - Fyw_f * sd, FyF = Fxf * sd + Fyw_f * cd;
+  const Vf = Math.max(Math.abs(uwf), 0.8), Vr = Math.max(Math.abs(u), 0.8);
+  const tanF = vwf / Vf, tanR = (v - b * r) / Vr;
+  const kapR = (u - car.w) / Vr, kapF = drift ? 0 : (uwf - car.w) / Vf; // RWD front wheels roll freely
+  // combined slip: magnitude from the tire curve, direction against the slip vector
+  const tire = (kap, tn, D) => { const sg = Math.hypot(kap, tn); if (sg < 1e-6 || D < 1e-6) return [0, 0]; const F = D * tireCurve(sg, TC) / sg; return [-F * kap, -F * tn]; };
+  const [Fxw_f, Fyw_f] = tire(kapF, tanF, Df);
+  const [Fxr, Fyr] = tire(kapR, tanR, Dr);
+  const FxF = Fxw_f * cd - Fyw_f * sd, FyF = Fxw_f * sd + Fyw_f * cd;
+  // driven-wheel speed: motor/brake torque against the tires' reaction (linearly implicit for stability)
+  const mEq = VEH.mEq[C.tire];
+  const reaction = drift ? Fxr : Fxr + Fxw_f;
+  const kStiff = (drift ? Dr / Vr : Df / Vf + Dr / Vr) * TC.B * TC.C;
+  let Fw = Fdrive - Fbrake * Math.tanh(car.w * 8);
+  car.w += dt * (Fw - reaction) / (mEq + dt * kStiff);
+  if (!up && !(dn && car.reversing) && Math.abs(u) < 0.05 && Math.abs(car.w) < 0.1) car.w *= Math.exp(-30 * dt);
+  // grip car assist: traction control and ABS hold the wheels near peak slip
+  if (!drift && assist && !car.reversing) car.w = clamp(car.w, u - 0.1 * Vr - 0.05, u + 0.12 * Vr + 0.05);
+  const alphaF = Math.atan(tanF), alphaR = Math.atan(tanR);
+  const spinning = Math.abs(kapR) > 0.2, rearSlip = Math.max(0, -kapR);
+  const AF = { fx: Fxw_f }, AR = { fx: Fxr };
 
   const Fres = VEH.rr * Math.tanh(u * 6) + VEH.cdA * u * Math.abs(u) + VEH.driveline * u;
   const Fx = FxF + Fxr - Fres, Fy = FyF + Fyr, Mz = a * FyF - b * Fyr;
@@ -732,7 +826,7 @@ function stepCar(dt, canDrive, walls = true) {
   v += (Fy / m - u * r) * dt;
   r += (Mz / VEH.Iz) * dt;
   if (!up && !(dn && car.reversing) && Math.abs(u) < 0.05) { u *= Math.exp(-30 * dt); }
-  if (Math.abs(u) < 0.4) { const k = Math.exp(-6 * dt); v *= k; r *= k; }
+  if (Math.abs(u) < 0.4 && Math.abs(v) < 0.4) { const k = Math.exp(-6 * dt); v *= k; r *= k; }
   car.ax = Fx / m; car.ay = Fy / m;
 
   // suspension: roll and pitch as damped springs driven by the chassis accelerations
@@ -760,24 +854,28 @@ function stepCar(dt, canDrive, walls = true) {
       car.vx -= n.x * sg * vn * kk; car.vz -= n.z * sg * vn * kk;
       if (hard) {
         car.vx *= 0.88; car.vz *= 0.88; r *= 0.4; audio.bump(Math.min(1, vn / 6)); rumble(Math.min(1, vn / 5), 0.5, 140);
-        const latImp = -(n.x * ch - n.z * sh) * sg * vn; // impulse direction in body "left" axis
+        const latImp = -(n.x * ch - n.z * sh) * sg * vn;
         car.rollV += latImp * 6; car.pitchV -= Math.abs(vn) * 1.5;
       }
     }
     const k = Math.exp(-1.2 * dt); car.vx *= k; car.vz *= k;
+    // the foam turns the car to run along it; a drift car sliding along at speed mostly keeps its angle
     const t = TAN[i], fwdDot = sh * t.x + ch * t.z;
     const along = Math.atan2(t.x, t.z) + (fwdDot < 0 ? Math.PI : 0);
     let dh = along - car.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-    car.h += dh * Math.min(1, dt * 3);
+    const alignRate = drift ? 3 * clamp(1.6 - Math.hypot(car.vx, car.vz) / 2, 0.15, 1) : 3;
+    car.h += dh * Math.min(1, dt * alignRate);
     const s2 = Math.sin(car.h), c2 = Math.cos(car.h);
     u = car.vx * s2 + car.vz * c2; v = car.vx * c2 - car.vz * s2;
   }
   car.u = u; car.v = v; car.r = r; car.vF = u;
-  car.alphaF = alphaF; car.alphaR = alphaR; car.spinning = spinning;
-  car.gripF = Df > 0 ? Math.hypot(Fxf, Fyw_f) / Df : 0; car.gripR = Dr > 0 ? Math.hypot(Fxr, Fyr) / Dr : 0;
-  car.wheelSurf = u + (spinning ? Math.sign(Fx_dem) * (Fdrive ? 3 : -Math.abs(u)) : 0);
-  car.spin += car.wheelSurf / VEH.r * dt;
-  car.slide = Math.max(0, Math.abs(alphaF) - 0.1, Math.abs(alphaR) - 0.1) * Math.min(1, Math.abs(u) / 2) * 6 + (spinning ? 0.8 : 0);
+  car.beta = Math.hypot(u, v) > 0.6 ? Math.atan2(v, u) : 0; // drift angle (body slip)
+  car.alphaF = alphaF; car.alphaR = alphaR; car.spinning = spinning; car.rearSlip = rearSlip;
+  car.gripF = Df > 0 ? Math.hypot(AF.fx, Fyw_f) / Df : 0; car.gripR = Dr > 0 ? Math.hypot(AR.fx, Fyr) / Dr : 0;
+  car.wheelSurf = car.w;
+  car.spin += car.w / VEH.r * dt;
+  const plastic = C.tire === 'plastic';
+  car.slide = Math.max(0, Math.abs(alphaF) - 0.1, Math.abs(alphaR) - 0.1) * Math.min(1, Math.hypot(u, v) / 2) * (plastic ? 2.5 : 6) + Math.min(0.6, Math.abs(kapR) * 0.4);
 }
 
 /* ---------------- synth audio ---------------- */
@@ -910,10 +1008,15 @@ function drawMap() {
 
 /* ---------------- cameras ---------------- */
 const CAMS = ['CHASE', 'DRIVER STAND', 'BUMPER', 'CEILING'];
+let camAng = 0;
 let camMode = 0;
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
 function updateCamera(dt, snap) {
-  const fx = Math.sin(car.h), fz = Math.cos(car.h);
+  // during a drift the chase camera swings toward the direction of travel, so you see the car's angle
+  const sp = Math.hypot(car.vx, car.vz), w = clamp((sp - 0.5) / 1.5, 0, 0.75);
+  let ang = car.h; if (w > 0) { const va = Math.atan2(car.vx, car.vz); let d = va - car.h; d = Math.atan2(Math.sin(d), Math.cos(d)); ang = car.h + d * w; }
+  camAng += Math.atan2(Math.sin(ang - camAng), Math.cos(ang - camAng)) * (snap ? 1 : 1 - Math.exp(-dt * 6));
+  const fx = Math.sin(camAng), fz = Math.cos(camAng);
   const target = new THREE.Vector3(car.x, 0.05, car.z);
   if (camMode === 0) {
     const want = new THREE.Vector3(car.x - fx * 0.78, 0.3, car.z - fz * 0.78);
@@ -927,8 +1030,9 @@ function updateCamera(dt, snap) {
     const dist = camPos.distanceTo(target);
     camera.fov = clamp(2 * Math.atan(0.7 / dist) * 180 / Math.PI, 16, 55);
   } else if (camMode === 2) {
-    camPos.set(car.x + fx * 0.06, 0.13, car.z + fz * 0.06);
-    camLook.set(car.x + fx * 2, 0.08, car.z + fz * 2);
+    const hx = Math.sin(car.h), hz = Math.cos(car.h);
+    camPos.set(car.x + hx * 0.06, 0.13, car.z + hz * 0.06);
+    camLook.set(car.x + hx * 2, 0.08, car.z + hz * 2);
     camera.fov = 75;
   } else {
     camPos.set(0, WALL_H - 0.45, 0.01);
@@ -941,7 +1045,7 @@ function updateCamera(dt, snap) {
 /* ---------------- input ---------------- */
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
 /* input: keyboard and gamepad merged into analog throttle, brake and steering */
-const input = { thr: 0, brk: 0, steer: 0, kbSteer: 0, pad: null };
+const input = { thr: 0, brk: 0, steer: 0, kbSteer: 0, pad: null, thrDigital: false };
 function actCamera() { camMode = (camMode + 1) % CAMS.length; $('camname').firstChild.textContent = 'CAM · ' + CAMS[camMode]; updateCamera(0, true); }
 function actReset() { if (race.state !== 'menu') placeCar(car.idx); }
 function actMusic() { flash(audio.toggleMusic() ? 'MUSIC ON' : 'MUSIC OFF', 0.9); }
@@ -1011,7 +1115,7 @@ function pollInput(dt) {
     gT = gT < 0.04 ? 0 : gT; gB = gB < 0.04 ? 0 : gB;
     padButtons(gp);
   }
-  input.thr = Math.max(kbT, gT); input.brk = Math.max(kbB, gB);
+  input.thr = Math.max(kbT, gT); input.brk = Math.max(kbB, gB); input.thrDigital = kbT > gT;
   input.steer = Math.abs(gS) > 0.001 ? gS : input.kbSteer;
 }
 $('go').addEventListener('click', () => { startRace(); $('go').blur(); });
@@ -1019,19 +1123,27 @@ $('camname').textContent = 'CAM · CHASE';
 
 /* ---------------- car setup (garage) ---------------- */
 const NOTES = {
-  motor: ['Out-of-the-box RTR motor on a 2S LiPo. About 40 km/h, gentle punch.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.'],
+  car: ['Rear-wheel drive on hard plastic tires, ~57° of steering lock and a steering gyro. Throttle sets the drift angle.', '4WD touring car on rubber tires. Built to grip, not slide.'],
+  surface: ['Sealed, polished concrete: the most common drift surface. Low, consistent grip.', 'P-tile: polished vinyl tiles used at dedicated drift tracks. A little more bite than concrete.', 'Short-pile carpet. Great for grip racing; drift tires catch and the car hooks up.'],
+  gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro. Some help catching slides; you still steer the angle.', 'Typical gyro gain. Catches most slides and holds angle steady.', 'Strong gyro. Very stable, but the car resists changing direction.'],
+  motor: ['Out-of-the-box RTR motor on a 2S LiPo. About 40 km/h, gentle punch.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.', 'Drift-geared 13.5T brushless. Tops out near 35 km/h with smooth, controllable wheelspin.'],
   tire: ['Soft carpet rubber. Most grip, best on short tracks.', 'Medium compound. A balanced starting point.', 'Hard compound. Less grip, slides earlier and more progressively.'],
   spring: ['Soft springs. More roll and slower weight transfer; forgiving.', 'Medium springs. Kit standard.', 'Hard springs. Little roll, sharp response, less forgiving over the limit.'],
   oil: ['Thin shock oil. The body moves fast and can bounce after direction changes.', 'Kit standard shock oil.', 'Thick shock oil. Slow, damped body movement; the car settles before it rotates.'],
   arb: ['Softer front roll bar. More front grip: turns in harder, rear can step out.', 'Equal roll stiffness front and rear.', 'Stiffer front roll bar. More load transfer at the front: steadier, but pushes wide (understeer).'],
-  assist: ['Limits steering to what the tires can use at this speed, plus traction control and ABS. Best for keyboard.', 'No help: full lock at any speed, wheels can spin and lock. Like a real transmitter; best with a gamepad.'],
+  assist: ['Grip car: limits steering to what the tires can use, plus traction control and ABS. Drift car: the throttle key gives 45% power so the rear spins up gently.', 'No help: full lock at any speed, wheels can spin and lock. Like a real transmitter; best with a gamepad.'],
 };
 let garageOpen = false, garageRow = 0;
+function setOpt(k, i) {
+  setup[k] = i;
+  if (k === 'car') { if (CARS[i].rwd && setup.motor !== 3) setup.motor = 3; if (!CARS[i].rwd && setup.motor === 3) setup.motor = 0; }
+  saveSetup();
+}
 function garageMove(dRow, dOpt) {
   const ks = Object.keys(SETUP_OPTS);
   garageRow = (garageRow + dRow + ks.length) % ks.length;
   const k = ks[garageRow];
-  if (dOpt) { setup[k] = (setup[k] + dOpt + SETUP_OPTS[k].opts.length) % SETUP_OPTS[k].opts.length; saveSetup(); }
+  if (dOpt) setOpt(k, (setup[k] + dOpt + SETUP_OPTS[k].opts.length) % SETUP_OPTS[k].opts.length);
   buildGarage(); $('gnote').textContent = NOTES[k][setup[k]];
 }
 function buildGarage() {
@@ -1042,15 +1154,15 @@ function buildGarage() {
     SETUP_OPTS[key].opts.forEach((name, i) => {
       const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'chip'; bt.id = `set-${key}-${i}`; bt.textContent = name;
       bt.setAttribute('aria-pressed', String(setup[key] === i));
-      bt.addEventListener('click', () => { setup[key] = i; saveSetup(); buildGarage(); $('gnote').textContent = NOTES[key][i]; });
+      bt.addEventListener('click', () => { setOpt(key, i); buildGarage(); $('gnote').textContent = NOTES[key][i]; });
       bt.addEventListener('mouseenter', () => { $('gnote').textContent = NOTES[key][i]; });
       chips.appendChild(bt);
     });
     rows.append(lab, chips);
   }
-  $('motorname').textContent = MOTORS[setup.motor].name;
+  $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short;
 }
-function saveSetup() { try { localStorage.setItem('cc-setup', JSON.stringify(setup)); } catch (e) {} }
+function saveSetup() { try { localStorage.setItem('cc-setup2', JSON.stringify(setup)); } catch (e) {} applySurface(); }
 function toggleGarage(open = !garageOpen) {
   garageOpen = open; $('garage').hidden = !open;
   if (open) { buildGarage(); $('gnote').textContent = 'Pick a part to see what it changes.'; audio.suspend(true); }
@@ -1087,13 +1199,13 @@ function drawTelemetry() {
   bar(170, 40, 'FRONT GRIP USED', car.gripF); bar(170, 74, 'REAR GRIP USED', car.gripR);
   const deg = x => (x * 180 / Math.PI).toFixed(1) + '°';
   const rows = [['SLIP F / R', `${deg(car.alphaF)} / ${deg(car.alphaR)}`], ['LAT / LONG', `${(car.ay / GRAV).toFixed(2)} / ${(car.ax / GRAV).toFixed(2)} g`],
-    ['ROLL / PITCH', `${deg(car.roll)} / ${deg(car.pitch)}`], ['STEER', deg(car.steer)], ['WHEELSPIN', car.spinning ? (car.braking ? 'LOCKED' : 'YES') : '-']];
-  rows.forEach(([k, v], i) => { const y = 118 + i * 24; g.fillStyle = '#8a97a8'; g.font = 'bold 11px "Chakra Petch", sans-serif'; g.fillText(k, 170, y); g.fillStyle = k === 'WHEELSPIN' && car.spinning ? '#ff3b30' : '#e8eef5'; g.font = 'bold 13px "Chakra Petch", sans-serif'; g.fillText(v, 252, y); });
+    ['ROLL / PITCH', `${deg(car.roll)} / ${deg(car.pitch)}`], ['STEER / GYRO', `${deg(car.steer)} / ${deg(car.gyroOut)}`], ['DRIFT ANGLE', deg(car.beta)], ['WHEELSPIN', car.spinning ? (car.braking ? 'LOCKED' : (car.rearSlip > 0.5 ? 'HIGH' : 'YES')) : '-']];
+  rows.forEach(([k, v], i) => { const y = 112 + i * 22; g.fillStyle = '#8a97a8'; g.font = 'bold 11px "Chakra Petch", sans-serif'; g.fillText(k, 170, y); g.fillStyle = k === 'WHEELSPIN' && car.spinning ? '#ff3b30' : '#e8eef5'; g.font = 'bold 13px "Chakra Petch", sans-serif'; g.fillText(v, 252, y); });
 }
 
 /* ---------------- main loop ---------------- */
-placeCar(N - 14); race.prevIdx = car.idx; updateCamera(0, true);
-window.__carpetCircuit = { car, setup, keys, input, stepCar, placeCar, VEH, MOTORS }; // debug / test hook
+placeCar(N - 14); race.prevIdx = car.idx; camAng = car.h; applySurface(); updateCamera(0, true);
+window.__carpetCircuit = { car, setup, keys, input, stepCar, placeCar, VEH, MOTORS, marks: () => markCtx }; // debug / test hook
 let acc = 0, last = performance.now(), hudT = 0;
 const DT = 1 / 720; // tire forces are stiff; small steps keep them stable
 function frame(now) {
@@ -1126,6 +1238,8 @@ function frame(now) {
   if (telemetryOn) drawTelemetry();
   chargerLed.visible = (clock % 1.2) < 0.6;
   updateMood(performance.now() / 1000);
+  if (race.state !== 'menu') drawMarks(dt);
+  if (markDirty && (clock % 0.066) < dt) { markTex.needsUpdate = true; markDirty = false; }
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0 && !race.paused) $('msg').textContent = ''; }
   hudT -= dt;
   if (hudT <= 0) {
@@ -1133,6 +1247,7 @@ function frame(now) {
     const kmh = Math.abs(car.vF) * 3.6;
     $('spd').textContent = kmh.toFixed(0);
     $('scale').textContent = `SCALE SPEED ${(kmh * 10).toFixed(0)} KM/H`;
+    const ba = Math.abs(car.beta * 180 / Math.PI); $('angle').textContent = `DRIFT ANGLE ${ba.toFixed(0)}°`; $('angle').style.color = ba > 15 ? 'var(--hot)' : '';
     $('thr').style.width = (car.thr * 100).toFixed(0) + '%';
     if (race.state === 'race' && race.lap > 0) { $('cur').textContent = fmt(clock - race.lapStart); $('lap').textContent = String(race.lap); }
     drawMap();
