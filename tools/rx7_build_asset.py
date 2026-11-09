@@ -12,7 +12,9 @@ def to_model(P):  # obj (x,y,z) -> model (x fwd, y up, z right)
     return np.stack([P[:, 2], P[:, 1], -P[:, 0]], 1) * S
 def role(p):
     g, m = p['g'], p['m']; c = (p['bmin'] + p['bmax']) / 2
-    wheelish = 'wheel' in g or ' te' in g or g.endswith('te') or 'Tire' in g or 'Support' in g or 'Cylinder' in g
+    # wheel parts are the v_cross_hood_wheel_* pieces and the 'te' rims; match those names only
+    # (a plain 'Cylinder' match also caught the exhaust, pCylinder7, which then spun with a wheel)
+    wheelish = 'v_cross_hood_wheel' in g or m.startswith('wheel_cosmic')
     if wheelish:
         w = min(WHEELS, key=lambda k: (WHEELS[k][0] - c[0]) ** 2 + (WHEELS[k][1] - c[2]) ** 2)
         if 'Support' in g: return ('caliper', w)
