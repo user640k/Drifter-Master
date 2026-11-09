@@ -1,0 +1,146 @@
+<title>S14 Shell Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@500;700&display=swap">
+<style>
+/* Layout: a studio turntable filling the left, a narrow parts panel on the right (stacks under it on phones). Single dark studio look. */
+:root {
+  --bg: #0f1116;
+  --panel: #171a21;
+  --line: #2a2f3a;
+  --fg: #e9edf3;
+  --dim: #8d97a6;
+  --hot: #ffb21e;
+  --display: "Russo One", "Arial Black", Impact, sans-serif;
+  --ui: "Chakra Petch", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--ui); box-sizing: border-box;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto minmax(0, 1fr); gap: 12px 16px; }
+header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 22px; font-style: italic; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--dim); font-size: 13px; }
+.stage { position: relative; min-width: 0; min-height: 320px; border: 1px solid var(--line); background: radial-gradient(ellipse at 50% 40%, #2a2e37, #121419 75%); cursor: grab; touch-action: none; }
+.stage:active { cursor: grabbing; }
+canvas { display: block; width: 100%; height: 100%; }
+.views { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.hint { position: absolute; left: 10px; bottom: 10px; font-size: 12px; color: var(--dim); letter-spacing: .04em; }
+.cur { position: absolute; right: 10px; bottom: 10px; font-family: var(--display); font-size: 15px; color: var(--hot); text-align: right; text-shadow: 0 1px 0 #000; }
+aside { min-width: 0; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 12px; }
+.card h2 { margin: 0 0 8px; font-family: var(--display); font-weight: 400; font-size: 13px; letter-spacing: .14em; color: var(--hot); }
+.card p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--dim); }
+button { font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--fg); background: #1d222c; border: 1px solid var(--line); padding: 6px 9px; cursor: pointer; }
+button:hover { border-color: #4a5466; }
+button:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--hot); color: #121318; border-color: var(--hot); }
+button[aria-pressed="true"] .n { color: #121318; }
+ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+ol button { width: 100%; text-align: left; display: flex; gap: 8px; }
+ol .n { color: var(--hot); min-width: 1.6em; font-variant-numeric: tabular-nums; }
+.ref img { width: 100%; display: block; border: 1px solid var(--line); }
+@media (max-width: 760px) {
+  body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 60vh auto; height: auto; }
+  .hint { display: none; }
+}
+</style>
+
+<header><h1>S14 SHELL VIEWER</h1><span class="sub">1/10 drift body from Carpet Circuit, 430 mm long. Drag to rotate, scroll or pinch to zoom.</span></header>
+<div class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="views" id="views"></div>
+  <div class="cur" id="cur">PHOTO ANGLE</div>
+  <div class="hint">Drag: rotate · Scroll / pinch: zoom · Double-click: reset</div>
+</div>
+<aside>
+  <div class="card"><h2>PARTS</h2><ol id="parts"></ol></div>
+  <div class="card"><h2>HOW TO GIVE FEEDBACK</h2><p>Open a part above, then leave a comment on this page using the part number, e.g. “3 · headlights should be thinner and tilt up at the outer end”. Claude reads the comments and refines the model.</p></div>
+  <div class="card ref"><h2>REFERENCE</h2><img src="data:image/jpeg;base64,__REF_JPG__" alt="Reference photo: red S14-style drift body with bolt-on fenders and silver five-spoke wheels"></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas = $('cv'), stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
+/*__CAR_CODE__*/
+// studio: soft key, fill and rim, a pale floor disc with a contact shadow
+scene.add(new THREE.HemisphereLight(0xf2f4ff, 0x30333a, 0.75));
+const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(1.5, 2.5, 2); scene.add(key);
+const rim = new THREE.DirectionalLight(0xbfd4ff, 0.45); rim.position.set(-2, 1.5, -2); scene.add(rim);
+const fill = new THREE.PointLight(0xffffff, 0.35, 5); fill.position.set(-1, 0.6, 1.5); scene.add(fill);
+const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(0.8, 48), new THREE.MeshLambertMaterial({ color: 0x3a3e47 })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
+const car = buildCar(); scene.add(car);
+
+// orbit camera (spherical around a target), with presets
+const orbit = { target: new THREE.Vector3(0, 0.06, 0), yaw: 0, pitch: 0.3, dist: 0.9 };
+const want = { target: orbit.target.clone(), yaw: 0, pitch: 0.3, dist: 0.9 };
+// yaw 0 looks at the car's left side; the car's nose points to +z
+const fromOffset = (off, tgt) => { const v = new THREE.Vector3(...off); const d = v.length(); return { target: new THREE.Vector3(...tgt), yaw: Math.atan2(v.z, v.x), pitch: Math.asin(v.y / d), dist: d }; };
+const VIEWS = [
+  ['PHOTO ANGLE', [0.34, 0.24, 0.42], [0, 0.05, 0.05]],
+  ['FRONT', [0, 0.07, 0.75], [0, 0.05, 0]],
+  ['SIDE', [0.8, 0.09, 0], [0, 0.06, 0]],
+  ['REAR 3/4', [0.38, 0.22, -0.45], [0, 0.06, -0.05]],
+  ['TOP', [0.001, 0.9, 0], [0, 0.04, 0]],
+];
+const PARTS = [
+  ['Front lip', [0.14, 0.06, 0.5], [0, 0.022, 0.23]],
+  ['Lower opening and outer vents', [0.05, 0.05, 0.5], [0, 0.04, 0.235]],
+  ['Headlights', [0.16, 0.09, 0.4], [0.05, 0.062, 0.225]],
+  ['Grille band and bonnet edge', [0.02, 0.1, 0.42], [0, 0.065, 0.225]],
+  ['Bonnet', [0.25, 0.35, 0.45], [0, 0.08, 0.13]],
+  ['Front overfender', [0.42, 0.08, 0.3], [0.1, 0.035, 0.128]],
+  ['Front wheel', [0.38, 0.05, 0.22], [0.09, 0.032, 0.128]],
+  ['Side skirt', [0.5, 0.05, 0.02], [0.1, 0.026, 0]],
+  ['Doors and side glass', [0.6, 0.12, 0], [0.09, 0.09, 0]],
+  ['Roof and greenhouse', [0.3, 0.45, 0.15], [0, 0.12, -0.02]],
+  ['Rear overfender', [0.42, 0.08, -0.3], [0.1, 0.035, -0.128]],
+  ['Rear wheel', [0.38, 0.05, -0.22], [0.09, 0.032, -0.128]],
+  ['Trunk and ducktail', [0.18, 0.28, -0.5], [0, 0.1, -0.19]],
+  ['Tail lights and rear bumper', [0.06, 0.09, -0.6], [0, 0.07, -0.22]],
+];
+let fit = 1;
+function go(name, off, tgt) { Object.assign(want, fromOffset(off, tgt)); if (!name.match(/^\d/)) want.dist *= 1.55 * fit; $('cur').textContent = name.toUpperCase(); mark(name); }
+function mark(name) { document.querySelectorAll('[data-name]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.name === name))); }
+VIEWS.forEach(([n, o, t]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = n; b.dataset.name = n; b.addEventListener('click', () => go(n, o, t)); $('views').appendChild(b); });
+PARTS.forEach(([n, o, t], i) => { const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.dataset.name = n; b.innerHTML = `<span class="n">${i + 1}</span><span></span>`; b.lastChild.textContent = n; b.addEventListener('click', () => go(`${i + 1} · ${n}`, o, t)); b.dataset.name = `${i + 1} · ${n}`; li.appendChild(b); $('parts').appendChild(li); });
+go(...VIEWS[0]); Object.assign(orbit, { target: want.target.clone(), yaw: want.yaw, pitch: want.pitch, dist: want.dist });
+
+// pointer: drag rotates, wheel / pinch zooms, double-click resets
+const pts = new Map(); let pinch0 = 0;
+stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+stage.addEventListener('pointermove', e => {
+  if (!pts.has(e.pointerId)) return; const [px, py] = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pts.size === 1) { want.yaw += (e.clientX - px) * 0.008; want.pitch = clamp(want.pitch + (e.clientY - py) * 0.006, -0.15, 1.5); $('cur').textContent = 'FREE'; mark(''); }
+  else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0) want.dist = clamp(want.dist * pinch0 / d, 0.2, 2.2); pinch0 = d; }
+});
+const up = e => { pts.delete(e.pointerId); pinch0 = 0; };
+stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+stage.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(want.dist * Math.exp(e.deltaY * 0.001), 0.2, 2.2); }, { passive: false });
+stage.addEventListener('dblclick', () => go(...VIEWS[0]));
+
+function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); fit = Math.max(1, 1.4 / camera.aspect); }
+new ResizeObserver(resize).observe(stage); resize(); go(...VIEWS[0]); Object.assign(orbit, { target: want.target.clone(), yaw: want.yaw, pitch: want.pitch, dist: want.dist });
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const k = reduce ? 1 : 1 - Math.exp(-dt * 8);
+  let dy = want.yaw - orbit.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  orbit.yaw += dy * k; orbit.pitch += (want.pitch - orbit.pitch) * k; orbit.dist += (want.dist - orbit.dist) * k; orbit.target.lerp(want.target, k);
+  const cp = Math.cos(orbit.pitch);
+  camera.position.set(orbit.target.x + Math.cos(orbit.yaw) * cp * orbit.dist, orbit.target.y + Math.sin(orbit.pitch) * orbit.dist, orbit.target.z + Math.sin(orbit.yaw) * cp * orbit.dist);
+  camera.lookAt(orbit.target); renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>

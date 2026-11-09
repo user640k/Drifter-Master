@@ -23,6 +23,8 @@ A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift 
 Drive through the gates in order (the next gate glows on the floor and on the minimap); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
 - **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
 - **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
+- **DRIFT TRACK**: enclosed foam-barrier track with a 1.3 m P-tile lane, long sweepers round the room and a flowing transition along the top; four checkpoints.
+- **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump.
 - **LIVING ROOM**: furniture course past the sofa, between the pouf and the TV stand, under the coffee table between its legs and past the armchair. The rug grips like carpet.
 
 ## Sound
@@ -42,3 +44,15 @@ Real 1/10 numbers (SI units), stepped at 720 Hz.
 - **Suspension**: roll and pitch spring/damper systems move load between wheels; roll-bar split sets front/rear balance.
 - **Setup (G)** and **telemetry (T)**: wheel loads, grip used, slip angles, g-forces, roll/pitch, steering and gyro output, drift angle, wheelspin.
 - **Tire marks**: the rear tires draw into a canvas over the floor while sliding.
+
+## Car viewer
+`viewer.html` is a rotatable studio view of the car with numbered parts and the reference photo, for reviewing the shell. It is generated from the car code in `index.html`:
+
+    python3 tools/make_viewer.py
+
+## Publishing on itch.io
+The game runs as-is in the browser. To make the upload:
+
+    python3 tools/make_itch.py
+
+This writes `dist/carpet-circuit-itch.zip` (a full HTML document plus a bundled copy of three.js r128, MIT licence included), which runs without internet access. On itch.io: create a new project, Kind = HTML, upload the zip, tick "This file will be played in the browser", and set the viewport to 1280 x 760.

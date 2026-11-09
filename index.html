@@ -518,6 +518,23 @@ const COURSES = [
       [-1.9, 1.1, -2.45, 1.1, 'c', 'd'],
       [-2.75, -0.4, -2.3, -0.4, 'c', 'c'],
     ] },
+  { name: 'DRIFT TRACK', note: 'Enclosed foam-barrier track with a 1.3 m lane: long sweepers round the room, a flowing left-right transition along the top, and the outer walls to slide against. Pass the glowing checkpoints.',
+    track: { width: 1.3, ctrl: [[-0.5, -1.45], [0.9, -1.45], [1.85, -1.05], [2.1, -0.05], [1.95, 0.95], [1.3, 1.55], [0.4, 1.65], [-0.5, 2.0], [-1.45, 1.95], [-2.0, 1.15], [-2.05, 0.0], [-1.75, -1.0]] } },
+  { name: 'RAMP PARK', note: 'Low plywood ramps for fun: a kicker on the first straight, a table-top up the east side, a set of rollers along the top and a kicker coming down the west side.',
+    start: [-2.4, -1.35, Math.PI / 2],
+    ramps: [
+      { x: -0.95, z: -1.35, ang: Math.PI / 2, w: 0.62, prof: [[0, 0], [0.32, 0.06], [0.33, 0]] },
+      { x: 2.1, z: -0.95, ang: 0, w: 0.7, prof: [[0, 0], [0.35, 0.06], [0.85, 0.06], [1.2, 0]] },
+      { x: 1.0, z: 1.95, ang: -Math.PI / 2, w: 0.75, prof: [[0, 0], [0.2, 0.035], [0.4, 0], [0.6, 0.035], [0.8, 0]] },
+      { x: -2.1, z: 1.05, ang: Math.PI, w: 0.62, prof: [[0, 0], [0.32, 0.06], [0.33, 0]] },
+    ],
+    gates: [
+      [-1.7, -1.75, -1.7, -0.95, 'c', 'c'],
+      [0.25, -1.75, 0.25, -0.95, 'd', 'd'],
+      [1.7, 0.65, 2.5, 0.65, 'd', 'd'],
+      [-0.2, 1.55, -0.2, 2.35, 'd', 'd'],
+      [-2.5, -0.15, -1.7, -0.15, 'd', 'd'],
+    ] },
   { name: 'LIVING ROOM', note: 'Along the sofa, between the pouf and the TV stand, round to the coffee table and under it between the legs, past the armchair and home. The rug grips like carpet.',
     furniture: true, start: [-1.3, -1.8, Math.PI / 2], gates: [
       [-0.6, -2.15, -0.6, -1.45, 'c', 'c'],
@@ -590,12 +607,85 @@ function makeCone(x, z, kind) {
   group.position.set(x, 0, z); courseGroup.add(group);
   return { x, z, hx: x, hz: z, vx: 0, vz: 0, kind, r: kind === 'c' ? 0.03 : 0.028, tilt: 0, dir: 0, down: false, t: 0, hit: false, group, pivot };
 }
+// ramps: ground height under a point (0 on the floor)
+let RAMPS = [];
+function groundAt(x, z) {
+  let g = 0;
+  for (const r of RAMPS) {
+    const dx = x - r.x, dz = z - r.z, du = dx * Math.sin(r.ang) + dz * Math.cos(r.ang), dv = dx * Math.cos(r.ang) - dz * Math.sin(r.ang);
+    if (Math.abs(dv) > r.w / 2 || du <= 0 || du >= r.prof[r.prof.length - 1][0]) continue;
+    for (let k = 1; k < r.prof.length; k++) { const [u0, h0] = r.prof[k - 1], [u1, h1] = r.prof[k]; if (du <= u1) { g = Math.max(g, h0 + (h1 - h0) * (du - u0) / (u1 - u0)); break; } }
+  }
+  return g;
+}
+function buildRamp(r, g) {
+  const sh = new THREE.Shape(); sh.moveTo(0, 0); for (const [u, h] of r.prof) sh.lineTo(u, Math.max(h, 0.0005)); sh.lineTo(r.prof[r.prof.length - 1][0], 0); sh.closePath();
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: r.w, bevelEnabled: false, curveSegments: 1 }); geo.translate(0, 0, -r.w / 2);
+  const m = new THREE.Mesh(geo, [lam({ map: T.wood, color: 0xe6cfa6 }), phong({ map: T.ptile, color: 0x9a9aa0, shininess: 20 })]);
+  m.position.set(r.x, 0.001, r.z); m.rotation.y = r.ang - Math.PI / 2; g.add(m);
+  // yellow lip stripe on the top edge
+  const L = r.prof.reduce((a, [u, h]) => h > a[1] ? [u, h] : a, [0, 0]);
+  const lipM = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.003, r.w), new THREE.MeshBasicMaterial({ color: 0xffd21a })); lipM.position.set(L[0], L[1] + 0.0015, 0); m.add(lipM);
+}
+// enclosed track: centreline samples, lane half-width, barrier contact
+const N = 480, TP = [], TN = [];
+let TRACK = null;
+function buildTrackRibbon(tr, g) {
+  const curve = new THREE.CatmullRomCurve3(tr.ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal');
+  TP.length = 0; TN.length = 0; TP.push(...curve.getSpacedPoints(N).slice(0, N));
+  const TT = [];
+  for (let i = 0; i < N; i++) { const a = TP[(i - 1 + N) % N], b = TP[(i + 1) % N], t = new THREE.Vector3().subVectors(b, a).normalize(); TT.push(t); TN.push(new THREE.Vector3(t.z, 0, -t.x)); }
+  const HWt = tr.width / 2;
+  TRACK = { hw: HWt, idx: 0, tan: TT };
+  // dark P-tile lane so the line reads against the concrete
+  const pos = [], uv = [], idx = []; let acc = 0;
+  for (let i = 0; i <= N; i++) {
+    const k = i % N, pt = TP[k], n = TN[k]; if (i > 0) acc += TP[k].distanceTo(TP[(i - 1) % N]);
+    pos.push(pt.x + n.x * (HWt + 0.04), 0.002, pt.z + n.z * (HWt + 0.04), pt.x - n.x * (HWt + 0.04), 0.002, pt.z - n.z * (HWt + 0.04));
+    uv.push(0, acc, tr.width / 0.9, acc);
+    if (i < N) { const j = i * 2; idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2); }
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx);
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, j) => j % 3 === 1 ? 1 : 0), 3));
+  const lane = new THREE.Mesh(geo, phong({ map: T.ptile, shininess: 80, specular: 0x55555c })); g.add(lane);
+  // foam barrier blocks along both edges; red/white outside, blue/white inside
+  const BL = 0.11, BH = 0.06, BT = 0.05, blocks = [];
+  for (const side of [1, -1]) {
+    const edge = TP.map((pt, i) => new THREE.Vector3(pt.x + TN[i].x * side * (HWt + BT / 2), 0, pt.z + TN[i].z * side * (HWt + BT / 2)));
+    let carry = 0, count = 0;
+    for (let i = 0; i < N; i++) {
+      const a = edge[i], b = edge[(i + 1) % N], seg = a.distanceTo(b); let d = carry;
+      while (d < seg) { const pt = a.clone().lerp(b, d / seg); const j = nearestT(pt.x, pt.z, -1); if (Math.hypot(pt.x - TP[j].x, pt.z - TP[j].z) > HWt + BT / 2 - 0.01) blocks.push({ p: pt, ang: Math.atan2(b.x - a.x, b.z - a.z), c: count++ % 2, side }); d += BL + 0.012; }
+      carry = d - seg;
+    }
+  }
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(BT, BH, BL), lam({ map: T.foam }), blocks.length);
+  const o = new THREE.Object3D(), red = new THREE.Color(0xd42a26), white = new THREE.Color(0xf0eee6), blue = new THREE.Color(0x2a5bd4);
+  blocks.forEach((b, i) => { o.position.set(b.p.x, BH / 2, b.p.z); o.rotation.set(0, b.ang, 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, b.c ? white : (b.side > 0 ? red : blue)); });
+  g.add(im);
+  // checker start line
+  const sf = new THREE.Mesh(new THREE.PlaneGeometry(tr.width, 0.1), lam({ map: T.checker, polygonOffset: true, polygonOffsetFactor: -1 }));
+  sf.rotation.set(-Math.PI / 2, 0, Math.atan2(-TT[0].z, TT[0].x) + Math.PI / 2); sf.position.set(TP[0].x, 0.004, TP[0].z); g.add(sf);
+  // gates: start line and three checkpoints, each spanning the lane; start just behind the line
+  const gate = i => { const pt = TP[i], n = TN[i]; return [pt.x + n.x * HWt, pt.z + n.z * HWt, pt.x - n.x * HWt, pt.z - n.z * HWt, 'x', 'x']; };
+  tr.gates = [0, N / 4, N / 2, 3 * N / 4].map(gate);
+  const si = N - 24; tr.start = [TP[si].x, TP[si].z, Math.atan2(TT[si].x, TT[si].z)];
+}
+function nearestT(x, z, hint) {
+  let bi = 0, bd = 1e9;
+  const from = hint < 0 ? 0 : hint - 30, to = hint < 0 ? N - 1 : hint + 30;
+  for (let k = from; k <= to; k++) { const i = (k + N) % N, dx = x - TP[i].x, dz = z - TP[i].z, d = dx * dx + dz * dz; if (d < bd) { bd = d; bi = i; } }
+  return bi;
+}
 function buildCourse(ci) {
   course = COURSES[ci] || COURSES[0];
   if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry && !Object.values(coneGeo).includes(o.geometry)) o.geometry.dispose(); }); }
   courseGroup = new THREE.Group(); scene.add(courseGroup);
   cones.length = 0; RUG = null; mapBounds = null;
   OBST = STATIC_OBST.concat(course.furniture ? buildFurniture(courseGroup) : []);
+  TRACK = null; RAMPS = course.ramps || [];
+  for (const r of RAMPS) buildRamp(r, courseGroup);
+  if (course.track) { buildTrackRibbon(course.track, courseGroup); course.gates = course.track.gates; course.start = course.track.start; }
   const seen = new Set();
   for (const g of course.gates) for (const [x, z, k] of [[g[0], g[1], g[4]], [g[2], g[3], g[5]]]) {
     const key = x.toFixed(2) + ',' + z.toFixed(2);
@@ -614,6 +704,11 @@ function setGateBar(i) {
 function carCircles() { const fx = Math.sin(car.h), fz = Math.cos(car.h); return [[car.x + fx * 0.11, car.z + fz * 0.11], [car.x - fx * 0.11, car.z - fz * 0.11]]; }
 const CAR_R = 0.105;
 function contactsFor(cx, cz, out) {
+  if (TRACK) {
+    const i = nearestT(cx, cz, TRACK.idx); TRACK.idx = i;
+    const n = TN[i], off = (cx - TP[i].x) * n.x + (cz - TP[i].z) * n.z, edge = TRACK.hw - CAR_R;
+    if (Math.abs(off) > edge) { const sg = Math.sign(off); out.push([-n.x * sg, -n.z * sg, Math.abs(off) - edge]); }
+  }
   if (cx < -ROOM_IN + CAR_R) out.push([1, 0, -ROOM_IN + CAR_R - cx]);
   if (cx > ROOM_IN - CAR_R) out.push([-1, 0, cx - (ROOM_IN - CAR_R)]);
   if (cz < -ROOM_IN + CAR_R) out.push([0, 1, -ROOM_IN + CAR_R - cz]);
@@ -815,7 +910,7 @@ function buildCar() {
   }
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = 1; root.add(shadow);
-  root.userData = { ...root.userData, body, wheels };
+  root.userData = { ...root.userData, body, wheels, model, shadow };
   return root;
 }
 function smoothNormals(geo, cosLimit) {
@@ -900,7 +995,7 @@ function placeCar() {
   Object.assign(car, {
     x: sx, z: sz, h: sh,
     u: 0, v: 0, r: 0, w: 0, vx: 0, vz: 0, vF: 0, steer: 0, thr: 0, gyroOut: 0, beta: 0,
-    roll: 0, rollV: 0, pitch: 0, pitchV: 0, ax: 0, ay: 0,
+    roll: 0, rollV: 0, pitch: 0, pitchV: 0, ax: 0, ay: 0, y: 0, vy: 0, air: false, vPitch: 0,
     spin: 0, wheelSurf: 0, spinning: false, alphaF: 0, alphaR: 0, slide: 0, rearSlip: 0,
     loads: [0, 0, 0, 0], gripF: 0, gripR: 0, revHold: 0, reversing: false, braking: false,
   });
@@ -969,8 +1064,9 @@ function stepCar(dt, canDrive, walls = true) {
   const latF = (fFront * Kr * car.roll + m * car.ay * VEH.hrc * b / L) / VEH.tw;
   const latR = ((1 - fFront) * Kr * car.roll + m * car.ay * VEH.hrc * a / L) / VEH.tw;
   const FL = Math.max(0, Nf / 2 - latF), FR = Math.max(0, Nf / 2 + latF), RL = Math.max(0, Nr / 2 - latR), RR = Math.max(0, Nr / 2 + latR);
-  const Df = muAt(FL, mu0, Nref) * FL + muAt(FR, mu0, Nref) * FR;
-  const Dr = muAt(RL, mu0, Nref) * RL + muAt(RR, mu0, Nref) * RR;
+  const grip = car.air ? 0 : 1; // no tire forces in the air
+  const Df = grip * (muAt(FL, mu0, Nref) * FL + muAt(FR, mu0, Nref) * FR);
+  const Dr = grip * (muAt(RL, mu0, Nref) * RL + muAt(RR, mu0, Nref) * RR);
   car.loads = [FL, FR, RL, RR];
 
   // slip angles and slip ratios in each wheel's frame
@@ -1018,6 +1114,21 @@ function stepCar(dt, canDrive, walls = true) {
   const sh = Math.sin(car.h), ch = Math.cos(car.h);
   car.vx = sh * u + ch * v; car.vz = ch * u - sh * v;
   car.x += car.vx * dt; car.z += car.vz * dt;
+  // ramps: follow the ground, leave it when it falls away faster than gravity, land with a thump
+  if (RAMPS.length || car.y > 0) {
+    const gNew = groundAt(car.x, car.z);
+    if (!car.air) {
+      // vertical speed from the ground slope, capped at what a ~12° ramp gives at this speed
+      // (stepping onto a ramp from the side just lifts the car, it doesn't launch it)
+      const vyCap = Math.hypot(car.vx, car.vz) * 0.22 + 0.05, vyG = clamp((gNew - car.y) / dt, -vyCap, vyCap);
+      if (gNew < car.y && vyG < car.vy - GRAV * dt * 2) car.air = true;
+      else { car.vy = vyG * 0.5 + car.vy * 0.5; car.y = gNew; }
+    }
+    if (car.air) {
+      car.vy -= GRAV * dt; car.y += car.vy * dt;
+      if (car.y <= gNew) { if (car.vy < -0.5) { audio.bump(Math.min(0.8, -car.vy / 3)); car.pitchV -= car.vy * 2; rumble(Math.min(1, -car.vy / 3), 0.4, 120); } car.y = gNew; car.vy = 0; car.air = false; }
+    }
+  }
 
   // contacts: n points from the obstacle into free space, pen is how far the car is inside it
   const sh2 = () => Math.sin(car.h), ch2 = () => Math.cos(car.h);
@@ -1177,6 +1288,9 @@ function drawMap() {
   g.fillStyle = 'rgba(207,226,245,0.35)';
   for (const [x0, z0, x1, z1] of OBST) g.fillRect(mx(x1), mz(z1), (x1 - x0) * sc, (z1 - z0) * sc);
   if (RUG) { g.strokeStyle = 'rgba(180,150,230,0.6)'; g.lineWidth = 1; g.strokeRect(mx(RUG[2]), mz(RUG[3]), (RUG[2] - RUG[0]) * sc, (RUG[3] - RUG[1]) * sc); }
+  if (TRACK) { g.strokeStyle = 'rgba(207,226,245,0.55)'; g.lineWidth = TRACK.hw * 2 * sc; g.lineJoin = 'round'; g.beginPath(); TP.forEach((p, i) => i ? g.lineTo(mx(p.x), mz(p.z)) : g.moveTo(mx(p.x), mz(p.z))); g.closePath(); g.stroke(); }
+  for (const r of RAMPS) { const L = r.prof[r.prof.length - 1][0], fx = Math.sin(r.ang), fz = Math.cos(r.ang), lx = Math.cos(r.ang), lz = -Math.sin(r.ang), hw = r.w / 2;
+    g.fillStyle = 'rgba(230,200,150,0.75)'; g.beginPath(); [[0, -hw], [L, -hw], [L, hw], [0, hw]].forEach(([u, v], k) => { const x = r.x + fx * u + lx * v, z = r.z + fz * u + lz * v; k ? g.lineTo(mx(x), mz(z)) : g.moveTo(mx(x), mz(z)); }); g.fill(); }
   const ng = course.gates[race.next];
   g.strokeStyle = '#ffb21e'; g.lineWidth = 4; g.beginPath(); g.moveTo(mx(ng[0]), mz(ng[1])); g.lineTo(mx(ng[2]), mz(ng[3])); g.stroke();
   for (const c of cones) { g.fillStyle = c.kind === 'c' ? '#ff5a14' : '#ffd21a'; g.fillRect(mx(c.x) - 2, mz(c.z) - 2, 4, 4); }
@@ -1502,7 +1616,14 @@ function frame(now) {
   const canDrive = race.state === 'race';
   while (acc >= DT) { const px = car.x, pz = car.z; stepCar(DT, canDrive); stepCones(DT); if (canDrive) gateLogic(px, pz); acc -= DT; }
   // pose
-  carObj.position.set(car.x, 0, car.z); carObj.rotation.y = car.h;
+  carObj.position.set(car.x, car.y, car.z); carObj.rotation.y = car.h;
+  {
+    const fx = Math.sin(car.h), fz = Math.cos(car.h);
+    if (!car.air) { const gf = groundAt(car.x + fx * 0.13, car.z + fz * 0.13), gr = groundAt(car.x - fx * 0.13, car.z - fz * 0.13); car.vPitch += (Math.atan2(gf - gr, 0.26) - car.vPitch) * Math.min(1, dt * 25); }
+    else car.vPitch -= dt * 0.5; // nose drops slowly in the air
+    carObj.userData.model.rotation.z = car.vPitch;
+    carObj.userData.shadow.position.y = groundAt(car.x, car.z) - car.y + 0.004;
+  }
   const ud = carObj.userData;
   // body sits on its springs: roll, pitch, and a little heave from total compression
   ud.body.rotation.x = car.roll; ud.body.rotation.z = car.pitch;
