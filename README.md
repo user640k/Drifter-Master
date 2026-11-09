@@ -1,6 +1,6 @@
-# Carpet Circuit
+# Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, by default an RX-7 body (from a supplied, free-to-use 3D model, simplified to about 72k triangles), with an original widebody TK-06 body as an alternative, sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, by default an RX-7 body (from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), with an original widebody TK-06 body as an alternative, sliding round a foam-barrier track on polished concrete in a 40 ft x 40 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -26,9 +26,8 @@ A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift 
 Drive through the gates in order (the next gate glows on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
 - **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
 - **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
-- **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.3 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
+- **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.5 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
 - **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump. Ramp faces are solid: kickers can only be climbed from the slope side, and the side edges block; the table-top and rollers can be driven either way.
-- **LIVING ROOM**: furniture course past the sofa, between the pouf and the TV stand, under the coffee table between its legs and past the armchair. The rug grips like carpet.
 
 ## Sound
 Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide. The motor is silent off the throttle.

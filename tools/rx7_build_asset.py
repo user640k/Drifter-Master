@@ -50,12 +50,28 @@ for p in parts:
     r, w = role(p); groups.setdefault((r, w), []).append(p)
 out = {'scale': S, 'meshes': []}
 tot = 0
+# true wheel centre and spin axis per wheel, from its tire (the source model has the fronts steered
+# 15 degrees and ~1.4 degrees of camber on all four); each wheel is straightened onto a clean
+# lateral axis about that centre so it spins without wobbling. The game adds its own steer and camber.
+def rot_to(a, b):
+    a = a / np.linalg.norm(a); b = b / np.linalg.norm(b); v = np.cross(a, b); c = float(np.dot(a, b))
+    if np.linalg.norm(v) < 1e-9: return np.eye(3)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]]); return np.eye(3) + K + K @ K / (1 + c)
+WFIX = {}
+for k, (hx, hz) in WHEELS.items():
+    pts = [V[np.unique(p['f'])] for p in parts if 'Tire' in p['g'] and abs((p['bmin'][0] + p['bmax'][0]) / 2 - hx) < 0.2 and abs((p['bmin'][2] + p['bmax'][2]) / 2 - hz) < 0.3]
+    P = np.concatenate(pts); c = P.mean(0); ax = np.linalg.svd(P - c, full_matrices=False)[2][2]; ax *= np.sign(ax[0])
+    WFIX[k] = (c, rot_to(ax, np.array([1.0, 0, 0])))
+    print('wheel', k, 'centre', c.round(4), 'axis', ax.round(4))
 allP = to_model(V)
 lo, hi = allP.min(0) - 0.001, allP.max(0) + 0.001
 for (r, w), ps in sorted(groups.items(), key=lambda kv: (kv[0][0], str(kv[0][1]))):
     F = np.concatenate([p['f'] for p in ps]); UVI = np.concatenate([p['uv'] for p in ps])
     uniq, inv = np.unique(F.reshape(-1), return_inverse=True)
-    P = allP[uniq]; Fl = inv.reshape(-1, 3)
+    if w is not None:
+        c0, R = WFIX[w]; P = to_model((V[uniq] - c0) @ R.T + c0)
+    else: P = allP[uniq]
+    Fl = inv.reshape(-1, 3)
     uv = None
     if r in UVROLES:
         # per-vertex uv from the first face corner that uses it
@@ -67,7 +83,7 @@ for (r, w), ps in sorted(groups.items(), key=lambda kv: (kv[0][0], str(kv[0][1])
         if len(F2) > 8: P, Fl = P2, F2
     q = np.round((P - lo) / (hi - lo) * 65535).astype(np.uint16)
     ent = {'role': r, 'wheel': w, 'pos': base64.b64encode(q.tobytes()).decode(), 'idx': base64.b64encode(Fl.astype(np.uint16 if len(P) < 65536 else np.uint32).tobytes()).decode(), 'i32': len(P) >= 65536}
-    if w is not None: ent['hub'] = (to_model(np.array([[WHEELS[w][0], HUB_Y, WHEELS[w][1]]], np.float32))[0]).round(5).tolist()
+    if w is not None: ent['hub'] = (to_model(WFIX[w][0][None, :].astype(np.float32))[0]).round(5).tolist()
     if uv is not None: ent['uv'] = base64.b64encode(np.clip(np.round(uv * 65535), 0, 65535).astype(np.uint16).tobytes()).decode()
     out['meshes'].append(ent); tot += len(Fl)
     print(f"{r:10s} {str(w):4s} parts {len(ps):3d} tris {len(F):6d} -> {len(Fl):6d}")
