@@ -518,7 +518,7 @@ const COURSES = [
       [-1.9, 1.1, -2.45, 1.1, 'c', 'd'],
       [-2.75, -0.4, -2.3, -0.4, 'c', 'c'],
     ] },
-  { name: 'DRIFT TRACK', note: 'Enclosed foam-barrier track with a 1.3 m lane: long sweepers round the room, a flowing left-right transition along the top, and the outer walls to slide against. Pass the glowing checkpoints.',
+  { name: 'DRIFT TRACK', note: 'Enclosed foam-barrier track on the bare floor, 1.3 m wide: long sweepers round the room, a flowing left-right transition along the top, and the outer walls to slide against. Pass the glowing checkpoints.',
     track: { width: 1.3, ctrl: [[-0.5, -1.45], [0.9, -1.45], [1.85, -1.05], [2.1, -0.05], [1.95, 0.95], [1.3, 1.55], [0.4, 1.65], [-0.5, 2.0], [-1.45, 1.95], [-2.0, 1.15], [-2.05, 0.0], [-1.75, -1.0]] } },
   { name: 'RAMP PARK', note: 'Low plywood ramps for fun: a kicker on the first straight, a table-top up the east side, a set of rollers along the top and a kicker coming down the west side.',
     start: [-2.4, -1.35, Math.PI / 2],
@@ -637,17 +637,7 @@ function buildTrackRibbon(tr, g) {
   for (let i = 0; i < N; i++) { const a = TP[(i - 1 + N) % N], b = TP[(i + 1) % N], t = new THREE.Vector3().subVectors(b, a).normalize(); TT.push(t); TN.push(new THREE.Vector3(t.z, 0, -t.x)); }
   const HWt = tr.width / 2;
   TRACK = { hw: HWt, idx: 0, tan: TT };
-  // dark P-tile lane so the line reads against the concrete
-  const pos = [], uv = [], idx = []; let acc = 0;
-  for (let i = 0; i <= N; i++) {
-    const k = i % N, pt = TP[k], n = TN[k]; if (i > 0) acc += TP[k].distanceTo(TP[(i - 1) % N]);
-    pos.push(pt.x + n.x * (HWt + 0.04), 0.002, pt.z + n.z * (HWt + 0.04), pt.x - n.x * (HWt + 0.04), 0.002, pt.z - n.z * (HWt + 0.04));
-    uv.push(0, acc, tr.width / 0.9, acc);
-    if (i < N) { const j = i * 2; idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2); }
-  }
-  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx);
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, j) => j % 3 === 1 ? 1 : 0), 3));
-  const lane = new THREE.Mesh(geo, phong({ map: T.ptile, shininess: 80, specular: 0x55555c })); g.add(lane);
+  // no painted lane: the floor itself is the track, only the barriers mark it
   // foam barrier blocks along both edges; red/white outside, blue/white inside
   const BL = 0.11, BH = 0.06, BT = 0.05, blocks = [];
   for (const side of [1, -1]) {

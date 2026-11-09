@@ -23,7 +23,7 @@ A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift 
 Drive through the gates in order (the next gate glows on the floor and on the minimap); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
 - **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
 - **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
-- **DRIFT TRACK**: enclosed foam-barrier track with a 1.3 m P-tile lane, long sweepers round the room and a flowing transition along the top; four checkpoints.
+- **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.3 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
 - **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump.
 - **LIVING ROOM**: furniture course past the sofa, between the pouf and the TV stand, under the coffee table between its legs and past the armchair. The rug grips like carpet.
 
