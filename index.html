@@ -79,6 +79,10 @@ button.ghost:focus-visible, #gclose:focus-visible, .chip:focus-visible { outline
 .gsub { font-family: var(--ui); font-style: normal; font-size: 1.1cqw; color: var(--dim); }
 .grows { display: grid; grid-template-columns: 11cqw 1fr; gap: .8cqw 1.4cqw; align-items: center; }
 .grows .lbl { font-size: 1.15cqw; }
+.grows .lbl.sel { color: var(--hot); }
+.grows .lbl.sel::before { content: '\25B8  '; }
+.padline { font-size: 1.15cqw; color: var(--dim); }
+.padline b { color: var(--fg); font-weight: 700; }
 .chips { display: flex; gap: .6cqw; flex-wrap: wrap; }
 .chip { font-family: var(--ui); font-weight: 700; font-size: 1.1cqw; letter-spacing: .06em; padding: .45cqw 1.1cqw; background: #142030; color: var(--dim); border: 1px solid #2c4058; cursor: pointer; }
 .chip[aria-pressed="true"] { background: var(--hot); color: #10131a; border-color: var(--hot); }
@@ -120,16 +124,18 @@ footer { font-size: 13px; color: var(--dim); display: flex; flex-wrap: wrap; gap
       <span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span>
       <span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
     </div>
+    <div class="padline"><b>Gamepad:</b> stick steer · <b>RT</b> throttle · <b>LT</b> brake/reverse · <b>A</b> start · <b>Y</b> camera · <b>X</b> reset · <b>View</b> setup · <b>LB</b> telemetry · <b>Menu</b> pause</div>
     <div class="btns"><button id="go" type="button">START ENGINE</button><button id="setupbtn" class="ghost" type="button">CAR SETUP</button></div>
   </div>
   <div class="garage" id="garage" hidden>
-    <div class="ghead"><span>CAR SETUP</span><span class="gsub">Changes apply instantly. <kbd>G</kbd> to close.</span></div>
+    <div class="ghead"><span>CAR SETUP</span><span class="gsub">Changes apply instantly. <kbd>G</kbd> to close. Gamepad: d-pad to choose, <kbd>B</kbd> to close.</span></div>
     <div class="grows" id="grows"></div>
     <div class="gnote" id="gnote"></div>
     <button id="gclose" type="button">DONE</button>
   </div>
 </div>
 <footer>
+  <span id="padhint" hidden>Controller: stick + <kbd>RT</kbd>/<kbd>LT</kbd></span>
   <span><kbd>↑↓←→</kbd> drive</span><span><kbd>G</kbd> setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset</span><span><kbd>M</kbd> music</span><span><kbd>P</kbd> pause</span>
 </footer>
 
@@ -556,7 +562,7 @@ const SETUP_OPTS = {
   spring: { label: 'SPRINGS', opts: ['SOFT', 'MEDIUM', 'HARD'], k: [0.65, 1, 1.5] },
   oil: { label: 'SHOCK OIL', opts: ['300 CST', '400 CST', '550 CST'], c: [0.65, 1, 1.45] },
   arb: { label: 'ROLL BARS', opts: ['FRONT SOFT', 'BALANCED', 'FRONT STIFF'], f: [0.4, 0.5, 0.6] },
-  assist: { label: 'STEER ASSIST', opts: ['ON', 'OFF'] },
+  assist: { label: 'DRIVING ASSIST', opts: ['ON', 'OFF'] },
 };
 const setup = { motor: 0, tire: 1, spring: 1, oil: 1, arb: 1, assist: 0 };
 try { const s = JSON.parse(localStorage.getItem('cc-setup') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < SETUP_OPTS[k].opts.length) setup[k] = s[k]; } catch (e) {}
@@ -591,29 +597,31 @@ function nearestLocal(x, z, i0) {
 function stepCar(dt, canDrive, walls = true) {
   const M = MOTORS[setup.motor], O = SETUP_OPTS;
   const mu0 = O.tire.mu[setup.tire], kMul = O.spring.k[setup.spring], cMul = O.oil.c[setup.oil], fFront = O.arb.f[setup.arb], assist = setup.assist === 0;
-  const up = canDrive && (keys.ArrowUp || keys.KeyW), dn = canDrive && (keys.ArrowDown || keys.KeyS);
-  const st = canDrive ? ((keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0)) : 0;
+  const thrIn = canDrive ? input.thr : 0, brkIn = canDrive ? input.brk : 0, st = canDrive ? input.steer : 0;
+  const up = thrIn > 0.02, dn = brkIn > 0.02;
   const { m, a, b, L } = VEH, W = m * GRAV;
   let { u, v, r } = car;
 
   // servo: rate-limited; keyboard assist trims lock as speed rises (like a speed-sensitive dual rate)
-  const lock = assist ? clamp(VEH.steerMax / (1 + Math.abs(u) * 0.12), 0.13, VEH.steerMax) : VEH.steerMax;
+  // assist: only as much lock as the front tires can use at this speed (kinematic angle for the
+  // tightest grip-limited radius, plus the slip angle where grip peaks)
+  const lock = assist ? clamp(L * mu0 * GRAV * 0.9 / (u * u + 0.01) + 0.1, 0.1, VEH.steerMax) : VEH.steerMax;
   const servoRate = (Math.PI / 3) / VEH.servo;
   car.steer += clamp(st * lock - car.steer, -servoRate * dt, servoRate * dt);
   const d = car.steer, cd = Math.cos(d), sd = Math.sin(d);
 
   // trigger: keyboard throttle ramps in over ~0.12 s
-  car.thr += clamp((up ? 1 : 0) - car.thr, -dt * 12, dt * 8);
+  car.thr += clamp(thrIn - car.thr, -dt * 12, dt * 8);
 
   // ESC: forward, brake, then reverse after a short hold at standstill
   let Fdrive = 0, Fbrake = 0;
   if (up) car.reversing = false;
   if (dn) {
-    if (u > 0.15 && !car.reversing) Fbrake = VEH.brakeF;
+    if (u > 0.15 && !car.reversing) Fbrake = VEH.brakeF * brkIn;
     else { car.revHold += dt; if (car.revHold > 0.2) car.reversing = true; }
   } else car.revHold = 0;
   if (up) Fdrive = M.fStall * Math.max(0, car.thr - u / M.vFree);
-  else if (dn && car.reversing) Fdrive = -M.fStall * 0.45 * Math.max(0, 1 + u / 3.5); // ESC reverse limited to ~12 km/h
+  else if (dn && car.reversing) Fdrive = -M.fStall * 0.45 * brkIn * Math.max(0, 1 + u / 3.5); // ESC reverse limited to ~12 km/h
   else if (!dn) Fbrake = VEH.dragBrake;
   car.braking = Fbrake > 1;
   let Fx_dem = Fdrive - Fbrake * Math.tanh(u * 8);
@@ -629,6 +637,8 @@ function stepCar(dt, canDrive, walls = true) {
   const Df = muAt(FL, mu0, Nref) * FL + muAt(FR, mu0, Nref) * FR;
   const Dr = muAt(RL, mu0, Nref) * RL + muAt(RR, mu0, Nref) * RR;
   car.loads = [FL, FR, RL, RR];
+  // assist: traction control and ABS keep each axle just under the point where it spins or locks
+  if (assist && !car.reversing) Fx_dem = clamp(Fx_dem, -1.7 * Math.min(Df, Dr), 1.7 * Math.min(Df, Dr));
 
   // 4WD shaft drive, 50/50: each axle gets half the drive/brake force, capped by its grip
   let spinning = false;
@@ -678,7 +688,7 @@ function stepCar(dt, canDrive, walls = true) {
       const hard = vn > 0.6, kk = hard ? 1.3 : 1;
       car.vx -= n.x * sg * vn * kk; car.vz -= n.z * sg * vn * kk;
       if (hard) {
-        car.vx *= 0.88; car.vz *= 0.88; r *= 0.4; audio.bump(Math.min(1, vn / 6));
+        car.vx *= 0.88; car.vz *= 0.88; r *= 0.4; audio.bump(Math.min(1, vn / 6)); rumble(Math.min(1, vn / 5), 0.5, 140);
         const latImp = -(n.x * ch - n.z * sh) * sg * vn; // impulse direction in body "left" axis
         car.rollV += latImp * 6; car.pitchV -= Math.abs(vn) * 1.5;
       }
@@ -859,21 +869,78 @@ function updateCamera(dt, snap) {
 
 /* ---------------- input ---------------- */
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
+/* input: keyboard and gamepad merged into analog throttle, brake and steering */
+const input = { thr: 0, brk: 0, steer: 0, kbSteer: 0, pad: null };
+function actCamera() { camMode = (camMode + 1) % CAMS.length; $('camname').firstChild.textContent = 'CAM · ' + CAMS[camMode]; updateCamera(0, true); }
+function actReset() { if (race.state !== 'menu') placeCar(car.idx); }
+function actMusic() { flash(audio.toggleMusic() ? 'MUSIC ON' : 'MUSIC OFF', 0.9); }
+function actTele() { telemetryOn = !telemetryOn; $('tele').hidden = !telemetryOn; }
+function actPause() { if (race.state === 'menu') return; race.paused = !race.paused; audio.suspend(race.paused); $('msg').textContent = race.paused ? 'PAUSED' : ''; }
 window.addEventListener('keydown', e => {
   if (GAME_KEYS.includes(e.code)) e.preventDefault();
   keys[e.code] = true;
   if (e.repeat) return;
   if (e.code === 'Enter' && race.state === 'menu' && !garageOpen) startRace();
-  if (e.code === 'KeyC') { camMode = (camMode + 1) % CAMS.length; $('camname').firstChild.textContent = 'CAM · ' + CAMS[camMode]; updateCamera(0, true); }
-  if (e.code === 'KeyR' && race.state !== 'menu') { placeCar(car.idx); }
-  if (e.code === 'KeyM') flash(audio.toggleMusic() ? 'MUSIC ON' : 'MUSIC OFF', 0.9);
+  if (e.code === 'KeyC') actCamera();
+  if (e.code === 'KeyR') actReset();
+  if (e.code === 'KeyM') actMusic();
   if (e.code === 'KeyG') toggleGarage();
-  if (e.code === 'KeyT') { telemetryOn = !telemetryOn; $('tele').hidden = !telemetryOn; }
+  if (e.code === 'KeyT') actTele();
   if (e.code === 'Escape' && garageOpen) toggleGarage(false);
-  if (e.code === 'KeyP' && race.state !== 'menu') { race.paused = !race.paused; audio.suspend(race.paused); $('msg').textContent = race.paused ? 'PAUSED' : ''; }
+  if (e.code === 'KeyP') actPause();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+window.addEventListener('gamepadconnected', e => { flash('CONTROLLER CONNECTED', 1.4); $('padhint').hidden = false; });
+window.addEventListener('gamepaddisconnected', () => flash('CONTROLLER DISCONNECTED', 1.4));
+function rumble(strong, weak, ms) {
+  const act = input.pad && input.pad.vibrationActuator;
+  if (act && act.playEffect) act.playEffect('dual-rumble', { duration: ms, strongMagnitude: strong, weakMagnitude: weak }).catch(() => {});
+}
+// standard mapping: 0 A/Cross, 1 B/Circle, 2 X/Square, 3 Y/Triangle, 4 LB, 5 RB, 6 LT, 7 RT, 8 View/Share, 9 Menu/Options, 12-15 d-pad
+let padPrev = [];
+function padButtons(gp) {
+  const now = gp.buttons.map(b => b.pressed), hit = i => now[i] && !padPrev[i];
+  if (garageOpen) {
+    if (hit(12)) garageMove(-1, 0); if (hit(13)) garageMove(1, 0);
+    if (hit(14)) garageMove(0, -1); if (hit(15)) garageMove(0, 1);
+    if (hit(0) || hit(1) || hit(8) || hit(9)) toggleGarage(false);
+  } else if (race.state === 'menu') {
+    if (hit(0) || hit(9)) startRace();
+    if (hit(8)) toggleGarage(true);
+  } else {
+    if (hit(9)) actPause();
+    if (hit(3)) actCamera();
+    if (hit(2)) actReset();
+    if (hit(8)) toggleGarage(true);
+    if (hit(4)) actTele();
+    if (hit(5)) actMusic();
+  }
+  padPrev = now;
+}
+function pollInput(dt) {
+  const kbT = keys.ArrowUp || keys.KeyW ? 1 : 0, kbB = keys.ArrowDown || keys.KeyS ? 1 : 0;
+  const kbS = (keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0);
+  // keyboard steering acts like a thumb on a stick: eases in over ~0.3 s, springs back quickly
+  const easing = kbS !== 0 && Math.sign(kbS) === Math.sign(input.kbSteer || kbS);
+  input.kbSteer += clamp(kbS - input.kbSteer, -(easing ? 3.2 : 10) * dt, (easing ? 3.2 : 10) * dt);
+  let gT = 0, gB = 0, gS = 0, gp = null;
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const p of pads) if (p && p.connected) { gp = p; break; }
+  input.pad = gp;
+  if (gp) {
+    const dz = 0.12, ax = gp.axes[0] || 0;
+    let x = Math.abs(ax) < dz ? 0 : Math.sign(ax) * (Math.abs(ax) - dz) / (1 - dz);
+    gS = -(x * 0.6 + x * x * x * 0.4); // a little expo: fine control near centre
+    const val = i => { const b = gp.buttons[i]; return b ? (b.value || (b.pressed ? 1 : 0)) : 0; };
+    gT = val(7); gB = val(6);
+    if (gp.mapping !== 'standard' && gp.axes.length >= 6) { gT = Math.max(gT, (gp.axes[5] + 1) / 2); gB = Math.max(gB, (gp.axes[2] + 1) / 2); }
+    gT = gT < 0.04 ? 0 : gT; gB = gB < 0.04 ? 0 : gB;
+    padButtons(gp);
+  }
+  input.thr = Math.max(kbT, gT); input.brk = Math.max(kbB, gB);
+  input.steer = Math.abs(gS) > 0.001 ? gS : input.kbSteer;
+}
 $('go').addEventListener('click', () => { startRace(); $('go').blur(); });
 $('camname').textContent = 'CAM · CHASE';
 
@@ -884,13 +951,20 @@ const NOTES = {
   spring: ['Soft springs. More roll and slower weight transfer; forgiving.', 'Medium springs. Kit standard.', 'Hard springs. Little roll, sharp response, less forgiving over the limit.'],
   oil: ['Thin shock oil. The body moves fast and can bounce after direction changes.', 'Kit standard shock oil.', 'Thick shock oil. Slow, damped body movement; the car settles before it rotates.'],
   arb: ['Softer front roll bar. More front grip: turns in harder, rear can step out.', 'Equal roll stiffness front and rear.', 'Stiffer front roll bar. More load transfer at the front: steadier, but pushes wide (understeer).'],
-  assist: ['Trims steering lock as speed rises, to make up for on/off keyboard steering.', 'Full steering lock at any speed, like a real transmitter at 100% dual rate.'],
+  assist: ['Limits steering to what the tires can use at this speed, plus traction control and ABS. Best for keyboard.', 'No help: full lock at any speed, wheels can spin and lock. Like a real transmitter; best with a gamepad.'],
 };
-let garageOpen = false;
+let garageOpen = false, garageRow = 0;
+function garageMove(dRow, dOpt) {
+  const ks = Object.keys(SETUP_OPTS);
+  garageRow = (garageRow + dRow + ks.length) % ks.length;
+  const k = ks[garageRow];
+  if (dOpt) { setup[k] = (setup[k] + dOpt + SETUP_OPTS[k].opts.length) % SETUP_OPTS[k].opts.length; saveSetup(); }
+  buildGarage(); $('gnote').textContent = NOTES[k][setup[k]];
+}
 function buildGarage() {
   const rows = $('grows'); rows.innerHTML = '';
   for (const key of Object.keys(SETUP_OPTS)) {
-    const lab = document.createElement('span'); lab.className = 'lbl'; lab.textContent = SETUP_OPTS[key].label;
+    const lab = document.createElement('span'); lab.className = 'lbl' + (Object.keys(SETUP_OPTS)[garageRow] === key ? ' sel' : ''); lab.textContent = SETUP_OPTS[key].label;
     const chips = document.createElement('div'); chips.className = 'chips';
     SETUP_OPTS[key].opts.forEach((name, i) => {
       const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'chip'; bt.id = `set-${key}-${i}`; bt.textContent = name;
@@ -946,12 +1020,13 @@ function drawTelemetry() {
 
 /* ---------------- main loop ---------------- */
 placeCar(N - 14); race.prevIdx = car.idx; updateCamera(0, true);
-window.__carpetCircuit = { car, setup, keys, stepCar, placeCar, VEH, MOTORS }; // debug / test hook
+window.__carpetCircuit = { car, setup, keys, input, stepCar, placeCar, VEH, MOTORS }; // debug / test hook
 let acc = 0, last = performance.now(), hudT = 0;
 const DT = 1 / 720; // tire forces are stiff; small steps keep them stable
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  pollInput(dt);
   if (race.paused || garageOpen) { renderer.render(scene, camera); return; }
   clock += dt;
   if (race.state === 'count') {

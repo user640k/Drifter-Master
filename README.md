@@ -12,11 +12,15 @@ Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored
 ## Controls
 Arrows/WASD drive (hold Down at a stop to reverse), G car setup, T telemetry, C camera, R reset car, M music, P pause, Enter start.
 
+## Gamepad
+Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, RB music, Menu/Options pause. Barrier hits rumble.
+
 ## Driving model
 Real 1/10 electric touring car numbers (SI units), stepped at 720 Hz:
 - **Motor**: DC torque curve, `F = Fstall * (throttle - wheelSpeed / vFree)`. Brushed 540 RTR ~42 km/h, 13.5T stock ~54 km/h, 6.5T mod ~83 km/h. 0-30 km/h in ~0.85 s (traction-limited).
 - **ESC**: brake, then hold at a stop for reverse (capped ~12 km/h), light drag brake off throttle.
 - **Tires**: per-axle slip angle into a Pacejka-style curve (peak ~7 deg, ~85% when sliding), combined with drive/brake on a friction circle, load-sensitive grip. 4WD 50/50.
 - **Suspension**: roll and pitch spring/damper systems; their deflection moves load between wheels. Roll-bar split decides how much of it lands on the front or rear.
-- **Setup (G)**: motor, tire compound, springs, shock oil, roll bars, keyboard steering assist. Saved in the browser.
+- **Setup (G)**: motor, tire compound, springs, shock oil, roll bars, driving assist (grip-limited steering, traction control, ABS). Saved in the browser.
 - **Telemetry (T)**: wheel loads, grip used per axle, slip angles, g-forces, roll/pitch, wheelspin.
