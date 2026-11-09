@@ -24,11 +24,11 @@ Drive through the gates in order (the next gate glows on the floor and on the mi
 - **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
 - **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
 - **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.3 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
-- **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump.
+- **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump. Ramp faces are solid: kickers can only be climbed from the slope side, and the side edges block; the table-top and rollers can be driven either way.
 - **LIVING ROOM**: furniture course past the sofa, between the pouf and the TV stand, under the coffee table between its legs and past the armchair. The rug grips like carpet.
 
 ## Sound
-Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (idle, steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide.
+Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide. The motor is silent off the throttle.
 
 ## Cameras (C)
 Chase, DRIVER POV (standing in the corner at 1.65 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), bumper, ceiling.
