@@ -1,4 +1,4 @@
-<title>TK-06 Shell Viewer</title>
+<title>Carpet Circuit Car Viewer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@500;700&display=swap">
@@ -48,7 +48,7 @@ ol .n { color: var(--hot); min-width: 1.6em; font-variant-numeric: tabular-nums;
 }
 </style>
 
-<header><h1>TK-06 SHELL VIEWER</h1><span class="sub">Original 1/10 widebody drift shell from Carpet Circuit, 430 mm long, in its default look. Drag to rotate, scroll or pinch to zoom.</span></header>
+<header><h1>CAR VIEWER</h1><span class="sub">The default 1/10 RX-7 drift shell from Carpet Circuit, 450 mm long. Drag to rotate, scroll or pinch to zoom.</span></header>
 <div class="stage" id="stage">
   <canvas id="cv"></canvas>
   <div class="views" id="views"></div>
@@ -92,18 +92,18 @@ const VIEWS = [
   ['TOP', [0.001, 0.9, 0], [0, 0.04, 0]],
 ];
 const PARTS = [
-  ['Front mouth and splitter', [0.12, 0.06, 0.5], [0, 0.03, 0.235]],
-  ['Headlights and LED strips', [0.18, 0.12, 0.4], [0.05, 0.066, 0.21]],
-  ['Bonnet and stripes', [0.22, 0.35, 0.45], [0, 0.08, 0.13]],
-  ['Front blister fender', [0.42, 0.08, 0.3], [0.1, 0.04, 0.128]],
-  ['Front wheel', [0.38, 0.05, 0.22], [0.09, 0.032, 0.128]],
-  ['Side vents and two-tone blade', [0.55, 0.08, 0.05], [0.1, 0.05, 0.03]],
-  ['Mirrors', [0.3, 0.14, 0.2], [0.09, 0.104, 0.07]],
-  ['Roof and glass', [0.3, 0.45, 0.15], [0, 0.12, -0.02]],
-  ['Rear blister fender', [0.42, 0.08, -0.3], [0.1, 0.04, -0.128]],
-  ['Rear wheel', [0.38, 0.05, -0.22], [0.09, 0.032, -0.128]],
-  ['GT wing', [0.3, 0.25, -0.45], [0, 0.15, -0.19]],
-  ['Tail lamps and exhaust', [0.06, 0.08, -0.6], [0, 0.06, -0.225]],
+  ['Front bumper and intake', [0.12, 0.06, 0.5], [0, 0.04, 0.2]],
+  ['Pop-up headlight covers', [0.2, 0.2, 0.45], [0.06, 0.07, 0.17]],
+  ['Bonnet', [0.22, 0.35, 0.45], [0, 0.07, 0.13]],
+  ['Front fender', [0.42, 0.08, 0.3], [0.08, 0.05, 0.137]],
+  ['Front wheel', [0.38, 0.05, 0.22], [0.075, 0.034, 0.137]],
+  ['Side mirror', [0.3, 0.14, 0.2], [0.09, 0.095, 0.02]],
+  ['Doors and side glass', [0.6, 0.12, 0], [0.08, 0.07, 0]],
+  ['Roof and rear glass', [0.3, 0.45, 0.15], [0, 0.11, -0.08]],
+  ['Rear fender', [0.42, 0.08, -0.3], [0.08, 0.05, -0.12]],
+  ['Rear wheel', [0.38, 0.05, -0.22], [0.075, 0.034, -0.12]],
+  ['Wing', [0.3, 0.25, -0.45], [0, 0.1, -0.2]],
+  ['Tail lights and rear bumper', [0.06, 0.08, -0.6], [0, 0.07, -0.21]],
   ['Underglow', [0.5, 0.3, 0.3], [0, 0.0, 0]],
 ];
 let fit = 1;

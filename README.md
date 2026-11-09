@@ -1,6 +1,6 @@
 # Carpet Circuit
 
-Browser RC drift game: a 1/10 RWD drift car with an original widebody shell, the TK-06 (mid-2000s street-drift style: long curved bonnet, fastback roof, blister fenders, big mesh mouth, slim projector lights, round twin tail lamps, centre exhaust, GT wing, neon underglow), sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, by default an RX-7 body (from a supplied, free-to-use 3D model, simplified to about 72k triangles), with an original widebody TK-06 body as an alternative, sliding round a foam-barrier track on polished concrete in a 20 ft x 20 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -17,7 +17,7 @@ Any controller the browser sees with the standard layout (Xbox, PlayStation, mos
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up lights, D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
 ## Customize
-Menu → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour), underglow colour or off, racing stripes on/off, and sliders for wing height (0 = no wing), body width, ride height, camber and window tint. Looks only; handling is unchanged. Saved in the browser.
+Menu → CUSTOMIZE: body (RX-7 or TK-06), paint, accent and wheel colours (swatches or any colour), underglow colour or off, racing stripes on/off (TK-06), and sliders for wing height (0 = no wing), body width, ride height, camber and window tint. Looks only; handling is unchanged. Saved in the browser.
 
 ## Menu
 A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CUSTOMIZE, CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
@@ -61,3 +61,6 @@ The game runs as-is in the browser. To make the upload:
     python3 tools/make_itch.py
 
 This writes `dist/carpet-circuit-itch.zip` (a full HTML document plus a bundled copy of three.js r128, MIT licence included), which runs without internet access. On itch.io: create a new project, Kind = HTML, upload the zip, tick "This file will be played in the browser", and set the viewport to 1280 x 760.
+
+## RX-7 model
+The default body comes from an RX-7 model supplied with the project as free to use (OBJ + textures, not in the repo because of size). `tools/rx7_parse_obj.py` and `tools/rx7_build_asset.py` group its 130 parts by role (paint, glass, trim, lights, four wheel assemblies split into spinning parts and calipers), simplify it from about 280k to 72k triangles, scale it to 1/10.2 (257 mm wheelbase) and pack it as quantised base64 arrays embedded in `index.html`. The tail-light texture is used; the number-plate texture (brand name) and the tire-sidewall texture (tire brand logo) are left out.
