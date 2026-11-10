@@ -43,6 +43,7 @@ canvas#view { width: 100%; height: 100%; display: block; }
 .speed .num { font-weight: 700; font-family: var(--display); font-size: 5.00cqw; line-height: 1; font-variant-numeric: tabular-nums; }
 .speed .unit { font-size: 1.20cqw; color: #fff; letter-spacing: .1em; font-weight: 500; }
 .speed .scale { font-size: 1.05cqw; color: #fff; letter-spacing: .08em; font-weight: 500; }
+.laps .lbl, .laps .val, .speed, .cam { text-shadow: 0 .1cqw .5cqw rgba(0,0,0,.85), 0 0 .2cqw rgba(0,0,0,.6); }
 .drift { left: 50%; top: 1.6cqw; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity .25s; }
 .drift.on { opacity: 1; }
 .drift .dpts { font-family: var(--display); font-weight: 700; font-size: 3.6cqw; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 .2cqw .6cqw rgba(0,0,0,.6); }
@@ -128,6 +129,7 @@ canvas#view { width: 100%; height: 100%; display: block; }
       <span class="lbl">SCORE</span><span class="val" id="dtotal">0</span>
       <span class="lbl">TOP DRIFT</span><span class="val" id="dbest">0</span>
     </div>
+    <div class="box cam" id="camname">CAM · CHASE</div>
     <div class="box drift" id="drift" aria-live="off"><div class="dpts" id="dpts">0</div><div class="dsub" id="dsub"></div></div>
     <div class="box speed">
       <div><span class="num" id="spd">0</span> <span class="unit">KM/H</span></div>
@@ -147,10 +149,10 @@ canvas#view { width: 100%; height: 100%; display: block; }
       <div class="mcontrols" id="mcontrols" hidden>
         <div class="mcol"><b>KEYBOARD</b>
           <span><kbd>↑</kbd> throttle</span><span><kbd>↓</kbd> brake · hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd> steer</span>
-          <span><kbd>R</kbd> reset car</span><span><kbd>V</kbd> drift / grip</span><span><kbd>M</kbd> mute</span><span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>Esc</kbd> pause</span></div>
+          <span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset car</span><span><kbd>V</kbd> drift / grip</span><span><kbd>M</kbd> mute</span><span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>Esc</kbd> pause</span></div>
         <div class="mcol"><b>GAMEPAD</b>
           <span><kbd>RT</kbd> throttle</span><span><kbd>LT</kbd> brake · hold to reverse</span><span>Left stick steer</span>
-          <span><kbd>X</kbd> reset car</span><span>D-pad <kbd>↓</kbd> drift / grip</span><span><kbd>View</kbd> car setup</span><span><kbd>LB</kbd> telemetry</span><span><kbd>Menu</kbd> pause</span></div>
+          <span><kbd>Y</kbd> camera</span><span><kbd>X</kbd> reset car</span><span>D-pad <kbd>↓</kbd> drift / grip</span><span><kbd>View</kbd> car setup</span><span><kbd>LB</kbd> telemetry</span><span><kbd>Menu</kbd> pause</span></div>
         <div class="mback">Enter / A / Esc to go back</div>
       </div>
       <div class="mnote" id="mnote"></div>
@@ -1564,7 +1566,7 @@ function raceHud() {
 }
 
 /* ---------------- cameras ---------------- */
-const CAMS = ['CHASE']; // chase camera only for now (driver's view and ceiling cam code kept below)
+const CAMS = ['CHASE', 'DRIVER POV']; // the ceiling cam code below is kept but switched off
 // the driver: standing in the near-left corner like at home, eyes at 1.65 m, head turning to follow the car
 // with a human lag, a 55° field of view (no zoom), and the transmitter held in front at chest height
 const POV = { fov: 55 }; // eye position comes from the map (MAP.pov)
@@ -1642,7 +1644,7 @@ function updateCamera(dt, snap) {
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
 /* input: keyboard and gamepad merged into analog throttle, brake and steering */
 const input = { thr: 0, brk: 0, steer: 0, kbSteer: 0, pad: null, thrDigital: false };
-function actCamera() { camMode = (camMode + 1) % CAMS.length; updateCamera(0, true); if (menu.open) renderMenu(); }
+function actCamera() { camMode = (camMode + 1) % CAMS.length; $('camname').textContent = 'CAM · ' + CAMS[camMode]; updateCamera(0, true); if (menu.open) renderMenu(); }
 function actReset() { if (race.state !== 'race') return; Object.assign(car, { u: 0, v: 0, r: 0, w: 0, vx: 0, vz: 0, rollV: 0, pitchV: 0, steer: 0 }); for (let k = 0; k < 4; k++) for (const [cx, cz] of carCircles()) { const h = []; contactsFor(cx, cz, h); for (const [nx, nz, p] of h) { car.x += nx * p; car.z += nz * p; } } }
 // drive mode: DRIFT (RWD, gyro) or GRIP (regular 4WD touring car)
 function actMode() { setOpt('car', setup.car ? 0 : 1); if (garageOpen) buildGarage(); updateModeUI(); loadBest(); $('best').textContent = fmt(best); if (!menu.open) flash((setup.car ? 'GRIP' : 'DRIFT') + ' MODE', 1.2); }
@@ -1663,6 +1665,7 @@ function menuItems() {
   const shared = [
     opt('COURSE', COURSES[setup.layout].name, d => { setCourse(setup.layout + d); if (menu.kind === 'pause') resetRun(); }),
     opt('MODE', setup.car ? 'GRIP' : 'DRIFT', () => actMode()),
+    opt('CAMERA', CAMS[camMode], () => actCamera()),
     opt('RACE', oppLevel ? 'VS ' + OPP_LEVELS[oppLevel] : 'SOLO', d => { oppLevel = (oppLevel + d + OPP_LEVELS.length) % OPP_LEVELS.length; try { localStorage.setItem('cc-opp', String(oppLevel)); } catch (e) {} if (menu.kind === 'pause') resetRun(); }),
     act('CUSTOMIZE', () => toggleCustom(true)),
     opt('VOLUME', volLabel(), d => setVol((muted ? volume : volume + d))),
@@ -1735,6 +1738,7 @@ window.addEventListener('keydown', e => {
   }
   if (e.repeat) return;
   if (e.code === 'Escape' || e.code === 'KeyP') openMenu('pause');
+  if (e.code === 'KeyC') actCamera();
   if (e.code === 'KeyR') actReset();
   if (e.code === 'KeyG') toggleGarage();
   if (e.code === 'KeyT') actTele();
@@ -1768,6 +1772,7 @@ function padButtons(gp, dt) {
     menuNav(dy, dx, hit(0), hit(1) || hit(9));
   } else {
     if (hit(9)) openMenu('pause');
+    if (hit(3)) actCamera();
     if (hit(2)) actReset();
     if (hit(8)) toggleGarage(true);
     if (hit(4)) actTele();

@@ -10,17 +10,17 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, G car setup, T telemetry, M mute (volume is in the menu, saved between sessions), R reset car, Esc/P pause menu.
+Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, C camera, G car setup, T telemetry, M mute (volume is in the menu, saved between sessions), R reset car, Esc/P pause menu.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
-Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, X reset, View/Share setup (d-pad to change, B to close), LB telemetry D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
 ## Customize
 Menu → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour) and underglow colour or off. Colours only for now; the body shape is fixed. Saved in the browser.
 
 ## Menu
-A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), RACE (solo, or against an opponent: easy, medium, hard), CUSTOMIZE, VOLUME, CAR SETUP, CONTROLS. Behind it the arena is shown from the viewpoint of the reference photo. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CAMERA, RACE (solo, or against an opponent: easy, medium, hard), CUSTOMIZE, VOLUME, CAR SETUP, CONTROLS. Behind it the arena is shown from the viewpoint of the reference photo. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
 ## Map: RC arena
 Modelled on a photo of a real indoor RC drift track, laid out to match it from the photo's viewpoint (front-right corner, over the fence). A room 11.2 x 12.8 m with a 6 m black ceiling: light grey walls to 2.6 m, a white band, then a muted red band and black (bare board-formed concrete on the stand side), conduit runs, steel double doors with an exit sign, a lit doorway and a fire extinguisher. The track is a raised deck of glossy mid-grey speckled epoxy (P-tile grip), about 8 x 10.4 m, with thick black rubber edging and a thin red line along the back corner. In it a wide C-shaped turf island (light olive artificial grass, graded to the photo) with red/white curbs, open towards the back on the fence side; inside the C a pad with a small painted circle and a line out through the opening. A red L-shaped driver's stand wraps the far corner (clear panels, red curtains below, aluminium chairs, stairs down the concrete wall). Along the right: a turf strip, a black chain-link fence, stacks of real-profile tires behind it and two checkered flags; crowd barriers on the left. Six ceiling cans light the track. The island and the track edge are solid.
@@ -51,7 +51,7 @@ A drift counts once the car slides past 12 deg at over 0.7 m/s. Points flow in a
 The motor is a synthesised whine (triangle fundamental, sine harmonics, a quiet gear-mesh tone, a little wobble) that follows motor speed from about 95 Hz at a crawl to roughly 900 Hz flat out, so you hear every bit of extra revs; it is silent off the throttle. Under it, softened (lowpassed) loops cut from a recording of a real RC drift car add tire and drive-train texture, cross-faded by slide. Everything the car makes is placed at the car and heard from the camera: further away it gets quieter, duller and panned to its side (chase cam close, driver's stand and ceiling cam far).
 
 ## Camera
-Chase camera only for now (the driver's-stand and ceiling cameras are switched off). The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
+Two cameras (C / Y): chase, and DRIVER POV: standing on the driver's stand at about 2.75 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs. The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz.
