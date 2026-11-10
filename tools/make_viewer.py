@@ -19,9 +19,8 @@ def line(prefix):
 
 parts = [
     line('const clamp = '), line('function rng(seed)'),
-    between('function tex(', 'const T = {};', True),
-    line('T.blob = tex('), line('T.blob.wrapS'), line('T.tire = tex('), line('T.halo = tex('),
-    between('T.fivespoke = tex(', 'T.fivespoke.wrapS = T.fivespoke.wrapT = THREE.ClampToEdgeWrapping;', True),
+    between('function tex(', 'const IMG = '), 'const T = {};',
+    line('T.blob = tex('), line('T.blob.wrapS'), line('T.halo = tex('),
     line('const lam = '), line('function box('),
     between('const CAR = {', 'let carObj = buildCar();'),
 ]

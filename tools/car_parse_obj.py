@@ -21,7 +21,7 @@ out=[]
 for (gn,m),p in parts.items():
     F=np.array(p['f'],np.int64); P=V[F.reshape(-1)]
     out.append(dict(g=gn,m=m,f=F,uv=np.array(p['uv'],np.int64),bmin=P.min(0),bmax=P.max(0)))
-pickle.dump(dict(V=V,VT=VT,parts=out),open('rx7_parts.pkl','wb'))
+pickle.dump(dict(V=V,VT=VT,parts=out),open('car_parts.pkl','wb'))
 for i,o in enumerate(out):
     c=(o['bmin']+o['bmax'])/2; s=o['bmax']-o['bmin']
     print(f"{i:3d} tris {len(o['f']):6d} c({c[0]:6.2f},{c[1]:5.2f},{c[2]:6.2f}) s({s[0]:5.2f},{s[1]:5.2f},{s[2]:5.2f})  {o['m'][:38]:38s} {o['g'][:60]}")

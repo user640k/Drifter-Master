@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, by default an RX-7 body (from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), with an original widebody TK-06 body as an alternative, sliding round a foam-barrier track on polished concrete in a 40 ft x 40 ft white room with the curtains drawn, lit by colour-changing LED mood lights. Early-2000s style procedural textures, synth audio (Web Audio), keyboard controls, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two maps: a 40 ft x 40 ft steel-framed warehouse with a 4.5 m roof and smooth polished concrete, and an early-2000s living room with furniture you drive round and under. Colour-changing LED mood lights, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -17,16 +17,23 @@ Any controller the browser sees with the standard layout (Xbox, PlayStation, mos
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry, D-pad up lights, D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
 ## Customize
-Menu → CUSTOMIZE: body (RX-7 or TK-06), paint, accent and wheel colours (swatches or any colour), underglow colour or off, racing stripes on/off (TK-06), and sliders for wing height (0 = no wing), body width, ride height, camber and window tint. Looks only; handling is unchanged. Saved in the browser.
+Menu → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour), underglow colour or off, and sliders for wing height (0 = no wing), body width, ride height, camber and window tint. Looks only; handling is unchanged. Saved in the browser.
 
 ## Menu
 A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CUSTOMIZE, CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+
+## Maps
+- **Warehouse**: 12.2 m square, 4.5 m to the roof deck. Painted block walls to 1.2 m with corrugated cladding above, blue steel I-section columns (solid to the car), roof I-beams on the column lines, purlins, skylights, four high-bay lamps, a roller shutter with hazard posts, a steel exit door, an electrical panel and a yellow walkway line. Floor: smooth polished concrete.
+- **Living room**: 6 x 5 m, 2.5 m ceiling, furnished like an early-2000s game interior: striped wallpaper over wood panelling, a three-seat sofa, a plaid armchair, a coffee table you can drive under (its legs are solid), a Persian rug (grips like carpet), a CRT TV with a VCR on a stand, a bookshelf, a side table with a lamp, a window at night with red velvet curtains and a radiator, a pot plant, a clock and two framed prints. Laminate floor.
+
+Photo textures are CC0 (Poly Haven, ambientCG) or public domain (Wikimedia Commons), shrunk to early-2000s sizes; see `tools/textures/SOURCES.md`.
 
 ## Courses
 Drive through the gates in order (the next gate glows on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
 - **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
 - **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
 - **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.5 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
+- **LIVING ROOM** (living room map): figure of eight round the coffee table, passing under it twice (once each way) between the legs.
 - **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump. Ramp faces are solid: kickers can only be climbed from the slope side, and the side edges block; the table-top and rollers can be driven either way.
 
 ## Sound
@@ -35,12 +42,12 @@ Motor and tire sounds are loops cut from a recording of a real RC drift car on p
 ## Cameras (C)
 The HUD is plain text: lap, time, last, best and gate count top left, speed and drift angle bottom right; no minimap.
 
-Chase, DRIVER POV (standing in the corner at 1.65 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), bumper, ceiling.
+Chase, DRIVER POV (standing in a corner of the map at about 1.6 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), ceiling.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz.
 - **Cars**: RWD drift (default: hard plastic tires, ~57 deg steering lock, 44/56 weight split, steering gyro) or 4WD grip touring (rubber tires).
-- **Surfaces**: polished concrete (default, the most common RC drift surface), P-tile (polished vinyl tiles used at dedicated drift tracks), carpet (grip racing; drift tires hook up on it).
+- **Surface**: smooth polished concrete (the most common RC drift surface); the living-room laminate drives the same, and the rug grips like carpet (drift tires hook up on it).
 - **Motor**: DC torque curve against wheel speed, `F = Fstall * (throttle - wheelSpeed / vFree)`; above the throttle's speed the ESC drags the wheels back, so the trigger sets wheel speed. Motors: brushed 540, 13.5T stock, 6.5T mod, 13.5T drift (high gearing).
 - **Tires**: driven wheels have their own speed. Combined slip (slip ratio + slip angle) sets the force, which points against the slip vector, so a hard-spinning rear tire gives thrust instead of side grip. Throttle sets the drift angle.
 - **Gyro** (with steering mixing): the stick asks for a turn (full lock about a 1.1 m path radius, capped at 3 rad/s) and the gyro steers to hold that yaw rate, damping extra rotation so the car doesn't spin. Gain OFF/40/70/90%.
@@ -61,5 +68,5 @@ The game runs as-is in the browser. To make the upload:
 
 This writes `dist/drift-master-itch.zip` (a full HTML document plus a bundled copy of three.js r128, MIT licence included), which runs without internet access. On itch.io: create a new project, Kind = HTML, upload the zip, tick "This file will be played in the browser", and set the viewport to 1280 x 760.
 
-## RX-7 model
-The default body comes from an RX-7 model supplied with the project as free to use (OBJ + textures, not in the repo because of size). `tools/rx7_parse_obj.py` and `tools/rx7_build_asset.py` group its 130 parts by role (paint, glass, trim, lights, four wheel assemblies split into spinning parts and calipers), simplify it from about 280k to 72k triangles, scale it to 1/10.2 (257 mm wheelbase) and pack it as quantised base64 arrays embedded in `index.html`. The tail-light texture is used; the number-plate texture (brand name) and the tire-sidewall texture (tire brand logo) are left out.
+## Car model
+The body comes from a 3D car model supplied with the project as free to use (OBJ + textures, not in the repo because of size). `tools/car_parse_obj.py` and `tools/car_build_asset.py` group its 130 parts by role (paint, glass, trim, lights, four wheel assemblies split into spinning parts and calipers), simplify it from about 280k to 72k triangles, scale it to 1/10.2 (257 mm wheelbase) and pack it as quantised base64 arrays embedded in `index.html`. The tail-light texture is used; the number-plate texture (brand name) and the tire-sidewall texture (tire brand logo) are left out.

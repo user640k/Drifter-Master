@@ -1,10 +1,10 @@
-"""Run tools/rx7_parse_obj.py <RX7_OBJ.obj> first (writes rx7_parts.pkl), then this script.
+"""Run tools/car_parse_obj.py <model.obj> first (writes car_parts.pkl), then this script.
 The source model and textures are not in the repo (51 MB OBJ); they were supplied as free to use.
-Convert the RX-7 OBJ into a compact, game-ready asset (JSON with base64 typed arrays).
+Convert the car OBJ into a compact, game-ready asset (JSON with base64 typed arrays).
 Parts are grouped by material role; each wheel is split into a spinning assembly and a fixed caliper.
 Coordinates go to the game's model space (+x forward, +y up, +z right) at 1/10.2 scale."""
 import pickle, json, base64, numpy as np, fast_simplification as fs, sys
-D = pickle.load(open('rx7_parts.pkl', 'rb')); V, VT, parts = D['V'], D['VT'], D['parts']
+D = pickle.load(open('car_parts.pkl', 'rb')); V, VT, parts = D['V'], D['VT'], D['parts']
 S = 0.257 / 2.52                       # real wheelbase 2.52 m -> RC wheelbase 257 mm
 WHEELS = {'RL': (0.72, -1.18), 'RR': (-0.72, -1.18), 'FL': (0.72, 1.34), 'FR': (-0.72, 1.34)}  # (obj x, obj z)
 HUB_Y = 0.34
@@ -89,5 +89,5 @@ for (r, w), ps in sorted(groups.items(), key=lambda kv: (kv[0][0], str(kv[0][1])
     print(f"{r:10s} {str(w):4s} parts {len(ps):3d} tris {len(F):6d} -> {len(Fl):6d}")
 out['lo'] = lo.round(6).tolist(); out['hi'] = hi.round(6).tolist()
 js = json.dumps(out, separators=(',', ':'))
-open('rx7_asset.json', 'w').write(js)
+open('car_asset.json', 'w').write(js)
 print('total tris', tot, 'json KB', len(js) // 1024)
