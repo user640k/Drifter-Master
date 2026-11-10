@@ -51,23 +51,15 @@ def flag(name):
     return bg.convert('RGB').resize((128, 80), Image.LANCZOS)
 def grey(im): return ImageOps.grayscale(im).convert('RGB')
 JOBS = {
-    # garage walls, sampled from the reference photo
+    # RC arena: sampled from the reference photo (phWall too), floor from Poly Haven
+    'arFloor': lambda: crunch(ImageEnhance.Brightness(grey(square(load('hangar_concrete_floor.jpg'), 256))).enhance(2.3)),
+    'phTrack': lambda: crunch(ref((660, 1020, 1060, 1300), (256, 256), 30)),
+    'phPad': lambda: crunch(grainy(ref((742, 572, 803, 633), (128, 128), 14), 14, 4)),
+    'phConcrete': lambda: crunch(ref((560, 2, 790, 80), (256, 128), 30, True, 1.2)),
+    'phRed': lambda: crunch(ref((1285, 158, 1495, 184), (128, 64), 15)),
+    'phCurtain': lambda: crunch(ref((520, 420, 800, 500), (256, 128), 0, False, 1.2)),
+    'phDoors': lambda: crunch(ref((1098, 338, 1245, 515), (128, 160), 0, False, 1.2)),
     'phWall': lambda: crunch(grainy(ref((1262, 322, 1438, 418), (128, 128), 25), 9, 5)),
-    # national flags (Wikimedia Commons, public domain)
-    'fl_au': lambda: crunch(flag('Flag_of_Australia_(converted).svg.png')),
-    'fl_br': lambda: crunch(flag('Flag_of_Brazil.svg.png')),
-    'fl_ca': lambda: crunch(flag('Flag_of_Canada_(Pantone).svg.png')),
-    'fl_fr': lambda: crunch(flag('Flag_of_France.svg.png')),
-    'fl_de': lambda: crunch(flag('Flag_of_Germany.svg.png')),
-    'fl_ie': lambda: crunch(flag('Flag_of_Ireland.svg.png')),
-    'fl_it': lambda: crunch(flag('Flag_of_Italy.svg.png')),
-    'fl_jp': lambda: crunch(flag('Flag_of_Japan.svg.png')),
-    'fl_mx': lambda: crunch(flag('Flag_of_Mexico.svg.png')),
-    'fl_kr': lambda: crunch(flag('Flag_of_South_Korea.svg.png')),
-    'fl_es': lambda: crunch(flag('Flag_of_Spain.svg.png')),
-    'fl_se': lambda: crunch(flag('Flag_of_Sweden.svg.png')),
-    'fl_nl': lambda: crunch(flag('Flag_of_the_Netherlands.svg.png')),
-    'fl_us': lambda: crunch(flag('Flag_of_the_United_States.svg.png')),
     # home track room
     'hmPaint': lambda: crunch(ImageOps.colorize(ImageOps.autocontrast(square(load('painted_plaster_wall.jpg'), 256).convert('L'), cutoff=0.5), (214, 210, 204), (250, 248, 244))),
     'hmFloor': lambda: crunch(ImageEnhance.Brightness(square(load('herringbone_parquet.jpg'), 256)).enhance(0.9)),

@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two venues: a cozy home track (a white-walled room with an LED-lit track board in it) and a club garage after a reference video (black glossy tiles, white board walls, planter islands). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two venues: a cozy home track (a white-walled room with an LED-lit track board in it) and an indoor RC arena after a reference photo (raised epoxy track, curbed C island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -25,19 +25,24 @@ Short and driven with arrows / mouse / gamepad: DRIVE, TRACK, OPPONENT (none, ea
 ## Map: HOME TRACK
 A cozy room with a drift track built in it (own layout, after a picture of a home-made track). Photo textures throughout: textured white paint on the walls, washed with soft scallops of pink and blue light from the LED tape, a herringbone parquet floor, a plaster ceiling, a Persian rug (from the Ardabil carpet), dark grey painted boards for the track, bordered by low white flexible walls with LED tape along their tops (blue on the left fading to pink on the right, warm white round the islands), three turf islands with rocks and marker flags, a little white pit building with lit windows behind the back wall, a silver foil sheet over one wall, a panelled door and a floor lamp. Night-time mood: the LED tape does most of the lighting, all baked except a few point lights.
 
-## Map: DRIFT GARAGE
-Modelled on a video of a club track in an industrial unit, stripped back for now to the track itself. Black glossy floor tiles with barely visible joints (the track is the floor itself, P-tile grip), the track marked out only by low white flexible boards: a hazard-striped run along the back and thick red/white curbs round the right-hand end. Three planter islands with white borders, soil, moss mounds, rocks and plants: a long one in the middle with a vine climbing a pole, a teardrop one with a wrecked-car diorama, a small round one. Plain walls (black drapes at the back, grey elsewhere), purple and blue uplight washes in the back corners and white LED panels in the ceiling that show up as reflections in the floor. The islands and the boards are solid. Round the outside of the track: white plastic patio tables and monobloc chairs, 14 national flags round the walls (public-domain images from Wikimedia Commons) and strings of colourful party bunting criss-crossing the ceiling.
+## Map: RC arena
+Modelled on a photo of a real indoor RC drift track, laid out to match it from the photo's viewpoint (front-right corner, over the fence). A room 11.2 x 12.8 m with a 6 m black ceiling: light grey walls to 2.6 m, a white band, then a muted red band and black (bare board-formed concrete on the stand side), conduit runs, steel double doors with an exit sign, a lit doorway and a fire extinguisher. The track is a raised deck of glossy mid-grey speckled epoxy (P-tile grip), about 8 x 10.4 m, with thick black rubber edging and a thin red line along the back corner. In it a wide C-shaped island outlined by red/white curbs (no grass), open towards the back on the fence side; inside the C a pad with a small painted circle and a line out through the opening. A red L-shaped driver's stand wraps the far corner (clear panels, red curtains below, aluminium chairs, stairs down the concrete wall). Along the right: a black chain-link fence, stacks of real-profile tires behind it and two checkered flags; crowd barriers on the left. Six ceiling cans light the track. The island and the track edge are solid.
+
+The infield pad inside the island has its own surface, smoother and lighter than the track. Most arena textures (track deck, pad, grey wall, concrete, red band, curtains, doors) are sampled from the reference photo of the real track, with its lighting divided out, made seamless and kept small and slightly posterised, in the style of early-2000s add-on scenery.
+
+Vertical LED tubes on the grey walls, each with its power cable looping up to a small controller on the conduit.
 
 ## Lighting and textures
 Glows (LED tape, wall washes) and shadows (under islands, props, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are CC0 (Poly Haven, ambientCG), public domain (Wikimedia Commons) or sampled from the owner's reference photo, shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
 
-The warehouse, living-room and RC arena maps are removed for now (they are in git history).
+The warehouse, living-room and drift garage maps are removed for now (they are in git history).
 
 ## Courses
 Drive through the gates in order (they are not marked on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap. Best lap is kept per course and mode.
 - **HOME LOOP** (home track): along the front, up the pink-lit side, behind the islands past the pit building, back down the blue side.
-- **GARAGE LAYOUT** (garage): the long front straight under the drivers' platform, round the outside of the wreck island along the curbs, the back sweeper past the hazard boards, down the left side.
-- **HAIRPIN** (garage): the garage lap with a full loop round the wreck island.
+- **MAIN LAYOUT** (arena): full clockwise lap: the long front sweeper, up the fence side, along the back in front of the stand, down the stand side.
+- **KEYHOLE** (arena): the main lap with a detour off the fence side into the infield pad, round the painted circle and back out onto the back straight.
+- **RAMP LAYOUT** (arena): the main lap with five ramps of different angles: a 6 deg table-top and a 12 deg kicker on the front sweeper, an 18 deg kicker up the fence side, 8 deg rollers along the back and a 24 deg launch down the stand side. Ramp faces are solid: kickers can only be climbed from the slope side.
 
 ## Racing an opponent
 Menu → OPPONENT: EASY / MEDIUM / HARD. A computer car (blue, or red if yours is blue) lines up beside you, a 3-2-1 count starts the race, and the first to finish 3 laps wins; POS shows your place. The opponent follows a racing line for each course, braking and accelerating to a speed set by the corner radius and the difficulty; in drift mode it drifts the corners with countersteer. It is solid: you can bump it, and it loses a little speed when you do.
@@ -52,12 +57,12 @@ A drift counts once the car slides past 12 deg at over 0.7 m/s. Points flow in a
 The motor is a synthesised whine (triangle fundamental, sine harmonics, a quiet gear-mesh tone, a little wobble) that follows motor speed from about 95 Hz at a crawl to roughly 900 Hz flat out, so you hear every bit of extra revs; it is silent off the throttle. Under it, softened (lowpassed) loops cut from a recording of a real RC drift car add tire and drive-train texture, cross-faded by slide. Everything the car makes is placed at the car and heard from the camera: further away it gets quieter, duller and panned to its side (chase cam close, driver's stand and ceiling cam far).
 
 ## Camera
-Three cameras (C / Y): chase, DRIVER POV and DRIVER POV 2 - two drivers' spots per venue (home: at the front by the rug and at the side by the foil wall; garage: standing at the front edge and at the back wall), eyes at standing height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs. The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
+Three cameras (C / Y): chase, DRIVER POV and DRIVER POV 2 - two drivers' spots per venue (home: at the front by the rug and at the side by the foil wall; arena: on the stand and at the front edge of the track), eyes at standing height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs. The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz. The car is sized like the 1/10 RWD drift cars in the reference video: about 452 mm long and 203 mm wide over the body, 257 mm wheelbase, 64 mm wheels, 1.45 kg; hard plastic tires on polished tiles or epoxy grip at about 0.5, which is what lets them slide like that.
 - **Cars**: RWD drift (default: hard plastic tires, ~57 deg steering lock, 44/56 weight split, steering gyro) or 4WD grip touring (rubber tires).
-- **Surface**: both tracks grip like P-tile (polished vinyl tiles used at dedicated drift tracks), a little more bite than bare concrete.
+- **Surface**: the arena's epoxy deck grips like P-tile (polished vinyl tiles used at dedicated drift tracks), a little more bite than bare concrete.
 - **Motor**: DC torque curve against wheel speed, `F = Fstall * (throttle - wheelSpeed / vFree)`; above the throttle's speed the ESC drags the wheels back, so the trigger sets wheel speed. Motors: brushed 540, 13.5T stock, 6.5T mod, 13.5T drift (high gearing).
 - **Tires**: driven wheels have their own speed. Combined slip (slip ratio + slip angle) sets the force, which points against the slip vector, so a hard-spinning rear tire gives thrust instead of side grip. Throttle sets the drift angle.
 - **Gyro** (with steering mixing): the stick asks for a turn (full lock about a 1.1 m path radius, capped at 3 rad/s) and the gyro steers to hold that yaw rate, damping extra rotation so the car doesn't spin. Gain OFF/40/70/90%.
