@@ -8,7 +8,6 @@ Most arena textures are sampled from the project owner's reference photo of the 
 |---|---|---|
 | phTrack.jpg | reference photo, foreground track surface | epoxy track deck |
 | phPad.jpg | reference photo, infield pad | the pad inside the island |
-| phTurf.jpg | reference photo, island turf | turf island and fence-side strip |
 | phWall.jpg | reference photo, grey painted wall | lower walls |
 | phConcrete.jpg | reference photo, board-formed concrete | upper wall on the stand side |
 | phRed.jpg | reference photo, red band | red band on the other walls |

@@ -53,7 +53,6 @@ JOBS = {
     # sampled from the reference photo
     'phTrack': lambda: crunch(ref((660, 1020, 1060, 1300), (256, 256), 30)),
     'phPad': lambda: crunch(grainy(ref((742, 572, 803, 633), (128, 128), 14), 14, 4)),
-    'phTurf': lambda: crunch(ImageEnhance.Color(ref((770, 672, 1000, 740), (256, 256), 20)).enhance(0.95)),
     'phWall': lambda: crunch(grainy(ref((1262, 322, 1438, 418), (128, 128), 25), 9, 5)),
     'phConcrete': lambda: crunch(ref((560, 2, 790, 80), (256, 128), 30, True, 1.2)),
     'phRed': lambda: crunch(ref((1285, 158, 1495, 184), (128, 64), 15)),
