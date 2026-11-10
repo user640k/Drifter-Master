@@ -46,6 +46,9 @@ def grainy(im, amp=10, seed=3):
     for y in range(im.height):
         for x in range(im.width): n = int((r.random() - 0.5) * amp); px[x, y] = tuple(max(0, min(255, c + n)) for c in px[x, y])
     return im
+def flag(name):
+    im = Image.open(src / name).convert('RGBA'); bg = Image.new('RGBA', im.size, (255, 255, 255, 255)); bg.alpha_composite(im)
+    return bg.convert('RGB').resize((128, 80), Image.LANCZOS)
 def grey(im): return ImageOps.grayscale(im).convert('RGB')
 JOBS = {
     # RC arena
@@ -58,6 +61,21 @@ JOBS = {
     'phRed': lambda: crunch(ref((1285, 158, 1495, 184), (128, 64), 15)),
     'phCurtain': lambda: crunch(ref((520, 420, 800, 500), (256, 128), 0, False, 1.2)),
     'phDoors': lambda: crunch(ref((1098, 338, 1245, 515), (128, 160), 0, False, 1.2)),
+    # national flags (Wikimedia Commons, public domain)
+    'fl_au': lambda: crunch(flag('Flag_of_Australia_(converted).svg.png')),
+    'fl_br': lambda: crunch(flag('Flag_of_Brazil.svg.png')),
+    'fl_ca': lambda: crunch(flag('Flag_of_Canada_(Pantone).svg.png')),
+    'fl_fr': lambda: crunch(flag('Flag_of_France.svg.png')),
+    'fl_de': lambda: crunch(flag('Flag_of_Germany.svg.png')),
+    'fl_ie': lambda: crunch(flag('Flag_of_Ireland.svg.png')),
+    'fl_it': lambda: crunch(flag('Flag_of_Italy.svg.png')),
+    'fl_jp': lambda: crunch(flag('Flag_of_Japan.svg.png')),
+    'fl_mx': lambda: crunch(flag('Flag_of_Mexico.svg.png')),
+    'fl_kr': lambda: crunch(flag('Flag_of_South_Korea.svg.png')),
+    'fl_es': lambda: crunch(flag('Flag_of_Spain.svg.png')),
+    'fl_se': lambda: crunch(flag('Flag_of_Sweden.svg.png')),
+    'fl_nl': lambda: crunch(flag('Flag_of_the_Netherlands.svg.png')),
+    'fl_us': lambda: crunch(flag('Flag_of_the_United_States.svg.png')),
 }
 
 if src:

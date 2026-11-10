@@ -14,3 +14,4 @@ Most arena textures are sampled from the project owner's reference photo of the 
 | phCurtain.jpg | reference photo, stand curtains | curtains under the driver's stand |
 | phDoors.jpg | reference photo, steel double doors | the doors |
 | arFloor.jpg | Poly Haven `hangar_concrete_floor` (CC0, lightened) | floor outside the track |
+| fl_*.jpg | Wikimedia Commons national flags (Australia, Brazil, Canada, France, Germany, Ireland, Italy, Japan, Mexico, South Korea, Spain, Sweden, Netherlands, USA) (public domain) | flags round the garage walls |
