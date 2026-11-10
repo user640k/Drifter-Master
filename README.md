@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two maps: an indoor RC arena (raised epoxy track, C-shaped turf island, driver's stand) and a blacklight glow track (neon rails, acrylic bridge, ramps, space mural). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two maps: an indoor RC arena (raised epoxy track, C-shaped turf island, driver's stand) and a blacklight glow track (neon rails, acrylic bridge, ramps, twinkling starfield). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -28,10 +28,10 @@ Modelled on a real indoor RC drift track. A room 13.2 x 18 m with a 6.5 m black 
 Vertical LED tubes on the grey walls, each with its power cable looping up to a small controller on the conduit; they glow white with LIGHTS ON and cycle colours for PARTY.
 
 ## Map: glow track
-Modelled on a blacklight RC track. Black carpet lanes boxed in by fluorescent rails glowing violet: an outer box round a central island with a chicane on one side. An acrylic arched bridge with red LED tape, a black kicker and a black table-top, a raised back border washed cyan from underneath with cross bracing, a space mural round the walls, a green neon sign and a smiley, a yellow loop and a quarter pipe as set dressing, diamond-plate floor outside. There are no lights in this map at all: rails and LEDs are self-lit and every glow and shadow is baked onto flat planes, so it is the cheapest map to render.
+Modelled on a blacklight RC track. Black carpet lanes boxed in by fluorescent rails glowing violet: an outer box round a central island with a chicane on one side. An acrylic arched bridge with red LED tape, a black kicker and a black table-top, a raised back border washed cyan from underneath with cross bracing, a dark starfield on the walls and ceiling whose brighter stars twinkle, a green neon sign and a smiley, a yellow loop and a quarter pipe as set dressing, diamond-plate floor outside. There are no lights in this map at all: rails and LEDs are self-lit and every glow and shadow is baked onto flat planes, so it is the cheapest map to render.
 
 ## Lighting and textures
-Glows (LED tubes, rails, signs) and shadows (under the stand, barriers, tire stacks, ramps, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are CC0 (Poly Haven, ambientCG) or public domain (NASA via Wikimedia Commons), shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
+Glows (LED tubes, rails, signs) and shadows (under the stand, barriers, tire stacks, ramps, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are CC0 (Poly Haven, ambientCG) or public domain, shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
 
 The warehouse and living-room maps are removed for now (they are in git history).
 
