@@ -1,0 +1,354 @@
+<title>Drift Master Parts Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;700&display=swap">
+<style>
+/* Layout: a parts turntable on the left, the parts bench (tyre, rims, spec, build order) on the right; stacks on phones.
+   One dark studio look, matching the game and the car viewer. */
+:root {
+  --bg: #0f1116;
+  --panel: #171a21;
+  --line: #2a2f3a;
+  --fg: #e9edf3;
+  --dim: #8d97a6;
+  --hot: #ffb21e;
+  --ink: #121318;
+  --display: "Saira Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--display); box-sizing: border-box;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 310px; grid-template-rows: auto minmax(0, 1fr); gap: 12px 16px; }
+header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+h1 { margin: 0; font-weight: 700; font-size: 22px; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--dim); font-size: 13px; }
+.stage { position: relative; min-width: 0; min-height: 320px; border: 1px solid var(--line); background: radial-gradient(ellipse at 50% 40%, #2a2e37, #121419 75%); cursor: grab; touch-action: none; }
+.stage:active { cursor: grabbing; }
+canvas { display: block; width: 100%; height: 100%; }
+.views { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.hint { position: absolute; left: 10px; bottom: 10px; font-size: 12px; color: var(--dim); letter-spacing: .04em; }
+.cur { position: absolute; right: 10px; bottom: 10px; font-size: 15px; font-weight: 700; color: var(--hot); text-align: right; text-shadow: 0 1px 0 #000; letter-spacing: .04em; }
+aside { min-width: 0; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 12px; display: grid; gap: 8px; }
+.card h2 { margin: 0; font-weight: 500; font-size: 13px; letter-spacing: .14em; color: var(--hot); }
+.card p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--dim); }
+button { font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--fg); background: #1d222c; border: 1px solid var(--line); padding: 6px 9px; cursor: pointer; }
+button:hover { border-color: #4a5466; }
+button:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--hot); color: var(--ink); border-color: var(--hot); }
+button[aria-pressed="true"] .n, button[aria-pressed="true"] .f { color: var(--ink); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.row button { flex: 1 1 0; }
+ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+ol button { width: 100%; text-align: left; display: flex; gap: 8px; align-items: baseline; }
+.n { color: var(--hot); min-width: 1.2em; font-variant-numeric: tabular-nums; }
+.f { margin-left: auto; color: var(--dim); font-weight: 500; font-size: 11px; }
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+dt { color: var(--dim); letter-spacing: .06em; font-size: 12px; }
+dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.steps li { display: flex; gap: 8px; font-size: 13px; color: var(--dim); padding: 3px 0; }
+.steps li.now { color: var(--fg); }
+.steps li.now .n::after { content: " ●"; }
+@media (max-width: 760px) {
+  body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 60vh auto; height: auto; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<header><h1>PARTS LAB</h1><span class="sub">An original 1/10 RC car for Drift Master, built part by part. Stage 1: tyres and rims, at real size.</span></header>
+<div class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="views"><button type="button" id="vOne" aria-pressed="true">SELECTED WHEEL</button><button type="button" id="vAll" aria-pressed="false">ALL 15</button><button type="button" id="vSpin" aria-pressed="true">ROLL</button></div>
+  <div class="cur" id="cur"></div>
+  <div class="hint">Drag: rotate · Scroll / pinch: zoom · Double-click: reset</div>
+</div>
+<aside>
+  <div class="card"><h2>TYRE</h2><div class="row" id="tyres"></div><p id="tnote"></p></div>
+  <div class="card"><h2>RIMS</h2><ol id="rims"></ol></div>
+  <div class="card"><h2>SPEC</h2><dl id="spec"></dl></div>
+  <div class="card"><h2>BUILD ORDER</h2><ol class="steps">
+    <li class="now"><span class="n">1</span>Tyres and rims</li>
+    <li><span class="n">2</span>Chassis: suspension, shocks, gearbox, motor, brake</li>
+    <li><span class="n">3</span>Shells: drift and off-road</li>
+    <li><span class="n">4</span>Decals and colour schemes</li>
+    <li><span class="n">5</span>Body posts and clips</li>
+    <li><span class="n">6</span>Damage</li>
+  </ol></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const canvas = $('cv'), stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.005, 10);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function tex(w, h, draw, rx = 1, ry = 1) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
+  return t;
+}
+function grain(g, w, h, rgb, amp, seed) {
+  const r = rng(seed), img = g.getImageData(0, 0, w, h), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (r() - 0.5) * amp;
+    d[i] = clamp(rgb[0] + n, 0, 255); d[i + 1] = clamp(rgb[1] + n, 0, 255); d[i + 2] = clamp(rgb[2] + n * 0.9, 0, 255); d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+/* ======== PARTS: an original 1/10 car, built from scratch (work in progress; the game still drives the old car) ========
+   Units are metres. A wheel is built with its axle along local x and its outer face towards +x.
+   Stage 1: tyres and rims. Three tyre types at real 1/10 sizes, five rims for each. */
+const PARTS = {};
+PARTS.TYRES = {
+  // hard plastic drift tyre: smooth, slightly glossy, three shallow grooves (1/10 drift: 26 mm wide, 64 mm tall)
+  drift: { name: 'DRIFT', note: 'Hard plastic, 64 × 26 mm', od: 0.064, w: 0.026, rimD: 0.052 },
+  // rubber touring tyre with a moulded tread (same size, much more grip)
+  grip: { name: 'GRIP', note: 'Rubber, moulded tread, 64 × 26 mm', od: 0.064, w: 0.026, rimD: 0.052 },
+  // rally-block off-road tyre: soft rubber carcass with knobs, a little taller and wider so it still fits the chassis
+  offroad: { name: 'OFF-ROAD', note: 'Rubber, block knobs, 70 × 30 mm', od: 0.070, w: 0.030, rimD: 0.050 },
+};
+// finishes: phong with a small studio reflection (a painted gradient, no cube maps)
+PARTS.envTex = (() => {
+  const t = tex(256, 128, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#f4f6fa'); gr.addColorStop(0.38, '#9aa2ae'); gr.addColorStop(0.5, '#2a2d33'); gr.addColorStop(0.62, '#4a4e56'); gr.addColorStop(1, '#16171a');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.9)'; for (const x of [40, 150, 200]) g.fillRect(x, 18, 22, 22); // softboxes
+  });
+  t.mapping = THREE.EquirectangularReflectionMapping; return t;
+})();
+PARTS.FINISH = {
+  chrome: { name: 'CHROME', color: 0xc8ccd4, env: 0.85, shin: 140 },
+  gold: { name: 'GOLD', color: 0xd9a63a, env: 0.45, shin: 110 },
+  bronze: { name: 'BRONZE', color: 0x8c5a28, env: 0.35, shin: 90 },
+  white: { name: 'WHITE', color: 0xeeeeea, env: 0.12, shin: 60 },
+  gunmetal: { name: 'GUNMETAL', color: 0x3c4048, env: 0.35, shin: 100 },
+  black: { name: 'MATTE BLACK', color: 0x1b1b1e, env: 0.06, shin: 20 },
+  red: { name: 'RED', color: 0xc4141c, env: 0.2, shin: 80 },
+};
+PARTS.finishMat = (k, side) => { const f = PARTS.FINISH[k]; return new THREE.MeshPhongMaterial({ color: f.color, specular: 0xffffff, shininess: f.shin, envMap: PARTS.envTex, reflectivity: f.env, side: side || THREE.FrontSide }); };
+
+// ---- rim faces: a disc with windows cut out between the spokes ----
+function partArc(r, a0, a1, n) { const p = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; p.push(new THREE.Vector2(r * Math.cos(a), r * Math.sin(a))); } return p; }
+// the window between two spokes (centrelines at a0, a1; spokes 2*hw wide) from radius ri to ro; twist turns the inner edge
+function partWindow(a0, a1, hw, ri, ro, twist = 0) {
+  const dO = Math.asin(Math.min(0.95, hw / ro)), half = (a1 - a0) / 2;
+  const outer = partArc(ro, a0 + dO, a1 - dO, 10);
+  let inner;
+  if (Math.sin(half) * ri > hw * 1.05) { const dI = Math.asin(hw / ri); inner = partArc(ri, a1 - dI + twist, a0 + dI + twist, 4); }
+  else { const r = Math.min(ro * 0.92, hw / Math.sin(half) * 1.05), a = (a0 + a1) / 2 + twist; inner = [new THREE.Vector2(r * Math.cos(a), r * Math.sin(a))]; }
+  return new THREE.Path([...outer, ...inner]);
+}
+const partSpokes = (n, off = 0) => Array.from({ length: n }, (_, i) => off + i * Math.PI * 2 / n);
+function partWindows(angles, hw, ri, ro, twist) { return angles.map((a, i) => partWindow(a, i + 1 < angles.length ? angles[i + 1] : angles[0] + Math.PI * 2, hw, ri, ro, twist)); }
+function partHoles(n, rc, rh, off = 0) { return partSpokes(n, off).map(a => { const p = new THREE.Path(); p.absarc(rc * Math.cos(a), rc * Math.sin(a), rh, 0, Math.PI * 2, true); return p; }); }
+// R is the face radius (about 23 mm). Each design returns the holes; dish is how far the face sits back from the lip
+PARTS.RIMS = {
+  star5: { name: 'STAR 5', dish: 0.004, holes: R => partWindows(partSpokes(5, Math.PI / 2), 0.0032, 0.0085, R * 0.86) },
+  mesh10: { name: 'MESH 10', dish: 0.005, holes: R => [...partWindows(partSpokes(10), 0.001, 0.0085, R * 0.56), ...partWindows(partSpokes(10, Math.PI / 10), 0.001, R * 0.6, R * 0.88)] },
+  split6: { name: 'SPLIT 6', dish: 0.006, holes: R => partWindows(partSpokes(6).flatMap(a => [a - 0.11, a + 0.11]), 0.0013, 0.009, R * 0.87) },
+  dish6: { name: 'DISH 6', dish: 0.007, holes: R => partHoles(6, R * 0.56, 0.0043) },
+  fan14: { name: 'FAN 14', dish: 0.003, holes: R => partWindows(partSpokes(14), 0.0009, 0.0095, R * 0.85, 0.38) },
+  rally12: { name: 'RALLY 12', dish: 0.003, holes: R => partWindows(partSpokes(12), 0.0012, 0.009, R * 0.84) },
+  dish8: { name: 'DISH 8', dish: 0.004, holes: R => partHoles(8, R * 0.6, 0.0033, Math.PI / 8) },
+  block5: { name: 'BLOCK 5', dish: 0.005, holes: R => partWindows(partSpokes(5, Math.PI / 2), 0.0046, 0.0095, R * 0.8) },
+  bead6: { name: 'BEADLOCK 6', dish: 0.006, bead: true, holes: R => partWindows(partSpokes(6), 0.0026, 0.009, R * 0.72) },
+  turbine8: { name: 'TURBINE 8', dish: 0.004, holes: R => partWindows(partSpokes(8), 0.002, 0.009, R * 0.82, 0.5) },
+};
+// the five rim combinations (design + finish, beadlock ring colour) offered with each tyre
+PARTS.WHEELSETS = {
+  drift: [['star5', 'chrome'], ['mesh10', 'gold'], ['split6', 'gunmetal'], ['dish6', 'white'], ['fan14', 'black']],
+  grip: [['split6', 'chrome'], ['star5', 'white'], ['mesh10', 'gunmetal'], ['fan14', 'gold'], ['dish6', 'bronze']],
+  offroad: [['rally12', 'white'], ['dish8', 'gold'], ['block5', 'black'], ['bead6', 'gunmetal', 'red'], ['turbine8', 'bronze']],
+};
+
+// ---- tyres: a lathed carcass; the grip tread and the sidewall lettering are painted, the off-road knobs are real blocks ----
+function tyreProfile(R, ri, w, rc, grooves) {
+  // [radius, axial] from the outer bead (+x side) over the tread to the inner bead
+  const P = [], hw = w / 2, side = (sgn) => { const s = []; for (let i = 0; i <= 5; i++) { const t = i / 5; s.push([ri + (R - rc - ri) * t, sgn * hw * (0.9 + 0.1 * Math.sin(t * Math.PI / 2))]); } return s; };
+  const shoulder = (sgn) => { const s = []; for (let i = 1; i <= 5; i++) { const a = i / 5 * Math.PI / 2; s.push([R - rc + rc * Math.sin(a), sgn * (hw - rc + rc * Math.cos(a))]); } return s; };
+  P.push(...side(1), ...shoulder(1));
+  const v0 = P.length - 1;
+  const xs = []; for (let i = 1; i < 12; i++) xs.push(hw - rc - (2 * (hw - rc)) * i / 12);
+  for (const x of xs) {
+    const g = grooves.find(g => Math.abs(g - x) < (2 * (hw - rc)) / 24);
+    if (g !== undefined) P.push([R, g + 0.0007], [R - 0.0006, g + 0.0004], [R - 0.0006, g - 0.0004], [R, g - 0.0007]); else P.push([R, x]);
+  }
+  for (let i = 5; i >= 0; i--) { const a = i / 5 * Math.PI / 2; P.push([R - rc + rc * Math.sin(a), -(hw - rc + rc * Math.cos(a))]); } // inner shoulder, tread down to the sidewall
+  const v1 = P.length - 1;
+  P.push(...side(-1).reverse().slice(1));
+  // reversed so the lathe faces outward: v now runs from the inner bead (0) to the outer bead (1)
+  P.reverse(); const n = P.length - 1;
+  return { P, v0: 1 - v1 / n, v1: 1 - v0 / n };
+}
+PARTS._cache = {};
+function tyreTexture(type, v0, v1) {
+  return tex(512, 128, (g, w, h) => {
+    const y = v => h * (1 - v); // lathe v runs from the inner bead (v 0, bottom of the canvas) to the outer bead (v 1, top)
+    g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+    if (type === 'grip') { // directional tread blocks between two solid ribs
+      const t0 = y(v1), t1 = y(v0), mid = (t0 + t1) / 2;
+      g.fillStyle = '#2a2a2a';
+      g.fillRect(0, mid - 1.5, w, 3);
+      for (let x = 0; x < w; x += 16) {
+        g.save(); g.translate(x, 0);
+        g.beginPath(); g.moveTo(0, t0 + 4); g.lineTo(6, mid - 4); g.lineTo(9, mid - 4); g.lineTo(3, t0 + 4); g.fill();
+        g.beginPath(); g.moveTo(8, t1 - 4); g.lineTo(14, mid + 4); g.lineTo(17, mid + 4); g.lineTo(11, t1 - 4); g.fill();
+        g.restore();
+      }
+    }
+    // lettering round the outer sidewall
+    g.fillStyle = '#b8b8b8'; g.font = 'bold 13px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const sy = y(1 - (1 - v1) * 0.55), label = { drift: 'DRIFT MASTER · DM-D26 · HARD COMPOUND', grip: 'DRIFT MASTER · DM-G26 · RADIAL GRIP', offroad: 'DRIFT MASTER · DM-X30 · ALL TERRAIN' }[type];
+    for (const x of [w * 0.25, w * 0.75]) g.fillText(label, x, sy);
+  });
+}
+function buildTyre(type) {
+  const spec = PARTS.TYRES[type], key = 'tyre-' + type;
+  if (PARTS._cache[key]) return PARTS._cache[key]();
+  const knobH = type === 'offroad' ? 0.0032 : 0, R = spec.od / 2 - knobH, ri = spec.rimD / 2 - 0.0012, rc = type === 'offroad' ? 0.004 : 0.0028;
+  const prof = tyreProfile(R, ri, spec.w, rc, type === 'drift' ? [-0.0055, 0, 0.0055] : []);
+  const geo = new THREE.LatheGeometry(prof.P.map(([r, x]) => new THREE.Vector2(r, x)), 64); geo.rotateZ(-Math.PI / 2);
+  const map = tyreTexture(type, prof.v0, prof.v1);
+  const mat = type === 'drift'
+    ? new THREE.MeshPhongMaterial({ color: 0x2e2f33, map, specular: 0x6a6a70, shininess: 70, envMap: PARTS.envTex, reflectivity: 0.08 })
+    : new THREE.MeshPhongMaterial({ color: 0x252526, map, bumpMap: map, bumpScale: 0.0006, specular: 0x202020, shininess: 10 });
+  let knobGeo = null, knobs = [];
+  if (type === 'offroad') {
+    knobGeo = new THREE.BoxGeometry(0.0042, knobH + 0.0008, 0.0046);
+    const o = new THREE.Object3D(), N = 26, hw = spec.w / 2, qx = new THREE.Quaternion(), qz = new THREE.Quaternion();
+    for (let i = 0; i < N; i++) {
+      const a = (i + 0.5) / N * Math.PI * 2, rows = i % 2 ? [-0.0055, 0.0055] : [-0.0108, 0, 0.0108];
+      const place = (x, r, tilt, s) => { qx.setFromAxisAngle(new THREE.Vector3(1, 0, 0), a); qz.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tilt); o.quaternion.copy(qx).multiply(qz); o.position.set(x, Math.cos(a) * r, Math.sin(a) * r); o.scale.set(s, 1, s); o.updateMatrix(); knobs.push(o.matrix.clone()); };
+      for (const x of rows) place(x, R + knobH / 2 - 0.0004, 0, 1);
+      for (const sg of [-1, 1]) place(sg * (hw - 0.0019), R - 0.0011, sg * -0.55, i % 2 ? 0.7 : 0.85); // shoulder knobs wrap the corner
+    }
+  }
+  PARTS._cache[key] = () => {
+    const gr = new THREE.Group(); gr.add(new THREE.Mesh(geo, mat));
+    if (knobGeo) { const im = new THREE.InstancedMesh(knobGeo, mat, knobs.length); knobs.forEach((m, i) => im.setMatrixAt(i, m)); gr.add(im); }
+    return gr;
+  };
+  return PARTS._cache[key]();
+}
+// ---- rims: barrel, rounded lips, a dished wall down to the spoke face, hub and hex nut; beadlock adds a bolted ring ----
+function buildRim(design, finish, w, rimD, beadCol) {
+  const D = PARTS.RIMS[design], key = ['rim', design, finish, w, rimD, beadCol].join('-');
+  if (PARTS._cache[key]) return PARTS._cache[key]();
+  const rL = rimD / 2, rB = rL - 0.0022, R = rL - 0.0028, hw = w / 2 - 0.0005, fm = PARTS.finishMat(finish), fmD = PARTS.finishMat(finish, THREE.DoubleSide);
+  const parts = [];
+  const barrel = new THREE.CylinderGeometry(rB, rB, 2 * hw - 0.002, 40, 1, true); barrel.rotateZ(Math.PI / 2); parts.push([barrel, fmD]);
+  for (const sg of [-1, 1]) { const lip = new THREE.TorusGeometry(rL - 0.0009, 0.0009, 6, 48); lip.rotateY(Math.PI / 2); lip.translate(sg * (hw - 0.0008), 0, 0); parts.push([lip, fm]); }
+  const faceX = hw - D.dish;
+  const wall = new THREE.CylinderGeometry(rL - 0.0012, R, D.dish, 40, 1, true); wall.rotateZ(-Math.PI / 2); wall.translate(faceX + D.dish / 2, 0, 0); parts.push([wall, fmD]);
+  const shape = new THREE.Shape(); shape.absarc(0, 0, R, 0, Math.PI * 2, false); shape.holes.push(...D.holes(R));
+  const face = new THREE.ExtrudeGeometry(shape, { depth: 0.0018, bevelEnabled: true, bevelThickness: 0.0005, bevelSize: 0.0004, bevelSegments: 1, curveSegments: 24 });
+  face.rotateY(Math.PI / 2); face.translate(faceX - 0.0018, 0, 0); parts.push([face, fm]);
+  const boss = new THREE.CylinderGeometry(0.0072, 0.0078, 0.003, 24); boss.rotateZ(Math.PI / 2); boss.translate(faceX + 0.0008, 0, 0); parts.push([boss, fm]);
+  const nut = new THREE.CylinderGeometry(0.0036, 0.0036, 0.004, 6); nut.rotateZ(Math.PI / 2); nut.translate(faceX + 0.0026, 0, 0); parts.push([nut, PARTS.finishMat('chrome')]);
+  const axle = new THREE.CylinderGeometry(0.0012, 0.0012, 0.0012, 10); axle.rotateZ(Math.PI / 2); axle.translate(faceX + 0.0048, 0, 0); parts.push([axle, PARTS.finishMat('gunmetal')]);
+  if (D.bead) {
+    const ring = new THREE.RingGeometry(rL - 0.0052, rL + 0.0004, 48); ring.rotateY(Math.PI / 2); ring.translate(hw + 0.0002, 0, 0);
+    parts.push([ring, PARTS.finishMat(beadCol || finish, THREE.DoubleSide)]);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, b = new THREE.CylinderGeometry(0.0007, 0.0007, 0.0012, 6); b.rotateZ(Math.PI / 2); b.translate(hw + 0.0008, Math.cos(a) * (rL - 0.0025), Math.sin(a) * (rL - 0.0025)); parts.push([b, PARTS.finishMat('chrome')]); }
+  }
+  PARTS._cache[key] = () => { const gr = new THREE.Group(); for (const [g, m] of parts) gr.add(new THREE.Mesh(g, m)); return gr; };
+  return PARTS._cache[key]();
+}
+// a complete wheel: tyre type + one of its five rim sets. Returns a group whose child `spin` turns about x
+function buildWheel(type, set = 0) {
+  const spec = PARTS.TYRES[type], [design, finish, bead] = PARTS.WHEELSETS[type][set];
+  const root = new THREE.Group(), spin = new THREE.Group(); root.add(spin);
+  spin.add(buildTyre(type)); spin.add(buildRim(design, finish, spec.w, spec.rimD, bead));
+  root.userData = { spin, type, set, name: PARTS.RIMS[design].name + ' · ' + PARTS.FINISH[finish].name };
+  return root;
+}
+/* ======== END PARTS ======== */
+scene.add(new THREE.HemisphereLight(0xf2f4ff, 0x30333a, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(2, 2.5, 1.2); scene.add(key);
+const rimL = new THREE.DirectionalLight(0xbfd4ff, 0.45); rimL.position.set(-2, 1.2, -2); scene.add(rimL);
+const fillL = new THREE.PointLight(0xffffff, 0.3, 3); fillL.position.set(0.6, 0.2, -0.6); scene.add(fillL);
+const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(0.075, 48), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
+
+// all 15 wheels, built once: rows are tyre types, columns the five rim sets
+const TYPES = Object.keys(PARTS.TYRES), wheels = {};
+for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = buildWheel(t, i); scene.add(w); return w; });
+const sel = { type: 'drift', set: 0, all: false, roll: true };
+try { const s = JSON.parse(localStorage.getItem('dm-parts-sel') || 'null'); if (s && PARTS.TYRES[s.type] && s.set >= 0 && s.set < 5) Object.assign(sel, { type: s.type, set: s.set }); } catch (e) {}
+
+function layout() {
+  TYPES.forEach((t, r) => wheels[t].forEach((w, c) => {
+    const me = t === sel.type && c === sel.set;
+    if (sel.all) { w.visible = true; w.position.set(0, 0.215 - r * 0.085, (2 - c) * 0.078); w.rotation.y = -0.35; }
+    else { w.visible = me; w.position.set(0, PARTS.TYRES[t].od / 2, 0); w.rotation.y = 0; }
+  }));
+  floorDisc.visible = !sel.all;
+}
+function render() {
+  const spec = PARTS.TYRES[sel.type], [design, finish, bead] = PARTS.WHEELSETS[sel.type][sel.set];
+  document.querySelectorAll('#tyres button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === sel.type)));
+  $('tnote').textContent = spec.note;
+  const ol = $('rims'); ol.innerHTML = '';
+  PARTS.WHEELSETS[sel.type].forEach(([d, f, bd], i) => {
+    const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(i === sel.set));
+    b.innerHTML = '<span class="n"></span><span class="d"></span><span class="f"></span>';
+    b.querySelector('.n').textContent = i + 1; b.querySelector('.d').textContent = PARTS.RIMS[d].name; b.querySelector('.f').textContent = PARTS.FINISH[f].name + (bd ? ' / ' + PARTS.FINISH[bd].name : '');
+    b.addEventListener('click', () => pick(sel.type, i)); li.appendChild(b); ol.appendChild(li);
+  });
+  const mm = v => (v * 1000).toFixed(0) + ' mm';
+  const rows = [['TYRE', spec.name], ['OUTSIDE DIAMETER', mm(spec.od)], ['WIDTH', mm(spec.w)], ['RIM DIAMETER', mm(spec.rimD)], ['RIM', PARTS.RIMS[design].name], ['FINISH', PARTS.FINISH[finish].name + (bead ? ', ' + PARTS.FINISH[bead].name + ' ring' : '')], ['DISH', mm(PARTS.RIMS[design].dish)], ['HUB', '12 mm hex']];
+  $('spec').innerHTML = ''; for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; $('spec').append(dt, dd); }
+  $('cur').textContent = spec.name + ' · ' + PARTS.RIMS[design].name + ' · ' + PARTS.FINISH[finish].name;
+  $('vOne').setAttribute('aria-pressed', String(!sel.all)); $('vAll').setAttribute('aria-pressed', String(sel.all)); $('vSpin').setAttribute('aria-pressed', String(sel.roll));
+  layout();
+}
+function pick(t, i) { sel.type = t; sel.set = i; try { localStorage.setItem('dm-parts-sel', JSON.stringify({ type: t, set: i })); } catch (e) {} render(); }
+for (const t of TYPES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.t = t; b.textContent = PARTS.TYRES[t].name; b.addEventListener('click', () => pick(t, Math.min(sel.set, 4))); $('tyres').appendChild(b); }
+
+// orbit camera; yaw 0 looks at the wheel's outer face (+x)
+const homeOne = { target: new THREE.Vector3(0, 0.033, 0), yaw: 0.95, pitch: 0.28, dist: 0.32 }, homeAll = { target: new THREE.Vector3(0, 0.13, 0), yaw: 0.12, pitch: 0.1, dist: 0.62 };
+const orbit = { ...homeOne, target: homeOne.target.clone() }, want = { ...homeOne, target: homeOne.target.clone() };
+let fit = 1;
+const home = () => { const h = sel.all ? homeAll : homeOne; Object.assign(want, { yaw: h.yaw, pitch: h.pitch, dist: h.dist * (sel.all ? fit : 1), target: h.target.clone() }); };
+$('vOne').addEventListener('click', () => { sel.all = false; render(); home(); });
+$('vAll').addEventListener('click', () => { sel.all = true; render(); home(); });
+$('vSpin').addEventListener('click', () => { sel.roll = !sel.roll; render(); });
+const pts = new Map(); let pinch0 = 0;
+stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+stage.addEventListener('pointermove', e => {
+  if (!pts.has(e.pointerId)) return; const [px, py] = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pts.size === 1) { want.yaw += (e.clientX - px) * 0.008; want.pitch = clamp(want.pitch + (e.clientY - py) * 0.006, -0.6, 1.5); }
+  else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0) want.dist = clamp(want.dist * pinch0 / d, 0.08, 2.5); pinch0 = d; }
+});
+const up = e => { pts.delete(e.pointerId); pinch0 = 0; };
+stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+stage.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(want.dist * Math.exp(e.deltaY * 0.001), 0.08, 2.5); }, { passive: false });
+stage.addEventListener('dblclick', home);
+function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); fit = Math.max(1, 1.5 / camera.aspect); }
+new ResizeObserver(resize).observe(stage); resize();
+render(); home(); Object.assign(orbit, { yaw: want.yaw, pitch: want.pitch, dist: want.dist, target: want.target.clone() });
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const k = reduce ? 1 : 1 - Math.exp(-dt * 8);
+  let dy = want.yaw - orbit.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  orbit.yaw += dy * k; orbit.pitch += (want.pitch - orbit.pitch) * k; orbit.dist += (want.dist - orbit.dist) * k; orbit.target.lerp(want.target, k);
+  if (sel.roll && !reduce) for (const t of TYPES) for (const w of wheels[t]) w.userData.spin.rotation.x -= dt * 0.9;
+  const cp = Math.cos(orbit.pitch);
+  camera.position.set(orbit.target.x + Math.cos(orbit.yaw) * cp * orbit.dist, orbit.target.y + Math.sin(orbit.pitch) * orbit.dist, orbit.target.z - Math.sin(orbit.yaw) * cp * orbit.dist);
+  camera.lookAt(orbit.target); renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>

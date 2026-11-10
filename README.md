@@ -76,6 +76,13 @@ Real 1/10 numbers (SI units), stepped at 720 Hz. The car is sized like the 1/10 
 - **Suspension**: roll and pitch spring/damper systems move load between wheels; roll-bar split sets front/rear balance.
 - **Setup (G)** and **telemetry (T)**: wheel loads, grip used, slip angles, g-forces, roll/pitch, steering and gyro output, drift angle, wheelspin.
 
+## Parts Lab (new car, work in progress)
+An original 1/10 car is being built part by part in the `PARTS` section of `index.html` (between the `PARTS` markers; the game still drives the current car until it is finished). `parts.html` shows the parts on a turntable:
+
+    python3 tools/make_parts.py
+
+Stage 1, tyres and rims: three tyre types at real 1/10 sizes (DRIFT hard plastic 64 x 26 mm, GRIP rubber with a moulded tread 64 x 26 mm, OFF-ROAD block-knob rubber 70 x 30 mm on a 50 mm rim), each with five rim sets (spoke design + finish; one beadlock with a bolted ring). Rims are modelled with a barrel, rounded lips, a dished wall, a spoke face cut from a disc, hub and 12 mm hex nut. Next: chassis (suspension, shocks, gearbox, rear-mid motor, and a disc brake only on the nitro-style off-road build; electric RC cars brake through the ESC), shells, decals, body posts and clips, damage.
+
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:
 
