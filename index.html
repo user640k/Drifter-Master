@@ -593,9 +593,9 @@ T.exitRed = canvasTex(64, 24, (g, w, h) => { g.fillStyle = '#1a0606'; g.fillRect
    world coordinates (no mirror). */
 T.tiles = tex(128, 128, (g, w, h) => {
   const r = rng(81);
-  for (let ty = 0; ty < 2; ty++) for (let tx = 0; tx < 2; tx++) { const v = 16 + r() * 6; g.fillStyle = `rgb(${v},${v},${v + 3})`; g.fillRect(tx * 64, ty * 64, 64, 64); }
+  for (let ty = 0; ty < 2; ty++) for (let tx = 0; tx < 2; tx++) { const v = 17 + r() * 2; g.fillStyle = `rgb(${v},${v},${v + 3})`; g.fillRect(tx * 64, ty * 64, 64, 64); }
   const img = g.getImageData(0, 0, w, h), d = img.data; for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * 7; d[i] += n; d[i + 1] += n; d[i + 2] += n; } g.putImageData(img, 0, 0);
-  g.fillStyle = 'rgba(70,72,80,0.55)'; for (let k = 0; k < w; k += 64) { g.fillRect(k, 0, 1, h); g.fillRect(0, k, w, 1); } // tile joints
+  g.fillStyle = 'rgba(70,72,80,0.12)'; for (let k = 0; k < w; k += 64) { g.fillRect(k, 0, 1, h); g.fillRect(0, k, w, 1); } // tile joints, barely there
   g.fillStyle = 'rgba(255,255,255,0.05)'; for (let i = 0; i < 40; i++) g.fillRect(r() * w, r() * h, 2 + r() * 6, 1);    // scuffs
 });
 T.drape = tex(128, 128, (g, w, h) => {
@@ -606,14 +606,8 @@ T.soil = tex(64, 64, (g, w, h) => { grain(g, w, h, [44, 34, 26], 30, 85); });
 T.moss = tex(64, 64, (g, w, h) => { grain(g, w, h, [52, 92, 40], 46, 86); const r = rng(87); g.globalAlpha = 0.5; for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? '#7dbb52' : '#24451a'; g.fillRect(r() * w, r() * h, 2, 2); } });
 T.rock = tex(64, 64, (g, w, h) => { grain(g, w, h, [118, 112, 104], 50, 88); });
 T.leaves = canvasTex(64, 64, (g, w, h) => { const r = rng(89); for (let i = 0; i < 26; i++) { const x = 8 + r() * 48, y = 6 + r() * 52, a = r() * 3; g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = ['#2f7a2a', '#3e9a34', '#245e20', '#5cae3e'][r() * 4 | 0]; g.beginPath(); g.ellipse(0, 0, 4, 10, 0, 0, 7); g.fill(); g.restore(); } });
-const banner = (w, h, bg, draw) => canvasTex(w, h, (g) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); draw(g); });
-T.ban1 = banner(128, 64, '#141418', g => { g.fillStyle = '#ffd21a'; g.font = 'bold italic 30px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('SIDEWAYS', 64, 32); g.fillStyle = '#ff3fb4'; g.font = 'bold 15px Arial, sans-serif'; g.fillText('RC DRIFT CLUB', 64, 52); });
-T.ban2 = banner(128, 64, '#c8121e', g => { g.fillStyle = '#fff'; g.font = 'bold italic 26px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('DRIFT', 64, 30); g.font = 'bold 14px Arial, sans-serif'; g.fillText('NIGHT SERIES', 64, 50); });
-T.ban3 = banner(48, 160, '#1a2a6a', g => { g.fillStyle = '#7fd8ff'; g.font = 'bold 22px Arial, sans-serif'; g.textAlign = 'center'; for (const [i, ch] of ['T', 'E', 'A', 'M'].entries()) g.fillText(ch, 24, 36 + i * 30); g.fillStyle = '#fff'; g.fillRect(8, 140, 32, 4); });
-T.ban4 = banner(64, 160, '#101012', g => { g.fillStyle = '#e8e8e8'; g.font = 'bold 18px Arial, sans-serif'; g.textAlign = 'center'; g.save(); g.translate(34, 80); g.rotate(-Math.PI / 2); g.fillText('SLIDE OR DIE', 0, 6); g.restore(); g.fillStyle = '#a24bff'; g.fillRect(0, 150, 64, 10); });
-T.ban5 = banner(128, 48, '#202024', g => { g.fillStyle = '#39ff6a'; g.font = 'bold italic 17px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('GARAGE · 1/10', 64, 30); });
 {
-  const m = newMap('garage', 'DRIFT GARAGE', 7.2, 5.6, 3.6, { pov: [-1.3, 2.25, -4.3], pov2: [-0.4, 1.62, 5.15], orbit: [4.4, 2.2], fog: [12, 30], fogColor: 0x0a0812, ceilCam: 3.1, surface: 1, markC: [0, 0.3], solids: [], bounds: null,
+  const m = newMap('garage', 'DRIFT GARAGE', 7.2, 5.6, 3.6, { pov: [-1.3, 1.65, -4.4], pov2: [-0.4, 1.62, 5.15], orbit: [4.4, 2.2], fog: [12, 30], fogColor: 0x0a0812, ceilCam: 3.1, surface: 1, markC: [0, 0.3], solids: [], bounds: null,
     photoCam: { pos: [-5.6, 2.5, -4.9], look: [2.0, 0.0, 2.0], fov: 72 }, hemi: { on: [0xa49ad0, 0x22222a, 0.66] } });
   const { hx, hz, h, group: G } = m, WHITE = 0xeeeeea;
   // floor: black glossy tiles everywhere (the track is the floor itself)
@@ -662,11 +656,7 @@ T.ban5 = banner(128, 48, '#202024', g => { g.fillStyle = '#39ff6a'; g.font = 'bo
     const tg = new THREE.TorusGeometry(0.03, 0.013, 6, 10), tm = lam({ color: 0x141414 });
     for (const [x, y, z, rx] of [[0.2, 0.02, -0.12, Math.PI / 2], [0.23, 0.045, -0.12, Math.PI / 2], [0.15, 0.02, 0.13, 0], [-0.2, 0.03, 0.12, 0.4]]) { const t = new THREE.Mesh(tg, tm); t.position.set(x, y, z); t.rotation.x = rx; g.add(t); }
   }
-  // planters along the back wall, outside the track
-  { const strip = [[-6.4, 4.75], [6.4, 4.75], [6.4, 5.45], [-6.4, 5.45]]; edgeBlocks(strip, true, 0.014, 0.12, 0.1, [WHITE], 0, G); const so = flatMesh(strip, soilM, 0.05); planarUV(so, 0.5); G.add(so);
-    for (let i = 0; i < 70; i++) { const x = -6.2 + rnd() * 12.4, z = 4.85 + rnd() * 0.5, s = 0.1 + rnd() * 0.15, mm = new THREE.Mesh(mossGeo, mossM); mm.scale.set(s * 1.3, s * 0.6, s); mm.position.set(x, 0.06, z); G.add(mm); }
-    for (let i = 0; i < 26; i++) { const x = -6.2 + rnd() * 12.4, z = 4.9 + rnd() * 0.4, s = 0.3 + rnd() * 0.35; for (let q = 0; q < 2; q++) { const lf = new THREE.Mesh(leafGeo, leafM); lf.scale.set(s, s, 1); lf.position.set(x, 0.05 + s / 2, z); lf.rotation.y = q * Math.PI / 2 + rnd(); G.add(lf); } } }
-  // walls: black drapes on the back wall, painted grey elsewhere with a dark skirt; banners and flags
+  // walls: black drapes on the back wall, painted grey elsewhere with a dark skirt (nothing hung on them for now)
   for (const k of ['N', 'E', 'S', 'W']) {
     const g = m.walls[k], L = g.userData.len;
     if (k === 'N') { const dm = new THREE.Mesh(new THREE.PlaneGeometry(L, h), lam({ map: T.drape })); dm.material.map = T.drape.clone(); dm.material.map.needsUpdate = true; dm.material.map.repeat.set(L / 1.6, 1); dm.position.set(0, h / 2, 0.02); g.add(dm); }
@@ -674,47 +664,6 @@ T.ban5 = banner(128, 48, '#202024', g => { g.fillStyle = '#39ff6a'; g.font = 'bo
     decal(g, 0, 0.3, L, 0.6, Math.PI, T.shadeEdge, 0x000000, 0.5, false, 0.0015);
   }
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(2 * hx, 2 * hz), lam({ color: 0x1c1c20 })); ceil.rotation.x = Math.PI / 2; ceil.position.y = h; G.add(ceil);
-  {
-    const N = m.walls.N, E = m.walls.E, W = m.walls.W;
-    const hang = (g, map, w, hh, u, y) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(w, hh), lam({ map })); p.position.set(u, y, 0.04); g.add(p); return p; };
-    hang(N, T.ban1, 1.6, 0.8, 2.2, 2.55); hang(N, T.ban2, 1.5, 0.75, -2.4, 2.6); hang(N, T.ban3, 0.45, 1.5, 4.9, 2.2); hang(N, T.ban4, 0.5, 1.25, -5.0, 2.3);
-    const ck = T.checker.clone(); ck.needsUpdate = true; ck.repeat.set(1, 3); hang(N, ck, 0.9, 1.4, 0.0, 2.45);
-    hang(E, T.ban5, 1.8, 0.65, 1.0, 2.7); hang(E, T.ban3, 0.45, 1.5, -2.8, 2.2); hang(W, T.ban2, 1.5, 0.75, -1.5, 2.6);
-  }
-  // display shelves of bodies on the left wall
-  {
-    const g = m.walls.W, u = 2.6, shelfM = lam({ color: 0x2c2c30 });
-    for (const y of [0.9, 1.3, 1.7]) {
-      box(1.6, 0.025, 0.32, shelfM, u, y, 0.16, g);
-      for (let i = 0; i < 4; i++) { const c = new THREE.Color().setHSL(rnd(), 0.75, 0.5), bm = phong({ color: c, shininess: 70 }); box(0.3, 0.08, 0.14, bm, u - 0.6 + i * 0.4, y + 0.055, 0.17, g); box(0.15, 0.05, 0.12, bm, u - 0.62 + i * 0.4, y + 0.11, 0.17, g); }
-    }
-    for (const s of [-1, 1]) box(0.03, 1.9, 0.32, shelfM, u + s * 0.81, 0.95, 0.16, g);
-  }
-  // drivers' platform along the front: grey face with a white top edge, the lounge behind (desks, screens),
-  // white plastic chairs
-  {
-    const z0 = -4.15, x0 = -4.6, x1 = 4.6, top = 0.6, faceM = lam({ color: 0x5c6068 }), deckM = lam({ color: 0x3a3c40 });
-    box(x1 - x0, top, z0 + hz, faceM, (x0 + x1) / 2, top / 2, (z0 - hz) / 2, G);
-    box(x1 - x0, 0.02, z0 + hz, deckM, (x0 + x1) / 2, top + 0.01, (z0 - hz) / 2, G);
-    box(x1 - x0, 0.03, 0.03, lam({ color: 0xe8e8e8 }), (x0 + x1) / 2, top + 0.01, z0, G);
-    for (const sx of [x0, x1]) box(0.04, 0.9, 0.04, lam({ color: 0x9a9ea4 }), sx, top + 0.45, z0 + 0.05, G); // rail ends
-    box(x1 - x0, 0.04, 0.04, lam({ color: 0x9a9ea4 }), (x0 + x1) / 2, top + 0.9, z0 + 0.05, G);              // hand rail
-    for (const dx of [-3.0, 0.4, 3.2]) {  // desks with monitors against the front wall
-      box(1.4, 0.04, 0.6, lam({ color: 0xd8d8d4 }), dx, top + 0.74, -hz + 0.35, G);
-      for (const s of [-1, 1]) box(0.04, 0.72, 0.56, lam({ color: 0x8a8e94 }), dx + s * 0.66, top + 0.37, -hz + 0.35, G);
-      box(0.55, 0.34, 0.03, lam({ color: 0x0c0c0e }), dx, top + 1.1, -hz + 0.12, G);
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.29), new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(0.55 + rnd() * 0.1, 0.5, 0.35), fog: false })); scr.position.set(dx, top + 1.1, -hz + 0.14); G.add(scr);
-    }
-    // white monobloc chairs: on the platform ends and on the floor beside it
-    const chairM = lam({ color: 0xeeeeea }), chair = (x, y, z, a) => {
-      const c = new THREE.Group(); c.position.set(x, y, z); c.rotation.y = a; G.add(c);
-      box(0.44, 0.04, 0.42, chairM, 0, 0.44, 0, c); for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const l = box(0.04, 0.44, 0.04, chairM, sx * 0.19, 0.22, sz * 0.18, c); l.rotation.set(sz * 0.08, 0, -sx * 0.08); }
-      const back = box(0.44, 0.42, 0.04, chairM, 0, 0.68, -0.21, c); back.rotation.x = -0.15; for (const sx of [-1, 1]) box(0.04, 0.2, 0.36, chairM, sx * 0.22, 0.56, 0, c);
-      shadowBlob(G, x, z, 0.32, 0.4, y + 0.004);
-    };
-    chair(-4.2, top, -4.9, 0.2); chair(4.1, top, -5.0, -0.3); chair(-5.3, 0, -4.6, 0.9); chair(5.4, 0, -4.5, -0.8); chair(6.6, 0, 3.6, -1.8);
-    shadow(G, 0, z0 - 0.15, x1 - x0 + 0.3, 0.6, 0, 0.45, 0.002);
-  }
   // lights: white LED panels in the ceiling (the floor shows their reflections), purple and blue uplights
   // in the back corners washing the drapes, as in the video
   for (const [x, z] of [[-3.6, -2.4], [0, -2.4], [3.6, -2.4], [-3.6, 2.2], [0, 2.2], [3.6, 2.2]]) {
@@ -723,8 +672,6 @@ T.ban5 = banner(128, 48, '#202024', g => { g.fillStyle = '#39ff6a'; g.font = 'bo
   }
   for (const [x, col] of [[-6.6, 0xa24bff], [6.4, 0x7a5cff], [2.8, 0x3a7aff]]) {
     const g = m.walls.N, u = -x;
-    box(0.16, 0.12, 0.14, lam({ color: 0x18181a }), u, h - 0.5, 0.08, g);
-    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), new THREE.MeshBasicMaterial({ color: col, fog: false })); lens.position.set(u, h - 0.57, 0.15); lens.rotation.x = Math.PI / 2; g.add(lens);
     const wash = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.2), glowMat(T.vGlow, 0.6)); wash.material.color.setHex(col); wash.position.set(u, h - 1.6, 0.05); g.add(wash);
     decal(G, x * 0.95, hz - 0.9, 2.6, 1.6, 0, T.halo, col, 0.25, true, 0.003);
     const L = new THREE.PointLight(col, 0.5, 7, 1); L.position.set(x * 0.95, h - 0.7, hz - 0.5); addLamp(m, L, 0.5, 0.5, []);
@@ -2125,7 +2072,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
   pollInput(dt);
-  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
+  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (race.state === 'menu') { carObj.position.set(car.x, car.y || 0, car.z); carObj.rotation.y = car.h; } updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
   clock += dt;
   acc += dt;
   if (race.state === 'race' && race.count > 0) {
