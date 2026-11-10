@@ -25,10 +25,14 @@ A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift 
 ## Map: RC arena
 Modelled on a photo of a real indoor RC drift track, laid out to match it from the photo's viewpoint (front-right corner, over the fence). A room 11.2 x 12.8 m with a 6 m black ceiling: light grey walls to 2.6 m, a white band, then a muted red band and black (bare board-formed concrete on the stand side), conduit runs, steel double doors with an exit sign, a lit doorway and a fire extinguisher. The track is a raised deck of glossy mid-grey speckled epoxy (P-tile grip), about 8 x 10.4 m, with thick black rubber edging and a thin red line along the back corner. In it a wide C-shaped turf island (light olive artificial grass, graded to the photo) with red/white curbs, open towards the back on the fence side; inside the C a pad with a small painted circle and a line out through the opening. A red L-shaped driver's stand wraps the far corner (clear panels, red curtains below, aluminium chairs, stairs down the concrete wall). Along the right: a turf strip, a black chain-link fence, stacks of real-profile tires behind it and two checkered flags; crowd barriers on the left. Six ceiling cans light the track. The island and the track edge are solid.
 
+An LCD screen on a post in the widest part of the island (out of reach of the cars), with a face on each side: while driving it shows the start countdown, then LAP n/3 in a race (or the lap number solo) with the running lap time and your best lap or race position; in the menus it shows a winking smiley.
+
+The infield pad inside the island has its own surface, smoother and lighter than the track. Most arena textures (track deck, pad, turf, grey wall, concrete, red band, curtains, doors) are sampled from the reference photo of the real track, with its lighting divided out, made seamless and kept small and slightly posterised, in the style of early-2000s add-on scenery.
+
 Vertical LED tubes on the grey walls, each with its power cable looping up to a small controller on the conduit.
 
 ## Lighting and textures
-Glows (LED tubes) and shadows (under the stand, barriers, tire stacks, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are CC0 (Poly Haven, ambientCG) or public domain, shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
+Glows (LED tubes) and shadows (under the stand, barriers, tire stacks, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are sampled from the reference photo of the track (used with the owner's permission) or CC0 (Poly Haven), shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
 
 The warehouse and living-room maps are removed for now (they are in git history).
 
