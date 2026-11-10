@@ -27,9 +27,6 @@ JOBS = {
     'arWall': lambda: crunch(tint(square(load('painted_plaster_wall.jpg'), 128), (150, 156, 168), 0.9)),
     'arConcrete': lambda: crunch(ImageEnhance.Brightness(grey(square(load('concrete_wall_004.jpg'), 256))).enhance(1.05)),
     'arFloor': lambda: crunch(ImageEnhance.Brightness(grey(square(load('hangar_concrete_floor.jpg'), 256))).enhance(2.3)),
-    # neon blacklight track
-    'neCarpet': lambda: crunch(ImageEnhance.Brightness(square(load('Carpet012_1K-JPG_Color.jpg'), 128)).enhance(0.55)),
-    'nePlate': lambda: crunch(square(load('DiamondPlate001_1K-JPG_Color.jpg'), 128)),
 }
 
 if src:

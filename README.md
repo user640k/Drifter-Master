@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two maps: an indoor RC arena (raised epoxy track, C-shaped turf island, driver's stand) and a blacklight glow track (neon rails, acrylic bridge, ramps, twinkling starfield). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on an indoor RC arena (raised epoxy track, C-shaped turf island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -27,11 +27,8 @@ Modelled on a real indoor RC drift track. A room 13.2 x 18 m with a 6.5 m black 
 
 Vertical LED tubes on the grey walls, each with its power cable looping up to a small controller on the conduit; they glow white with LIGHTS ON and cycle colours for PARTY.
 
-## Map: glow track
-Modelled on a blacklight RC track. Black carpet lanes boxed in by fluorescent rails glowing violet: an outer box round a central island with a chicane on one side. An acrylic arched bridge with red LED tape, a black kicker and a black table-top, a raised back border washed cyan from underneath with cross bracing, dark walls and ceiling covered in evenly spread white dots that glow and blink on and off, a yellow loop and a quarter pipe as set dressing, diamond-plate floor outside. There are no lights in this map at all: rails and LEDs are self-lit and every glow and shadow is baked onto flat planes, so it is the cheapest map to render.
-
 ## Lighting and textures
-Glows (LED tubes, rails, signs) and shadows (under the stand, barriers, tire stacks, ramps, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are CC0 (Poly Haven, ambientCG) or public domain, shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
+Glows (LED tubes) and shadows (under the stand, barriers, tire stacks, along wall bases) are baked: soft textured planes, no extra lights or shadow maps. Photo textures are CC0 (Poly Haven, ambientCG) or public domain, shrunk and posterised for an early-2000s look; see `tools/textures/SOURCES.md`.
 
 The warehouse and living-room maps are removed for now (they are in git history).
 
@@ -39,10 +36,12 @@ The warehouse and living-room maps are removed for now (they are in git history)
 Drive through the gates in order (the next gate glows on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
 - **MAIN LAYOUT**: full clockwise lap of the arena: the long front sweeper, up the fence side, along the back past the stand, down the other side.
 - **KEYHOLE**: the main lap with a detour off the back straight into the infield pad, round the painted circle and back out.
-- **GLOW CIRCUIT** (glow track): over the acrylic bridge, up the east lane through the chicane, over the table-top along the back border, down the west lane over the kicker.
+
+## Drift scoring
+A drift counts once the car slides past 12 deg at over 0.7 m/s. Points flow in at drift angle x speed and show live at the top of the screen with the multiplier (steps up every 2 s held, up to x5), the time held and the number of links (flicks from one side to the other, +60 each). Straighten up for 0.6 s and the drift banks (DRIFT, GOOD, GREAT, INSANE); a hard hit on a wall, the island or the track edge wipes it. SCORE is the run total; TOP DRIFT is your best single drift on that course and mode, saved in the browser.
 
 ## Sound
-Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide. The motor is silent off the throttle.
+The motor is a synthesised whine (triangle fundamental, sine harmonics, a quiet gear-mesh tone, a little wobble) that follows motor speed from about 95 Hz at a crawl to roughly 900 Hz flat out, so you hear every bit of extra revs; it is silent off the throttle. Under it, softened (lowpassed) loops cut from a recording of a real RC drift car add tire and drive-train texture, cross-faded by slide. Everything the car makes is placed at the car and heard from the camera: further away it gets quieter, duller and panned to its side (chase cam close, driver's stand and ceiling cam far).
 
 ## Cameras (C)
 The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best and gate count top left, speed and drift angle bottom right; no minimap.
@@ -52,7 +51,7 @@ Chase, DRIVER POV (standing on the driver's stand at about 2.75 m eye height wit
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz.
 - **Cars**: RWD drift (default: hard plastic tires, ~57 deg steering lock, 44/56 weight split, steering gyro) or 4WD grip touring (rubber tires).
-- **Surface**: the arena's epoxy deck and the glow track's carpet both grip like P-tile (polished vinyl tiles used at dedicated drift tracks), a little more bite than bare concrete.
+- **Surface**: the arena's epoxy deck grips like P-tile (polished vinyl tiles used at dedicated drift tracks), a little more bite than bare concrete.
 - **Motor**: DC torque curve against wheel speed, `F = Fstall * (throttle - wheelSpeed / vFree)`; above the throttle's speed the ESC drags the wheels back, so the trigger sets wheel speed. Motors: brushed 540, 13.5T stock, 6.5T mod, 13.5T drift (high gearing).
 - **Tires**: driven wheels have their own speed. Combined slip (slip ratio + slip angle) sets the force, which points against the slip vector, so a hard-spinning rear tire gives thrust instead of side grip. Throttle sets the drift angle.
 - **Gyro** (with steering mixing): the stick asks for a turn (full lock about a 1.1 m path radius, capped at 3 rad/s) and the gyro steers to hold that yaw rate, damping extra rotation so the car doesn't spin. Gain OFF/40/70/90%.
