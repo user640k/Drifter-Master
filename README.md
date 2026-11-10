@@ -20,7 +20,7 @@ Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A sta
 Menu → CAR → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour) and underglow colour or off. Colours only for now; the body shape is fixed. Saved in the browser.
 
 ## Menu
-Short and driven with arrows / mouse / gamepad: DRIVE, TRACK, OPPONENT (none, easy, medium, hard), CAR › and OPTIONS ›. CAR holds MODE (drift / grip), CUSTOMIZE and CAR SETUP; OPTIONS holds CAMERA, VOLUME and CONTROLS. Esc / B goes back out of a submenu. Under the list one line names the venue and the track. Behind it the selected venue is shown from its photo viewpoint. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+Short and driven with arrows / mouse / gamepad: DRIVE, TRACK, OPPONENT (none, easy, medium, hard), GHOST (on / off), CAR › and OPTIONS ›. CAR holds MODE (drift / grip), CUSTOMIZE and CAR SETUP; OPTIONS holds CAMERA, VOLUME and CONTROLS. Esc / B goes back out of a submenu. Under the list one line names the venue and the track. Behind it the selected venue is shown from its photo viewpoint. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
 ## Map: HOME TRACK
 A cozy room with a drift track built in it (own layout, after a picture of a home-made track). Photo textures throughout: textured white paint on the walls, washed with soft scallops of pink and blue light from the LED tape, a herringbone parquet floor, a plaster ceiling, a Persian rug (from the Ardabil carpet), dark grey painted boards for the track, bordered by low white flexible walls with LED tape along their tops (blue on the left fading to pink on the right, warm white round the islands), three turf islands with rocks and marker flags, a little white pit building with lit windows behind the back wall, a silver foil sheet over one wall, a panelled door and a floor lamp. Night-time mood: the LED tape does most of the lighting, all baked except a few point lights.
@@ -43,6 +43,12 @@ Drive through the gates in order (they are not marked on the floor); gate 0 is s
 - **MAIN LAYOUT** (arena): full clockwise lap: the long front sweeper, up the fence side, along the back in front of the stand, down the stand side.
 - **KEYHOLE** (arena): the main lap with a detour off the fence side into the infield pad, round the painted circle and back out onto the back straight.
 - **RAMP LAYOUT** (arena): the main lap with five ramps of different angles: a 6 deg table-top and a 12 deg kicker on the front sweeper, an 18 deg kicker up the fence side, 8 deg rollers along the back and a 24 deg launch down the stand side. Ramp faces are solid: kickers can only be climbed from the slope side.
+
+## Ghost
+Every lap is recorded. Your best lap on each track (per drift / grip mode) is saved in the browser and replayed as a pale see-through car from the moment you cross the start line, so you can race it. Turn it off with GHOST in the menu.
+
+## Idle reset
+Once a run is under way, if the car sits still with no input for 15 s the track resets to the start (a RESET IN countdown shows for the last 5 s).
 
 ## Racing an opponent
 Menu → OPPONENT: EASY / MEDIUM / HARD. A computer car (blue, or red if yours is blue) lines up beside you, a 3-2-1 count starts the race, and the first to finish 3 laps wins; POS shows your place. The opponent follows a racing line for each course, braking and accelerating to a speed set by the corner radius and the difficulty; in drift mode it drifts the corners with countersteer. It is solid: you can bump it, and it loses a little speed when you do.
@@ -69,7 +75,6 @@ Real 1/10 numbers (SI units), stepped at 720 Hz. The car is sized like the 1/10 
 - **Driving assist** (keyboard): drift car's throttle key becomes a wheelspin governor aiming for a drift angle set by the steering (~35 deg at full lock); grip car gets grip-limited steering, traction control and ABS.
 - **Suspension**: roll and pitch spring/damper systems move load between wheels; roll-bar split sets front/rear balance.
 - **Setup (G)** and **telemetry (T)**: wheel loads, grip used, slip angles, g-forces, roll/pitch, steering and gyro output, drift angle, wheelspin.
-- **Tire marks**: the rear tires draw into a canvas over the floor while sliding.
 
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:

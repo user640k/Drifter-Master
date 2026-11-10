@@ -245,7 +245,7 @@ const lam = (o) => new THREE.MeshLambertMaterial(o);
    Each map is its own group (hidden when not in use) with its floor size (hx, hz half extents),
    ceiling height h, solid boxes on the floor (obst), an optional rug (carpet grip), mood-light zones
    and its own lamps. Photo textures (IMG) are CC0 / public domain, shrunk to early-2000s sizes. */
-const FT = 0.3048, ROOM = 12.6; // size of the square tire-mark canvas, centred on the map's markC
+const FT = 0.3048;
 const hemi = new THREE.HemisphereLight(0xb8b4d8, 0x2a2438, 0.2); scene.add(hemi);
 scene.add(new THREE.AmbientLight(0xffffff, 0.08));
 const phong = (o) => new THREE.MeshPhongMaterial({ shininess: 6, specular: 0x111111, ...o });
@@ -702,7 +702,6 @@ function setMap(key) {
   const m = MAPS[key] || MAPS.home;
   for (const k in MAPS) MAPS[k].group.visible = MAPS[k] === m;
   MAP = m; scene.fog.near = m.fog[0]; scene.fog.far = m.fog[1];
-  if (markCtx) { markCtx.clearRect(0, 0, markCtx.canvas.width, markCtx.canvas.height); markDirty = true; }
 }
 
 const _c = new THREE.Color(), _fog = new THREE.Color();
@@ -738,21 +737,6 @@ function updateMood(time) {
 }
 function actMood() { moodIdx = (moodIdx + 1) % MOODS.length; try { localStorage.setItem('cc-mood2', String(moodIdx)); } catch (e) {} flash('LIGHTS · ' + MOODS[moodIdx].name, 1.2); }
 
-/* ---------------- floor surface and tire marks ---------------- */
-let markCtx = null, markTex = null, markDirty = false, markPrev = null, markFade = 0;
-function drawMarks(dt) {
-  const RES = 2048, MC = MAP.markC || [0, 0], px = x => (x - MC[0] + ROOM / 2) / ROOM * RES, pz = z => (z - MC[1] + ROOM / 2) / ROOM * RES, k = Math.min(1, car.slide * 0.9);
-  const fx = Math.sin(car.h), fz = Math.cos(car.h), lx = Math.cos(car.h), lz = -Math.sin(car.h);
-  const pts = [-1, 1].map(sd => [car.x - fx * 0.12 + lx * sd * 0.08, car.z - fz * 0.12 + lz * sd * 0.08]);
-  if (markPrev && k > 0.15) {
-    markCtx.strokeStyle = `rgba(14,14,18,${0.05 + k * 0.1})`; markCtx.lineWidth = 5; markCtx.lineCap = 'round';
-    for (let i = 0; i < 2; i++) { markCtx.beginPath(); markCtx.moveTo(px(markPrev[i][0]), pz(markPrev[i][1])); markCtx.lineTo(px(pts[i][0]), pz(pts[i][1])); markCtx.stroke(); }
-    markDirty = true;
-  }
-  markPrev = pts;
-  markFade += dt;
-  if (markFade > 4) { markFade = 0; markCtx.globalCompositeOperation = 'destination-out'; markCtx.fillStyle = 'rgba(0,0,0,0.04)'; markCtx.fillRect(0, 0, RES, RES); markCtx.globalCompositeOperation = 'source-over'; markDirty = true; }
-}
 /* ---------------- courses ----------------
    A course is a list of gates driven in order; gate 0 is start/finish. Each gate is two ends
    [ax, az, bx, bz, aKind, bKind]: 'c' tall cone, 'd' flat dome marker, 'x' nothing (a wall marks it).
@@ -1016,14 +1000,6 @@ function stepCones(dt) {
   }
 }
 function resetCones() { for (const c of cones) { Object.assign(c, { x: c.hx, z: c.hz, vx: 0, vz: 0, tilt: 0, down: false, t: 0, hit: false }); c.group.position.set(c.x, 0, c.z); c.pivot.rotation.x = 0; } }
-// tire marks: a canvas over the whole floor that the rear tires draw into while they slide
-{
-  const RES = 2048;
-  const mc = document.createElement('canvas'); mc.width = mc.height = RES;
-  markCtx = mc.getContext('2d'); markTex = new THREE.CanvasTexture(mc);
-  const mm = new THREE.Mesh(new THREE.PlaneGeometry(ROOM, ROOM), new THREE.MeshBasicMaterial({ map: markTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, fog: false }));
-  mm.rotation.x = -Math.PI / 2; mm.position.set((MAP.markC || [0, 0])[0], 0.003, (MAP.markC || [0, 0])[1]); mm.renderOrder = 1; scene.add(mm);
-}
 
 /* ---------------- the car: 1/10 chassis, I.A.S RACER body ----------------
    Every look parameter comes from CAR_STYLE (customize screen). */
@@ -1501,7 +1477,48 @@ const fmt = t => { if (t == null) return '-:--.---'; const m = Math.floor(t / 60
 // best lap per course (lap time includes cone penalties)
 const bestKey = () => 'cc-best3-' + course.name + '-' + (setup.car ? 'grip' : 'drift');
 let best = null;
-function loadBest() { best = null; try { const b = parseFloat(localStorage.getItem(bestKey())); if (b > 0) best = b; } catch (e) {} }
+/* ---------------- ghost: your best lap, replayed as a see-through car ----------------
+   Every lap is recorded (pose 30 times a second). A new best lap becomes the ghost for that course and mode
+   (saved in the browser); from the next time you cross the start line it drives alongside you. */
+let ghostOn = true; try { ghostOn = localStorage.getItem('cc-ghost') !== '0'; } catch (e) {}
+const ghost = { obj: null, rec: [], best: null, recT: 0 };
+const ghostKey = () => bestKey() + '-ghost';
+function ghostLoad() { ghost.best = null; try { const g = JSON.parse(localStorage.getItem(ghostKey()) || 'null'); if (Array.isArray(g) && g.length > 12) ghost.best = g; } catch (e) {} }
+function ghostSave() { if (ghost.rec.length < 12) return; ghost.best = ghost.rec; try { localStorage.setItem(ghostKey(), JSON.stringify(ghost.rec)); } catch (e) {} }
+function ghostBuild() {
+  if (ghost.obj) return;
+  ghost.obj = buildCar({ ...CAR_STYLE_DEFAULT, paint: '#cfe4ff', accent: '#ffffff', wheel: '#9aa4b4', glowOn: 0 });
+  ghost.obj.traverse(o => { if (o.material) { const ms = (Array.isArray(o.material) ? o.material : [o.material]).map(mt => { const c = mt.clone(); c.transparent = true; c.opacity = 0.32; c.depthWrite = false; if (c.emissive) c.emissive.setHex(0x203048); return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; } });
+  if (ghost.obj.userData.shadow) ghost.obj.userData.shadow.visible = false;
+  ghost.obj.visible = false; scene.add(ghost.obj);
+}
+function ghostStep(dt) {
+  if (race.state !== 'race' || race.lap === 0) { if (ghost.obj) ghost.obj.visible = false; return; }
+  const t = clock - race.lapStart;
+  if (t >= ghost.recT) { ghost.rec.push(+t.toFixed(3), +car.x.toFixed(3), +car.z.toFixed(3), +car.h.toFixed(3), +(car.y || 0).toFixed(3)); ghost.recT = t + 1 / 30; }
+  const g = ghost.best;
+  if (!ghostOn || !g) { if (ghost.obj) ghost.obj.visible = false; return; }
+  ghostBuild();
+  const n = g.length / 5; if (t > g[(n - 1) * 5]) { ghost.obj.visible = false; return; }
+  let lo = 0, hi = n - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (g[mid * 5] <= t) lo = mid; else hi = mid; }
+  const a = lo * 5, b = hi * 5, f = Math.max(0, Math.min(1, (t - g[a]) / Math.max(1e-4, g[b] - g[a])));
+  let dh = g[b + 3] - g[a + 3]; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+  ghost.obj.position.set(g[a + 1] + (g[b + 1] - g[a + 1]) * f, g[a + 4] + (g[b + 4] - g[a + 4]) * f, g[a + 2] + (g[b + 2] - g[a + 2]) * f);
+  ghost.obj.rotation.y = g[a + 3] + dh * f; ghost.obj.visible = true;
+}
+function ghostLapStart() { ghost.rec = []; ghost.recT = 0; }
+// idle reset: once a run is under way, sitting still for 15 s puts everything back to the start
+let idleT = 0;
+function idleStep(dt, canDrive) {
+  if (!canDrive || race.finished) { idleT = 0; return; }
+  const [sx, sz] = course.start, started = race.lap > 0 || Math.hypot(car.x - sx, car.z - sz) > 0.6;
+  const still = Math.hypot(car.vx, car.vz) < 0.08 && input.thr < 0.05 && input.brk < 0.05 && Math.abs(input.steer) < 0.1;
+  if (!started || !still) { if (idleT > 10) $('msg').textContent = ''; idleT = 0; return; }
+  idleT += dt;
+  if (idleT > 15) { idleT = 0; resetRun(); flash('TRACK RESET', 1.4); }
+  else if (idleT > 10) { $('msg').textContent = 'RESET IN ' + Math.ceil(15 - idleT); msgTimer = 0.3; }
+}
+function loadBest() { best = null; try { const b = parseFloat(localStorage.getItem(bestKey())); if (b > 0) best = b; } catch (e) {} ghostLoad(); }
 function setHudLabels() {
   $('lap').textContent = '0'; $('cur').textContent = fmt(0); $('last').textContent = fmt(null); $('best').textContent = fmt(best);
   $('gate').textContent = `0/${course.gates.length}`;
@@ -1516,7 +1533,7 @@ function resetRun() {
     const lx = Math.cos(car.h), lz = -Math.sin(car.h); car.x += lx * 0.38; car.z += lz * 0.38;
     race.count = 3.6;
   }
-  loadBest(); setHudLabels(); driftReset(); updateCamera(0, true);
+  loadBest(); ghostLapStart(); idleT = 0; if (ghost.obj) ghost.obj.visible = false; setHudLabels(); driftReset(); updateCamera(0, true);
 }
 function startRace() {
   closeMenu();
@@ -1524,7 +1541,6 @@ function startRace() {
   resetRun();
   race.state = 'race'; race.paused = false;
   $('msg').textContent = '';
-  try { markCtx.clearRect(0, 0, 2048, 2048); markTex.needsUpdate = true; } catch (e) {}
 }
 let msgTimer = 0;
 function flash(text, secs = 1.6) { $('msg').textContent = text; msgTimer = secs; }
@@ -1595,10 +1611,10 @@ function gateLogic(px, pz) {
   if (race.next === 0) {
     if (race.lap > 0) {
       const t = clock - race.lapStart + race.pen; race.last = t; $('last').textContent = fmt(t);
-      if (best == null || t < best) { best = t; $('best').textContent = fmt(best); try { localStorage.setItem(bestKey(), String(best)); } catch (e) {} flash('BEST LAP ' + fmt(t), 1.6); audio.blip(1320, 0.12); audio.blip(1760, 0.2, 'square', 0.15, 0.12); }
+      if (best == null || t < best) { best = t; ghostSave(); $('best').textContent = fmt(best); try { localStorage.setItem(bestKey(), String(best)); } catch (e) {} flash('BEST LAP ' + fmt(t), 1.6); audio.blip(1320, 0.12); audio.blip(1760, 0.2, 'square', 0.15, 0.12); }
       else { flash('LAP ' + fmt(t), 1.2); audio.blip(1046, 0.15); }
     }
-    race.lap++; race.lapStart = clock; race.pen = 0;
+    race.lap++; race.lapStart = clock; race.pen = 0; ghostLapStart();
     if (oppActive() && race.lap > RACE_LAPS && !race.finished) {
       race.finished = true; race.place = opp.doneT == null ? 1 : 2; const t = clock - race.goT;
       flash(race.place === 1 ? `1ST · YOU WIN · ${fmt(t)}` : `2ND · ${fmt(t)} · +${(t - opp.doneT).toFixed(2)} S`, 4);
@@ -1776,7 +1792,7 @@ function actMute() { muted = !muted; audio.setVolume(); flash(muted ? 'SOUND · 
 function actTele() { telemetryOn = !telemetryOn; $('tele').hidden = !telemetryOn; }
 
 /* ---------------- menu: short list with two submenus, keyboard / mouse / gamepad ----------------
-   Main: DRIVE, TRACK, OPPONENT, CAR >, OPTIONS >.   Pause: RESUME, RESTART, the same, MAIN MENU.
+   Main: DRIVE, TRACK, OPPONENT, GHOST, CAR >, OPTIONS >.   Pause: RESUME, RESTART, the same, MAIN MENU.
    CAR: MODE, CUSTOMIZE, CAR SETUP.   OPTIONS: CAMERA, VOLUME, CONTROLS. */
 const menu = { open: true, kind: 'main', sel: 0, controls: false, sub: null };
 function menuSub(name) { menu.sub = name; menu.sel = 0; renderMenu(); }
@@ -1799,6 +1815,7 @@ function menuItems() {
   const shared = [
     opt('TRACK', COURSES[setup.layout].name, d => { setCourse(setup.layout + d); if (menu.kind === 'pause') resetRun(); }),
     opt('OPPONENT', oppLevel ? OPP_LEVELS[oppLevel] : 'NONE', d => { oppLevel = (oppLevel + d + OPP_LEVELS.length) % OPP_LEVELS.length; try { localStorage.setItem('cc-opp', String(oppLevel)); } catch (e) {} if (menu.kind === 'pause') resetRun(); }),
+    opt('GHOST', ghostOn ? 'ON' : 'OFF', () => { ghostOn = !ghostOn; try { localStorage.setItem('cc-ghost', ghostOn ? '1' : '0'); } catch (e) {} }),
     act('CAR', () => menuSub('car'), true),
     act('OPTIONS', () => menuSub('options'), true),
   ];
@@ -2084,7 +2101,7 @@ function drawTelemetry() {
 
 /* ---------------- main loop ---------------- */
 placeCar(); camAng = car.h; setHudLabels(); updateCamera(0, true); $('hud').classList.add('dim'); renderMenu();
-window.__carpetCircuit = { car, setup, keys, input, stepCar, placeCar, VEH, MOTORS, marks: () => markCtx }; // debug / test hook
+window.__carpetCircuit = { car, setup, keys, input, stepCar, placeCar, VEH, MOTORS }; // debug / test hook
 let acc = 0, last = performance.now(), hudT = 0;
 const DT = 1 / 720; // tire forces are stiff; small steps keep them stable
 function frame(now) {
@@ -2121,15 +2138,14 @@ function frame(now) {
   ud.body.position.y = ud.body.userData.baseY - Math.abs(car.roll) * 0.02;
   for (const w of ud.wheels) { w.m.rotation.z = -car.spin; if (w.front) w.pivot.rotation.y = car.steer; }
   ud.lampM.color.setHex(car.braking && canDrive ? 0xff6a50 : (car.reversing ? 0xffe8d8 : 0xb81a12));
+  ghostStep(dt); idleStep(dt, canDrive);
   updateCamera(dt, false);
   audio.update(car.wheelSurf / MOTORS[setup.motor].vFree, car.thr, car.slide, race.state !== 'menu', MOTORS[setup.motor]);
   audio.setPose(car.x, car.y + 0.05, car.z, camera);
   if (telemetryOn) drawTelemetry();
   updateMood(performance.now() / 1000);
-  if (race.state !== 'menu') drawMarks(dt);
   if (canDrive) driftStep(dt);
   if (race.state === 'race') { oppStep(dt, canDrive); if (opp.bumped) { opp.v *= 0.92; opp.bumped = false; } }
-  if (markDirty && (clock % 0.066) < dt) { markTex.needsUpdate = true; markDirty = false; }
   if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0 && !race.paused) $('msg').textContent = ''; }
   hudT -= dt;
   if (hudT <= 0) {
