@@ -8,7 +8,7 @@ The garage wall texture is sampled from the project owner's reference photo of t
 |---|---|---|
 | phWall.jpg | reference photo, grey painted wall | lower walls |
 | fl_*.jpg | Wikimedia Commons national flags (Australia, Brazil, Canada, France, Germany, Ireland, Italy, Japan, Mexico, South Korea, Spain, Sweden, Netherlands, USA) (public domain) | flags round the garage walls |
-| hmWallpaper.jpg | William Morris, *Strawberry Thief* (1883), via Wikimedia Commons (public domain), made seamless | home track wallpaper |
+| hmWallpaper.jpg | Poly Haven `floral_jacquard` (CC0), recoloured to a two-tone sage damask | home track wallpaper |
 | hmFloor.jpg | Poly Haven `herringbone_parquet` (CC0) | home floor |
 | hmBoard.jpg | Poly Haven `plywood` (CC0), greyed and darkened like painted board | home track board |
 | hmCeiling.jpg | Poly Haven `white_plaster_02` (CC0) | home ceiling |

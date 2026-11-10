@@ -69,7 +69,7 @@ JOBS = {
     'fl_nl': lambda: crunch(flag('Flag_of_the_Netherlands.svg.png')),
     'fl_us': lambda: crunch(flag('Flag_of_the_United_States.svg.png')),
     # home track room
-    'hmWallpaper': lambda: crunch(seamless(ImageEnhance.Brightness(ImageEnhance.Color(load('m_Morris_Strawberry_Thief_1883.jpg').resize((512, 332), Image.LANCZOS)).enhance(0.8)).enhance(1.1))),
+    'hmWallpaper': lambda: crunch(ImageOps.colorize(ImageOps.autocontrast(load('floral_jacquard.jpg').convert('L').resize((512, 512), Image.LANCZOS), cutoff=1), (150, 165, 135), (196, 204, 176))),
     'hmFloor': lambda: crunch(ImageEnhance.Brightness(square(load('herringbone_parquet.jpg'), 256)).enhance(0.9)),
     'hmBoard': lambda: crunch(ImageEnhance.Contrast(ImageEnhance.Brightness(grey(square(load('plywood.jpg'), 256))).enhance(0.45)).enhance(1.25)),
     'hmCeiling': lambda: crunch(ImageEnhance.Brightness(square(load('white_plaster_02.jpg'), 128)).enhance(1.25)),
