@@ -1,9 +1,17 @@
 # Texture sources
 
-`tools/make_textures.py <download dir>` shrinks photo textures (CC0 or public domain) to small early-2000s sizes and embeds them in `index.html` as `IMG`. Everything else in the arena (epoxy, turf, concrete, chain-link, doors) is drawn procedurally in the game code.
+`tools/make_textures.py <download dir>` shrinks photo textures (CC0 or public domain) to small early-2000s sizes (128-512 px, slightly posterised) and embeds them in `index.html` as `IMG`. Glow and shadow gradients, rails, signs and the chain-link are drawn procedurally in the game code.
 
 | File | Source | Licence | Used for |
 |---|---|---|---|
 | curtain.jpg | Poly Haven `velour_velvet` (tinted deep red) | CC0 | curtains under the driver's stand |
+| arTurf.jpg | ambientCG `Grass001` | CC0 | arena turf island and strip |
+| arEpoxy.jpg | Poly Haven `concrete_floor_01` (grey, darkened) | CC0 | arena epoxy track deck |
+| arWall.jpg | Poly Haven `painted_plaster_wall` (tinted) | CC0 | grey painted walls (both maps) |
+| arConcrete.jpg | Poly Haven `concrete_wall_004` (grey) | CC0 | arena board-formed concrete wall |
+| arFloor.jpg | Poly Haven `hangar_concrete_floor` (lightened) | CC0 | arena floor outside the track |
+| neCarpet.jpg | ambientCG `Carpet012` (darkened) | CC0 | glow track carpet |
+| nePlate.jpg | ambientCG `DiamondPlate001` | CC0 | glow track floor outside the rails |
+| neMural.jpg | NASA images via Wikimedia Commons: Hubble NGC 1300, Cassini Jupiter, Cassini Saturn, composited | Public domain | glow track wall mural |
 
 The warehouse and living-room maps (removed for now) used more photo textures; see git history before the RC arena commit.
