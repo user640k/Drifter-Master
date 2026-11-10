@@ -51,16 +51,8 @@ def flag(name):
     return bg.convert('RGB').resize((128, 80), Image.LANCZOS)
 def grey(im): return ImageOps.grayscale(im).convert('RGB')
 JOBS = {
-    # RC arena
-    'arFloor': lambda: crunch(ImageEnhance.Brightness(grey(square(load('hangar_concrete_floor.jpg'), 256))).enhance(2.3)),
-    # sampled from the reference photo
-    'phTrack': lambda: crunch(ref((660, 1020, 1060, 1300), (256, 256), 30)),
-    'phPad': lambda: crunch(grainy(ref((742, 572, 803, 633), (128, 128), 14), 14, 4)),
+    # garage walls, sampled from the reference photo
     'phWall': lambda: crunch(grainy(ref((1262, 322, 1438, 418), (128, 128), 25), 9, 5)),
-    'phConcrete': lambda: crunch(ref((560, 2, 790, 80), (256, 128), 30, True, 1.2)),
-    'phRed': lambda: crunch(ref((1285, 158, 1495, 184), (128, 64), 15)),
-    'phCurtain': lambda: crunch(ref((520, 420, 800, 500), (256, 128), 0, False, 1.2)),
-    'phDoors': lambda: crunch(ref((1098, 338, 1245, 515), (128, 160), 0, False, 1.2)),
     # national flags (Wikimedia Commons, public domain)
     'fl_au': lambda: crunch(flag('Flag_of_Australia_(converted).svg.png')),
     'fl_br': lambda: crunch(flag('Flag_of_Brazil.svg.png')),
@@ -76,6 +68,14 @@ JOBS = {
     'fl_se': lambda: crunch(flag('Flag_of_Sweden.svg.png')),
     'fl_nl': lambda: crunch(flag('Flag_of_the_Netherlands.svg.png')),
     'fl_us': lambda: crunch(flag('Flag_of_the_United_States.svg.png')),
+    # home track room
+    'hmWallpaper': lambda: crunch(seamless(ImageEnhance.Brightness(ImageEnhance.Color(load('m_Morris_Strawberry_Thief_1883.jpg').resize((512, 332), Image.LANCZOS)).enhance(0.8)).enhance(1.1))),
+    'hmFloor': lambda: crunch(ImageEnhance.Brightness(square(load('herringbone_parquet.jpg'), 256)).enhance(0.9)),
+    'hmBoard': lambda: crunch(ImageEnhance.Contrast(ImageEnhance.Brightness(grey(square(load('plywood.jpg'), 256))).enhance(0.45)).enhance(1.25)),
+    'hmCeiling': lambda: crunch(ImageEnhance.Brightness(square(load('white_plaster_02.jpg'), 128)).enhance(1.25)),
+    'hmFoil': lambda: crunch(ImageEnhance.Contrast(square(load('Foil001_1K-JPG_Color.jpg'), 128)).enhance(1.8)),
+    'hmRug': lambda: crunch((lambda im: im.crop((int(im.width * 0.045), int(im.height * 0.03), int(im.width * 0.955), int(im.height * 0.97))))(load('Ardabil_Carpet.jpg')).resize((192, 368), Image.LANCZOS)),
+    'hmTurf': lambda: crunch(ImageEnhance.Brightness(square(load('Grass001_1K-JPG_Color.jpg'), 128)).enhance(1.25)),
 }
 
 if src:
