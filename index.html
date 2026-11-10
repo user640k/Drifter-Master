@@ -539,23 +539,37 @@ T.exitRed = canvasTex(64, 24, (g, w, h) => { g.fillStyle = '#1a0606'; g.fillRect
    LEDs, black kicker ramps, a raised back border lit cyan underneath, twinkling stars on the walls and ceiling.
    No point lights at all: the rails and LEDs are self-lit materials and every glow on the floor or walls
    is a baked additive plane; shadows are baked dark planes. Hemisphere light only, tinted UV purple. */
-// starry walls: a dark base with faint stars, and three layers of glowing stars that fade in and out at
-// different rates so they twinkle (only material opacity changes per frame)
-T.stars = tex(256, 128, (g, w, h) => {
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#04020c'); gr.addColorStop(1, '#0b0620'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  const r = rng(71);
-  for (let i = 0; i < 4; i++) { const x = r() * w, y = r() * h, rad = 30 + r() * 50, c = g.createRadialGradient(x, y, 0, x, y, rad); c.addColorStop(0, `hsla(${250 + r() * 50},80%,40%,0.12)`); c.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = c; g.fillRect(0, 0, w, h); }
-  for (let i = 0; i < 700; i++) { const a = 0.15 + r() * 0.45; g.fillStyle = r() < 0.7 ? `rgba(220,225,255,${a})` : `rgba(200,170,255,${a})`; g.fillRect(r() * w | 0, r() * h | 0, 1, 1); }
+// starry walls: plain dark paint with evenly spread white dots that glow and blink on and off, each on its own
+// timing. One point cloud per surface; a tiny shader works out each dot's brightness from the time.
+const starMat = new THREE.ShaderMaterial({
+  uniforms: { time: { value: 0 }, scale: { value: 720 / (2 * Math.tan(THREE.MathUtils.degToRad(30))) } },
+  vertexShader: `attribute vec2 blink; uniform float time; uniform float scale; varying float vOn;
+    void main() {
+      float s = sin(time * blink.y + blink.x);
+      vOn = smoothstep(-0.15, 0.2, s) * (0.75 + 0.25 * sin(time * blink.y * 3.7 + blink.x * 2.0));
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = max(3.0, 0.12 * scale / -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `varying float vOn;
+    void main() {
+      float d = length(gl_PointCoord - 0.5) * 2.0;
+      float a = (smoothstep(0.45, 0.0, d) + exp(-d * d * 5.0) * 0.45) * vOn;
+      if (a < 0.01) discard;
+      gl_FragColor = vec4(vec3(0.92, 0.95, 1.0) * a, a);
+    }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
 });
-T.starGlow = [0, 1, 2].map(n => canvasTex(256, 128, (g, w, h) => {
-  const r = rng(90 + n * 7);
-  for (let i = 0; i < 12; i++) {
-    const x = 6 + r() * (w - 12), y = 6 + r() * (h - 12), rad = 1.4 + r() * 2.6, hue = [220, 270, 190, 300][r() * 4 | 0];
-    const c = g.createRadialGradient(x, y, 0, x, y, rad * 2.2); c.addColorStop(0, 'rgba(255,255,255,1)'); c.addColorStop(0.18, `hsla(${hue},100%,85%,0.9)`); c.addColorStop(0.5, `hsla(${hue},100%,65%,0.25)`); c.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = c; g.fillRect(x - rad * 2.2, y - rad * 2.2, rad * 4.4, rad * 4.4);
-    if (r() < 0.25) { g.strokeStyle = `hsla(${hue},100%,85%,0.55)`; g.lineWidth = 1; g.beginPath(); g.moveTo(x - rad * 3, y); g.lineTo(x + rad * 3, y); g.moveTo(x, y - rad * 3); g.lineTo(x, y + rad * 3); g.stroke(); }
+// dots on a jittered grid (spread out, no clusters) over a w x h rectangle; place(x, y) gives the 3D position
+function starDots(parent, w, h, spacing, place) {
+  const pos = [], blink = [], nx = Math.max(1, Math.round(w / spacing)), ny = Math.max(1, Math.round(h / spacing));
+  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+    const x = -w / 2 + (i + 0.5 + (Math.random() - 0.5) * 0.7) * w / nx, y = -h / 2 + (j + 0.5 + (Math.random() - 0.5) * 0.7) * h / ny;
+    pos.push(...place(x, y)); blink.push(Math.random() * 6.283, 0.5 + Math.random() * 1.6);
   }
-}));
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('blink', new THREE.Float32BufferAttribute(blink, 2));
+  const pts = new THREE.Points(geo, starMat); pts.frustumCulled = false; parent.add(pts); return pts;
+}
 {
   const m = newMap('glow', 'GLOW TRACK', 5.6, 7.4, 3.6, { pov: [4.9, 1.65, -6.7], orbit: [4.4, 2.3], fog: [9, 26], fogColor: 0x0c0420, ceilCam: 3.1, surface: 1, markC: [0, 0],
     hemi: { party: [0x8a5cff, 0x2a0c5a, 0.62], on: [0xf2f0ff, 0x4a4660, 0.95] } });
@@ -593,25 +607,19 @@ T.starGlow = [0, 1, 2].map(n => canvasTex(256, 128, (g, w, h) => {
     const strut = lam({ color: 0x2a3550 });
     for (let x = X0 + 0.5; x < X1; x += 1.1) { const s = box(0.03, 0.62, 0.03, strut, x, 0.28, zb + 0.15, G); s.rotation.z = (Math.round(x * 10) % 2 ? 1 : -1) * 0.95; }
   }
-  // walls: dark paint low down, a starfield above; three layers of brighter stars twinkle on top
-  const starLayers = (parent, w, hh, place, tile) => {
-    const base = new THREE.Mesh(new THREE.PlaneGeometry(w, hh), new THREE.MeshBasicMaterial({ map: T.stars.clone(), fog: false }));
-    base.material.map.needsUpdate = true; base.material.map.repeat.set(w / tile, hh / (tile / 2)); place(base, 0); parent.add(base);
-    T.starGlow.forEach((tx, n) => {
-      const t = tx.clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w / tile, hh / (tile / 2)); t.offset.set(n * 0.37 + Math.random() * 0.2, n * 0.21);
-      const mt = new THREE.MeshBasicMaterial({ map: t, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(w, hh), mt); place(p, 0.002 + n * 0.001); parent.add(p);
-      m.twinkle.push({ mat: mt, phase: Math.random() * 6.3, speed: 0.6 + n * 0.45 + Math.random() * 0.3 });
-    });
-  };
+  // walls: dark paint low down, a dark band above with glowing, blinking white dots; the ceiling the same
+  const nightM = new THREE.MeshBasicMaterial({ color: 0x07050f, fog: false });
+  m.twinkle.push(starMat);
   for (const k of ['N', 'E', 'S', 'W']) {
     const g = m.walls[k], L = g.userData.len;
     const low = new THREE.Mesh(new THREE.PlaneGeometry(L, 1.0), lam({ map: imgTex('arWall', L / 1.6, 0.6), color: 0x3a3060 })); low.position.set(0, 0.5, 0); g.add(low);
-    starLayers(g, L, h - 1.0, (o, d) => o.position.set(0, 1.0 + (h - 1.0) / 2, d), 6.4);
+    const up = new THREE.Mesh(new THREE.PlaneGeometry(L, h - 1.0), nightM); up.position.set(0, 1.0 + (h - 1.0) / 2, 0); g.add(up);
+    starDots(g, L - 0.2, h - 1.3, 0.42, (x, y) => [x, 1.0 + (h - 1.0) / 2 + y, 0.012]);
     box(L, 0.04, 0.03, railM, 0, 1.0, 0.015, g);  // UV trim line between paint and stars
     decal(g, 0, 0.3, L, 0.6, Math.PI, T.shadeEdge, 0x000000, 0.45, false, 0.002);
   }
-  starLayers(G, 2 * hx, 2 * hz, (o, d) => { o.rotation.x = Math.PI / 2; o.position.y = h - d; }, 9.0);
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(2 * hx, 2 * hz), nightM); sky.rotation.x = Math.PI / 2; sky.position.y = h; G.add(sky);
+  starDots(G, 2 * hx - 0.2, 2 * hz - 0.2, 0.55, (x, y) => [x, h - 0.012, y]);
   // decor behind the back border: a tyre-style loop and a quarter pipe (not drivable)
   {
     const loop = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.11, 10, 28), new THREE.MeshBasicMaterial({ color: 0xf2e030, fog: false })); loop.position.set(-3.2, 1.25, 6.95); G.add(loop);
@@ -661,7 +669,7 @@ function updateMood(time) {
     if (on) _c.setRGB(0.85, 0.92, 1); else _c.setHSL(moodHue(M, time * M.speed * 0.8 + l.phase), 1, 0.55);
     l.core.color.copy(_c).lerp(new THREE.Color(1, 1, 1), 0.45); for (const gm of l.glows) gm.color.copy(_c);
   }
-  for (const t of MAP.twinkle) { const v = 0.5 + 0.5 * Math.sin(time * t.speed + t.phase) * Math.sin(time * t.speed * 0.37 + t.phase * 1.7); t.mat.opacity = 0.15 + 0.85 * v * v; }
+  for (const t of MAP.twinkle) t.uniforms.time.value = time; // blinking star dots
   if (MAP.zones.length) scene.fog.color.copy(_fog.multiplyScalar(1 / MAP.zones.length)).multiplyScalar(on ? 0.5 : 0.16);
   else scene.fog.color.setHex(MAP.fogColor || 0x000000);
   const hm = MAP.hemi && MAP.hemi[on ? 'on' : 'party'];

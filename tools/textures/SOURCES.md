@@ -1,6 +1,6 @@
 # Texture sources
 
-`tools/make_textures.py <download dir>` shrinks photo textures (CC0 or public domain) to small early-2000s sizes (128-512 px, slightly posterised) and embeds them in `index.html` as `IMG`. Glow and shadow gradients, the glow track's twinkling starfield, rails, signs and the chain-link are drawn procedurally in the game code.
+`tools/make_textures.py <download dir>` shrinks photo textures (CC0 or public domain) to small early-2000s sizes (128-512 px, slightly posterised) and embeds them in `index.html` as `IMG`. Glow and shadow gradients, the glow track's blinking star dots, rails, signs and the chain-link are drawn procedurally in the game code.
 
 | File | Source | Licence | Used for |
 |---|---|---|---|
