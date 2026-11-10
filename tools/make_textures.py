@@ -22,8 +22,9 @@ def grey(im): return ImageOps.grayscale(im).convert('RGB')
 JOBS = {
     'curtain': lambda: crunch(ImageEnhance.Brightness(tint(square(load('velour_velvet.jpg'), 128), (140, 26, 34), 0.85)).enhance(0.9)),
     # RC arena
-    'arTurf': lambda: crunch(ImageEnhance.Color(ImageEnhance.Brightness(square(load('Grass001_1K-JPG_Color.jpg'), 128)).enhance(1.35)).enhance(1.2)),
-    'arEpoxy': lambda: crunch(ImageEnhance.Contrast(ImageEnhance.Brightness(grey(square(load('concrete_floor_01.jpg'), 256))).enhance(0.42)).enhance(1.5)),
+    # turf graded to the photo: a light olive green, about (154, 180, 109)
+    'arTurf': lambda: crunch(ImageEnhance.Brightness(tint(square(load('Grass001_1K-JPG_Color.jpg'), 128), (168, 196, 118), 0.85)).enhance(2.15)),
+    'arEpoxy': lambda: crunch(ImageEnhance.Contrast(ImageEnhance.Brightness(grey(square(load('concrete_floor_01.jpg'), 256))).enhance(0.72)).enhance(1.35)),
     'arWall': lambda: crunch(tint(square(load('painted_plaster_wall.jpg'), 128), (150, 156, 168), 0.9)),
     'arConcrete': lambda: crunch(ImageEnhance.Brightness(grey(square(load('concrete_wall_004.jpg'), 256))).enhance(1.05)),
     'arFloor': lambda: crunch(ImageEnhance.Brightness(grey(square(load('hangar_concrete_floor.jpg'), 256))).enhance(2.3)),
