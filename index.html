@@ -556,8 +556,6 @@ T.starGlow = [0, 1, 2].map(n => canvasTex(256, 128, (g, w, h) => {
     if (r() < 0.25) { g.strokeStyle = `hsla(${hue},100%,85%,0.55)`; g.lineWidth = 1; g.beginPath(); g.moveTo(x - rad * 3, y); g.lineTo(x + rad * 3, y); g.moveTo(x, y - rad * 3); g.lineTo(x, y + rad * 3); g.stroke(); }
   }
 }));
-T.neonS = canvasTex(64, 64, (g, w, h) => { g.strokeStyle = '#39ff6a'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.arc(32, 20, 12, Math.PI * 0.1, Math.PI * 1.5, false); g.stroke(); g.beginPath(); g.arc(32, 44, 12, Math.PI * 1.5, Math.PI * 1.0 - 0.1, false); g.stroke(); });
-T.smiley = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#ffe23a'; g.beginPath(); g.arc(32, 32, 28, 0, 7); g.fill(); g.fillStyle = '#222'; g.beginPath(); g.arc(23, 26, 4, 0, 7); g.arc(41, 26, 4, 0, 7); g.fill(); g.strokeStyle = '#222'; g.lineWidth = 4; g.beginPath(); g.arc(32, 34, 15, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); });
 {
   const m = newMap('glow', 'GLOW TRACK', 5.6, 7.4, 3.6, { pov: [4.9, 1.65, -6.7], orbit: [4.4, 2.3], fog: [9, 26], fogColor: 0x0c0420, ceilCam: 3.1, surface: 1, markC: [0, 0],
     hemi: { party: [0x8a5cff, 0x2a0c5a, 0.62], on: [0xf2f0ff, 0x4a4660, 0.95] } });
@@ -614,12 +612,6 @@ T.smiley = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#ffe23a'; g.beginPath
     decal(g, 0, 0.3, L, 0.6, Math.PI, T.shadeEdge, 0x000000, 0.45, false, 0.002);
   }
   starLayers(G, 2 * hx, 2 * hz, (o, d) => { o.rotation.x = Math.PI / 2; o.position.y = h - d; }, 9.0);
-  // back wall signs: a green neon S and a yellow smiley, each with a baked halo
-  {
-    const g = m.walls.N;
-    const sgn = (map, u, y, s, col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(s, s), new THREE.MeshBasicMaterial({ map, transparent: true, fog: false })); p.position.set(u, y, 0.03); g.add(p); const hl = new THREE.Mesh(new THREE.PlaneGeometry(s * 2.4, s * 2.4), glowMat(T.halo, 0.35)); hl.material.color.setHex(col); hl.position.set(u, y, 0.02); g.add(hl); };
-    sgn(T.neonS, 1.2, 2.6, 0.6, 0x39ff6a); sgn(T.smiley, -2.6, 2.95, 0.42, 0xffe23a);
-  }
   // decor behind the back border: a tyre-style loop and a quarter pipe (not drivable)
   {
     const loop = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.11, 10, 28), new THREE.MeshBasicMaterial({ color: 0xf2e030, fog: false })); loop.position.set(-3.2, 1.25, 6.95); G.add(loop);
