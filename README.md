@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two maps: a 40 ft x 40 ft steel-framed warehouse with a 4.5 m roof and smooth polished concrete, and an early-2000s living room with furniture you drive round and under. Colour-changing LED mood lights, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
+Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on an indoor RC arena: a raised epoxy track with a C-shaped turf island, red/white curbs and a practice pad with a painted circle, a red driver's stand, fence and tire stacks. Colour-changing LED mood lights, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -22,32 +22,28 @@ Menu → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour), un
 ## Menu
 A single list, driven with arrows / mouse / gamepad: DRIVE, COURSE, MODE (drift / grip), CUSTOMIZE, CAMERA, LIGHTS, CAR SETUP, CONTROLS. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
-## Maps
-- **Warehouse**: 12.2 m square, 4.5 m to the roof deck. Painted block walls to 1.2 m with corrugated cladding above, blue steel I-section columns (solid to the car), roof I-beams on the column lines, purlins, skylights, four high-bay lamps, a roller shutter with hazard posts, a steel exit door, an electrical panel and a yellow walkway line. Floor: smooth polished concrete.
-- **Living room**: 6 x 5 m, 2.5 m ceiling, furnished like an early-2000s game interior: striped wallpaper over wood panelling, a three-seat sofa, a plaid armchair, a coffee table you can drive under (its legs are solid), a Persian rug (grips like carpet), a CRT TV with a VCR on a stand, a bookshelf, a side table with a lamp, a window at night with red velvet curtains and a radiator, a pot plant, a clock and two framed prints. Laminate floor.
+## Map: RC arena
+Modelled on a real indoor RC drift track. A room 13.2 x 18 m with a 6.5 m black ceiling: grey walls to 2.6 m, a white band, then red and black (bare board-formed concrete on one side), conduit runs, steel double doors with an exit sign, a lit doorway and a fire extinguisher. The track is a raised deck of dark speckled epoxy (P-tile grip) with black rubber edging, about 9 x 12 m. In it, a C-shaped artificial-turf island with red/white curbs; inside the C a practice pad with a painted circle and a line out through the opening at the back. A red driver's stand in the back corner (clear panels, curtains below, aluminium chairs, stairs) is where DRIVER POV stands. Along one side a turf strip, a chain-link fence, tire stacks and a checkered flag; crowd barriers along the other. Six ceiling cans light the track. The turf island and the track edge are solid.
 
-Photo textures are CC0 (Poly Haven, ambientCG) or public domain (Wikimedia Commons), shrunk to early-2000s sizes; see `tools/textures/SOURCES.md`.
+The warehouse and living-room maps are removed for now (they are in git history).
 
 ## Courses
 Drive through the gates in order (the next gate glows on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap; knocked cones reset after 3 s. Best lap is kept per course and mode.
-- **CONES · EASY**: wide three-cone slalom, round the east cone, back along the north side, round the west cone.
-- **CONES · HARD**: tight four-cone slalom, one and a half laps round a four-cone box, a narrow gate, a hairpin and a tight gate home.
-- **DRIFT TRACK**: enclosed foam-barrier track on the bare floor (1.5 m between barriers), long sweepers round the room and a flowing transition along the top; four checkpoints.
-- **LIVING ROOM** (living room map): figure of eight round the coffee table, passing under it twice (once each way) between the legs.
-- **RAMP PARK**: low plywood ramps (two kickers, a table-top, a set of rollers) marked out with cones. The car leaves the ground, flies and lands with a thump. Ramp faces are solid: kickers can only be climbed from the slope side, and the side edges block; the table-top and rollers can be driven either way.
+- **MAIN LAYOUT**: full clockwise lap of the arena: the long front sweeper, up the fence side, along the back past the stand, down the other side.
+- **KEYHOLE**: the main lap with a detour off the back straight into the infield pad, round the painted circle and back out.
 
 ## Sound
 Motor and tire sounds are loops cut from a recording of a real RC drift car on polished concrete (steady driving, hard drifting, and the tire-scrub band), cross-faded and pitch-shifted live from motor speed, throttle and slide. The motor is silent off the throttle.
 
 ## Cameras (C)
-The HUD is plain text: lap, time, last, best and gate count top left, speed and drift angle bottom right; no minimap.
+The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best and gate count top left, speed and drift angle bottom right; no minimap.
 
-Chase, DRIVER POV (standing in a corner of the map at about 1.6 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), ceiling.
+Chase, DRIVER POV (standing on the driver's stand at about 2.75 m eye height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs), ceiling.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz.
 - **Cars**: RWD drift (default: hard plastic tires, ~57 deg steering lock, 44/56 weight split, steering gyro) or 4WD grip touring (rubber tires).
-- **Surface**: smooth polished concrete (the most common RC drift surface); the living-room laminate drives the same, and the rug grips like carpet (drift tires hook up on it).
+- **Surface**: the arena's epoxy deck grips like P-tile (polished vinyl tiles used at dedicated drift tracks), a little more bite than bare concrete.
 - **Motor**: DC torque curve against wheel speed, `F = Fstall * (throttle - wheelSpeed / vFree)`; above the throttle's speed the ESC drags the wheels back, so the trigger sets wheel speed. Motors: brushed 540, 13.5T stock, 6.5T mod, 13.5T drift (high gearing).
 - **Tires**: driven wheels have their own speed. Combined slip (slip ratio + slip angle) sets the force, which points against the slip vector, so a hard-spinning rear tire gives thrust instead of side grip. Throttle sets the drift angle.
 - **Gyro** (with steering mixing): the stick asks for a turn (full lock about a 1.1 m path radius, capped at 3 rad/s) and the gyro steers to hold that yaw rate, damping extra rotation so the car doesn't spin. Gain OFF/40/70/90%.
