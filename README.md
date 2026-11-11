@@ -93,7 +93,9 @@ The lab shows each shell over its chassis (or alone, or see-through) with the su
 
 Stage 4, paint (`parts.html#paint`): six schemes worked out per pixel from the shell's own shape (SOLID, TWO-TONE, TWIN STRIPES over the bonnet, roof and boot, SIDE SWEEP with a pinstripe, FADE nose to tail, CONTRAST ROOF), six palettes (SIGNAL, MIDNIGHT, LIME RUSH, SUNSET, ARCTIC, GOLD RUSH) plus free main / second / accent colour pickers, and decals laid onto the body surface: race numbers on the doors and bonnet (any number 0-99), made-up sponsors (GRIPLINE, VOLTCELL, APEX GEARS, NITRO-X, DRIFT MASTER), a windscreen banner, and mud splatter on the rally hatch. All artwork is original.
 
-Next: body posts and clips, damage.
+Stage 5, mounting (`parts.html#mount`): POSTS AND R-CLIPS (four 6 mm nylon posts, fronts on the shock tower and rears on a mount bar behind the gearbox, with height holes every 3 mm, rubber washers on the shell and 1 mm wire R-clips through the hole just above it) or hidden MAGNETS (10 x 3 mm neodymium discs on holders at the same points, steel discs glued inside the shell). LIFT SHELL slides the clips out and lifts the shell off.
+
+Next: damage.
 
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:

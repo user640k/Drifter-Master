@@ -80,7 +80,7 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   <div class="hint">Drag: rotate · Scroll / pinch: zoom · Double-click: reset</div>
 </div>
 <aside>
-  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button><button type="button" id="sShell">3 · SHELLS</button><button type="button" id="sPaint">4 · PAINT</button></div></div>
+  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button><button type="button" id="sShell">3 · SHELLS</button><button type="button" id="sPaint">4 · PAINT</button><button type="button" id="sMount">5 · MOUNTING</button></div></div>
   <div id="pWheels" class="col">
     <div class="card"><h2>TYRE</h2><div class="row" id="tyres"></div><p id="tnote"></p></div>
     <div class="card"><h2>RIMS</h2><ol id="rims"></ol></div>
@@ -99,6 +99,11 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
     <div class="card"><h2>COLOURS</h2><div class="chips" id="palettes"></div>
       <div class="pick"><span class="pair"><label for="cA">MAIN</label><input type="color" id="cA"></span><span class="pair"><label for="cB">SECOND</label><input type="color" id="cB"></span><span class="pair"><label for="cC">ACCENT</label><input type="color" id="cC"></span></div></div>
     <div class="card"><h2>DECALS</h2><div class="chips" id="decals"></div><div class="pick"><label for="num">RACE NUMBER</label><input type="number" id="num" min="0" max="99" inputmode="numeric"></div></div>
+  </div>
+  <div id="pMount" class="col">
+    <div class="card"><h2>SHELL</h2><div class="chips" id="mshells"></div></div>
+    <div class="card"><h2>MOUNT</h2><div class="chips" id="mtypes"></div><p id="mnote"></p><div class="row"><button type="button" id="vLift" aria-pressed="false">LIFT SHELL</button><button type="button" id="vGlass2" aria-pressed="false">SEE-THROUGH</button></div></div>
+    <div class="card"><h2>PARTS</h2><ol id="mlist"></ol></div>
   </div>
   <div class="card"><h2>SPEC</h2><dl id="spec"></dl></div>
   <div class="card"><h2>BUILD ORDER</h2><ol class="steps" id="steps">
@@ -128,15 +133,15 @@ const rimL = new THREE.DirectionalLight(0xbfd4ff, 0.45); rimL.position.set(-2, 1
 const fillL = new THREE.PointLight(0xffffff, 0.3, 3); fillL.position.set(0.6, 0.2, -0.6); scene.add(fillL);
 const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
 
-const sel = { shell: 'drift', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
-try { const s = JSON.parse(localStorage.getItem('dm-parts-sel2') || 'null'); if (s) for (const k of ['type', 'set', 'build', 'rim', 'shell']) if (s[k] !== undefined) sel[k] = s[k]; } catch (e) {}
-const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify({ type: sel.type, set: sel.set, build: sel.build, rim: sel.rim, shell: sel.shell })); } catch (e) {} };
+const sel = { mount: 'posts', lifted: false, shell: 'drift', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
+try { const s = JSON.parse(localStorage.getItem('dm-parts-sel2') || 'null'); if (s) for (const k of ['type', 'set', 'build', 'rim', 'shell', 'mount']) if (s[k] !== undefined) sel[k] = s[k]; } catch (e) {}
+const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify({ type: sel.type, set: sel.set, build: sel.build, rim: sel.rim, shell: sel.shell, mount: sel.mount })); } catch (e) {} };
 
 // stage 1: all 15 wheels, built once (rows are tyre types, columns the five rim sets)
 const TYPES = Object.keys(PARTS.TYRES), wheels = {}, wheelGroup = new THREE.Group(); scene.add(wheelGroup);
 for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = buildWheel(t, i); wheelGroup.add(w); return w; });
 // stage 2: chassis, rebuilt when the build or rim set changes
-let chassis = null, shell = null;
+let chassis = null, shell = null, mounts = null, liftT = 0;
 const LIV = {}; for (const k of Object.keys(PARTS.SHELLS)) LIV[k] = JSON.parse(JSON.stringify(PARTS.LIVERY_DEFAULT));
 LIV.offroad.scheme = 'roof'; LIV.offroad.palette = 1; Object.assign(LIV.offroad, { a: PARTS.PALETTES[1].a, b: PARTS.PALETTES[1].b, c: PARTS.PALETTES[1].c, number: 7 }); LIV.offroad.decals.mud = true;
 try { const l = JSON.parse(localStorage.getItem('dm-parts-livery') || 'null'); if (l) for (const k in LIV) if (l[k]) Object.assign(LIV[k], l[k], { decals: { ...LIV[k].decals, ...(l[k].decals || {}) } }); } catch (e) {}
@@ -151,12 +156,12 @@ function listButtons(el, items, cur, onPick) {
 }
 let focusIdx = -1;
 function render() {
-  const W = sel.stage === 'wheels', PT = sel.stage === 'paint', SH = sel.stage === 'shell' || PT;
-  $('pWheels').hidden = !W; $('pChassis').hidden = sel.stage !== 'chassis'; $('pShell').hidden = sel.stage !== 'shell'; $('pPaint').hidden = !PT; $('gWheel').hidden = !W; $('gChassis').hidden = W;
-  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(sel.stage === 'chassis')); $('sShell').setAttribute('aria-pressed', String(sel.stage === 'shell')); $('sPaint').setAttribute('aria-pressed', String(PT));
-  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : PT ? 4 : SH ? 3 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
+  const W = sel.stage === 'wheels', PT = sel.stage === 'paint', MT = sel.stage === 'mount', SH = sel.stage === 'shell' || PT || MT;
+  $('pWheels').hidden = !W; $('pChassis').hidden = sel.stage !== 'chassis'; $('pShell').hidden = sel.stage !== 'shell'; $('pPaint').hidden = !PT; $('pMount').hidden = !MT; $('gWheel').hidden = !W; $('gChassis').hidden = W;
+  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(sel.stage === 'chassis')); $('sShell').setAttribute('aria-pressed', String(sel.stage === 'shell')); $('sPaint').setAttribute('aria-pressed', String(PT)); $('sMount').setAttribute('aria-pressed', String(MT));
+  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : MT ? 5 : PT ? 4 : SH ? 3 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
   $('vSpin').setAttribute('aria-pressed', String(sel.roll)); $('vSteer').setAttribute('aria-pressed', String(sel.steer)); $('vSusp').setAttribute('aria-pressed', String(sel.susp));
-  wheelGroup.visible = W; if (chassis) chassis.visible = !W && (!SH || sel.withChassis); if (shell) shell.visible = SH;
+  wheelGroup.visible = W; if (chassis) chassis.visible = !W && (!SH || sel.withChassis); if (shell) shell.visible = SH; if (mounts && !SH) mounts.visible = false;
   if (W) {
     const spec = PARTS.TYRES[sel.type], [design, finish, bead] = PARTS.WHEELSETS[sel.type][sel.set];
     document.querySelectorAll('#tyres button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === sel.type)));
@@ -175,14 +180,19 @@ function render() {
     const S = PARTS.SHELLS[sel.shell], C = PARTS.CHASSIS[S.chassis];
     if (!chassis || chassis.userData.kind !== S.chassis) { sel.build = S.chassis; sel.rim = 0; makeChassis(); chassis.userData.rim = 0; }
     chassis.visible = sel.withChassis;
-    if (!shell || shell.userData.kind !== sel.shell) { if (shell) scene.remove(shell); shell = buildShell(sel.shell); scene.add(shell); }
+    if (!shell || shell.userData.kind !== sel.shell) { if (shell) scene.remove(shell); shell = buildShell(sel.shell); scene.add(shell); if (mounts) { mounts.userData.dispose(); scene.remove(mounts); mounts = null; } }
+    if (mounts && mounts.userData.type !== sel.mount) { mounts.userData.dispose(); scene.remove(mounts); mounts = null; }
+    if (!mounts) { mounts = buildMounts(shell, sel.mount); scene.add(mounts); mounts.userData.lift(liftT); }
+    mounts.visible = MT || sel.mount === 'posts'; if (!MT) { liftT = 0; sel.lifted = false; mounts.userData.lift(0); }
+    if (MT) mountPanel();
     applyLivery(shell, LIV[sel.shell]); if (PT) paintPanel();
-    for (const mt of [shell.userData.mats.paint, shell.userData.mats.glass, shell.userData.paintMat]) { mt.transparent = sel.xray; mt.opacity = sel.xray ? 0.35 : 1; mt.depthWrite = !sel.xray; }
+    for (const mt of [shell.userData.mats.paint, shell.userData.mats.glass, shell.userData.paintMat]) { mt.transparent = sel.xray; mt.opacity = sel.xray ? 0.35 : 1; mt.depthWrite = !sel.xray; mt.needsUpdate = true; }
     document.querySelectorAll('#shells button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === sel.shell)));
     $('snote').textContent = S.note; $('vChassis').setAttribute('aria-pressed', String(sel.withChassis)); $('vGlass').setAttribute('aria-pressed', String(sel.xray));
     listButtons($('slist'), shell.userData.parts.map((p, i) => [i + 1, p.name]), focusIdx, i => { focusIdx = i; const f = shell.userData.parts[i].focus; want.target.set(f[0], f[1], f[2]); want.dist = 0.26; $('cur').textContent = shell.userData.parts[i].name.toUpperCase(); render(); });
     setSpec([['LENGTH', mm(S.z1 - S.z0)], ['WIDTH', mm(Math.max(...S.width.map(k => k[1])) * 2)], ['HEIGHT', mm(Math.max(...S.top.map(k => k[1])))], ['WHEELBASE', mm(C.wb)], ['FITS', C.name + ' chassis'], ['MATERIAL', 'polycarbonate, 0.75 mm'], ['WINDOWS', 'tinted, painted inside']]);
-    if (focusIdx < 0 || PT) $('cur').textContent = S.name + (PT ? ' · ' + PARTS.SCHEMES.find(x => x.key === LIV[sel.shell].scheme).name : '');
+    if (MT) { const mp = mounts.userData.parts; if (focusIdx < 0) $('cur').textContent = S.name + ' · ' + PARTS.MOUNTS[sel.mount].name; setSpec(sel.mount === 'posts' ? [['POSTS', '4 × 6 mm nylon'], ['HEIGHT HOLES', 'every 3 mm'], ['CLIPS', '1 mm spring-steel R-clips'], ['WASHERS', 'rubber, on the shell'], ['FRONT POSTS', 'on the shock tower'], ['REAR POSTS', 'mount bar behind the gearbox']] : [['MAGNETS', '4 × neodymium, 10 × 3 mm'], ['HOLDERS', 'nylon, on the same mount points'], ['IN THE SHELL', 'steel discs, glued'], ['VISIBLE', 'nothing from outside']]); }
+    if (!MT && (focusIdx < 0 || PT)) $('cur').textContent = S.name + (PT ? ' · ' + PARTS.SCHEMES.find(x => x.key === LIV[sel.shell].scheme).name : '');
     floorDisc.visible = true; floorDisc.scale.setScalar(0.34);
   } else {
     if (!chassis || chassis.userData.kind !== sel.build || chassis.userData.rim !== sel.rim) { makeChassis(); chassis.userData.rim = sel.rim; }
@@ -209,23 +219,30 @@ function paintPanel() {
 for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('input', e => { const L = LIV[sel.shell]; L[id.slice(1).toLowerCase()] = e.target.value; L.palette = -1; saveLiv(); applyLivery(shell, L); });
 for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('change', () => render());
 $('num').addEventListener('change', e => { const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)); LIV[sel.shell].number = v; saveLiv(); render(); });
+function mountPanel() {
+  $('mshells').innerHTML = ''; for (const k of Object.keys(PARTS.SHELLS)) chip($('mshells'), PARTS.SHELLS[k].name, k === sel.shell, () => { sel.shell = k; focusIdx = -1; save(); render(); home(); });
+  $('mtypes').innerHTML = ''; for (const k of Object.keys(PARTS.MOUNTS)) chip($('mtypes'), PARTS.MOUNTS[k].name, k === sel.mount, () => { sel.mount = k; focusIdx = -1; save(); render(); });
+  $('mnote').textContent = PARTS.MOUNTS[sel.mount].note; $('vLift').textContent = sel.lifted ? 'FIT SHELL' : 'LIFT SHELL'; $('vLift').setAttribute('aria-pressed', String(sel.lifted)); $('vGlass2').setAttribute('aria-pressed', String(sel.xray));
+  listButtons($('mlist'), mounts.userData.parts.map((p, i) => [i + 1, p.name]), focusIdx, i => { focusIdx = i; const f = mounts.userData.parts[i].focus; want.target.set(f[0], f[1], f[2]); want.dist = 0.14; $('cur').textContent = mounts.userData.parts[i].name.toUpperCase(); render(); });
+}
 for (const k of Object.keys(PARTS.SHELLS)) { const b = document.createElement('button'); b.type = 'button'; b.dataset.s = k; b.textContent = PARTS.SHELLS[k].name; b.addEventListener('click', () => { sel.shell = k; focusIdx = -1; save(); render(); home(); }); $('shells').appendChild(b); }
 for (const k of Object.keys(PARTS.CHASSIS)) { const b = document.createElement('button'); b.type = 'button'; b.dataset.b = k; b.textContent = PARTS.CHASSIS[k].name; b.addEventListener('click', () => { sel.build = k; sel.rim = 0; focusIdx = -1; save(); render(); home(); }); $('builds').appendChild(b); }
 
 // orbit camera; yaw 0 looks from +x (a wheel's outer face, the car's right side)
-const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 }, shell: { t: [0, 0.05, 0], yaw: -0.75, pitch: 0.3, dist: 0.66 }, paint: { t: [0, 0.055, 0], yaw: -0.55, pitch: 0.28, dist: 0.62 } };
+const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 }, shell: { t: [0, 0.05, 0], yaw: -0.75, pitch: 0.3, dist: 0.66 }, paint: { t: [0, 0.055, 0], yaw: -0.55, pitch: 0.28, dist: 0.62 }, mount: { t: [0, 0.07, -0.02], yaw: -0.6, pitch: 0.5, dist: 0.6 } };
 const orbit = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 }, want = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 };
 let fit = 1;
-function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.stage === 'shell' ? HOME.shell : sel.stage === 'paint' ? HOME.paint : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage !== 'wheels') render(); }
+function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.stage === 'shell' ? HOME.shell : sel.stage === 'paint' ? HOME.paint : sel.stage === 'mount' ? HOME.mount : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage !== 'wheels') render(); }
 function setStage(st) { sel.stage = st; try { if (location.hash !== '#' + st) history.replaceState(null, '', '#' + st); } catch (e) {} render(); home(); }
-$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis')); $('sShell').addEventListener('click', () => setStage('shell')); $('sPaint').addEventListener('click', () => setStage('paint'));
+$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis')); $('sShell').addEventListener('click', () => setStage('shell')); $('sPaint').addEventListener('click', () => setStage('paint')); $('sMount').addEventListener('click', () => setStage('mount'));
+$('vLift').addEventListener('click', () => { sel.lifted = !sel.lifted; render(); }); $('vGlass2').addEventListener('click', () => { sel.xray = !sel.xray; render(); });
 $('vChassis').addEventListener('click', () => { sel.withChassis = !sel.withChassis; render(); }); $('vGlass').addEventListener('click', () => { sel.xray = !sel.xray; render(); });
 $('vOne').addEventListener('click', () => { sel.all = false; render(); home(); });
 $('vAll').addEventListener('click', () => { sel.all = true; render(); home(); });
 $('vSpin').addEventListener('click', () => { sel.roll = !sel.roll; render(); });
 $('vSteer').addEventListener('click', () => { sel.steer = !sel.steer; render(); });
 $('vSusp').addEventListener('click', () => { sel.susp = !sel.susp; render(); });
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint') && h !== sel.stage) setStage(h); });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint' || h === 'mount') && h !== sel.stage) setStage(h); });
 const pts = new Map(); let pinch0 = 0;
 stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
 stage.addEventListener('pointermove', e => {
@@ -239,7 +256,7 @@ stage.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(wan
 stage.addEventListener('dblclick', home);
 function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); fit = Math.max(1, 1.5 / camera.aspect); }
 new ResizeObserver(resize).observe(stage); resize();
-{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint') sel.stage = h; }
+{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint' || h === 'mount') sel.stage = h; }
 render(); home(); Object.assign(orbit, { yaw: want.yaw, pitch: want.pitch, dist: want.dist }); orbit.target.copy(want.target);
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let last = performance.now(), t = 0, spin = 0;
@@ -251,9 +268,10 @@ function frame(now) {
   if (sel.roll && !reduce) spin += dt * 0.9;
   if (sel.stage === 'wheels') { for (const ty of TYPES) for (const w of wheels[ty]) w.userData.spin.rotation.x = spin; }
   else if (chassis) {
-    const tr = PARTS.CHASSIS[chassis.userData.kind].travel * (sel.stage === 'shell' || sel.stage === 'paint' ? 0.5 : 1), a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
+    const tr = PARTS.CHASSIS[chassis.userData.kind].travel * (sel.stage === 'shell' || sel.stage === 'paint' ? 0.5 : sel.stage === 'mount' ? 0 : 1), a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
     chassis.userData.pose([Math.sin(a) * amp, Math.sin(a + 0.8) * amp, Math.sin(a + 2.2) * amp, Math.sin(a + 3.0) * amp], sel.steer && !reduce ? Math.sin(t * 0.9) * 0.45 : 0, spin * 1.5);
   }
+  if (mounts && sel.stage === 'mount') { const goal = sel.lifted ? 1 : 0; if (liftT !== goal) { liftT = reduce ? goal : Math.max(0, Math.min(1, liftT + Math.sign(goal - liftT) * dt / 1.6)); mounts.userData.lift(liftT); } }
   const cp = Math.cos(orbit.pitch);
   camera.position.set(orbit.target.x + Math.cos(orbit.yaw) * cp * orbit.dist, orbit.target.y + Math.sin(orbit.pitch) * orbit.dist, orbit.target.z - Math.sin(orbit.yaw) * cp * orbit.dist);
   camera.lookAt(orbit.target); renderer.render(scene, camera);

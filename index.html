@@ -1003,7 +1003,7 @@ function resetCones() { for (const c of cones) { Object.assign(c, { x: c.hx, z: 
 
 /* ======== PARTS: an original 1/10 car, built from scratch (work in progress; the game still drives the old car) ========
    Units are metres. A wheel is built with its axle along local x and its outer face towards +x.
-   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. Stage 4: paint schemes, colours, decals. */
+   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. Stage 4: paint schemes, colours, decals. Stage 5: shell mounting. */
 const PARTS = {};
 PARTS.TYRES = {
   // hard plastic drift tyre: smooth, slightly glossy, three shallow grooves (1/10 drift: 26 mm wide, 64 mm tall)
@@ -1676,6 +1676,62 @@ function applyLivery(shell, L) {
     g.add(topDecal(shell, 0, D.hood[0] + 0.045, 0.06, 0.015, s3));
   }
   if (dc.banner) g.add(topDecal(shell, 0, D.banner[0], D.banner[2], D.banner[1], DECAL_ART.banner(kind === 'drift' ? 'DRIFT MASTER' : 'DRIFT MASTER RALLY')));
+}
+// ======== Stage 5: how the shell is held on ========
+// POSTS: 6 mm nylon body posts rise from the chassis (fronts on the shock tower, rears on a small mount behind the
+//        gearbox) through holes in the shell, which has a rubber washer round each hole. A row of holes in the post
+//        sets the shell height, and a 1 mm wire R-clip through the hole just above the shell holds it down.
+// MAGNETS: short holders with 10 x 3 mm neodymium discs on the chassis, steel discs glued inside the shell; nothing
+//        shows from outside (popular on scale drift cars). See-through view shows them.
+PARTS.MOUNTS = {
+  posts: { name: 'POSTS AND R-CLIPS', note: '6 mm posts, height holes every 3 mm, 1 mm wire clips' },
+  magnets: { name: 'MAGNETS', note: 'Hidden: 10 × 3 mm neodymium discs, steel discs in the shell' },
+};
+PARTS.MOUNT_POINTS = { // [x, z, base y] of each post or holder (left side mirrored)
+  drift: [[0.022, 0.111, 0.071], [0.024, -0.162, 0.04]],
+  offroad: [[0.024, 0.111, 0.095], [0.026, -0.192, 0.05]],
+};
+function rClipGeo() { // an R-clip in its own plane: straight pin along +x, loop at the end, wavy outer leg back
+  const L = 0.016, pts = [[0, 0], [L * 0.5, 0], [L, 0], [L + 0.0028, 0.0018], [L + 0.0022, 0.0048], [L - 0.0012, 0.0058], [L * 0.62, 0.0046], [L * 0.45, 0.0068], [L * 0.28, 0.0046], [L * 0.1, 0.0034]];
+  const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([u, w]) => new THREE.Vector3(u - L * 0.5, 0, -w))), 48, 0.0005, 6); return g;
+}
+function buildMounts(shell, type) {
+  const kind = shell.userData.kind, m = PARTS.mats(), sec = shell.userData.section, root = new THREE.Group(), parts = [];
+  const tag = (name, obj, focus) => { if (!parts.find(p => p.name === name)) parts.push({ name, obj, focus }); return obj; };
+  const posts = new THREE.Group(), clips = new THREE.Group(), onShell = new THREE.Group(); root.add(posts, clips); shell.add(onShell);
+  const clipGeo = rClipGeo(), washerM = new THREE.MeshPhongMaterial({ color: 0x18181a, specular: 0x222222, shininess: 12 });
+  const holeM = new THREE.MeshBasicMaterial({ color: 0x050505 });
+  for (const [px, pz, by] of PARTS.MOUNT_POINTS[kind]) for (const s of [-1, 1]) {
+    const x = s * px, sy = shellTopPoint(sec(pz), x);
+    if (type === 'posts') {
+      const top = sy + 0.014, post = pCyl(0.003, 0.003, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
+      for (let h = by + 0.008; h < top - 0.002; h += 0.003) { const hole = pCyl(0.00085, 0.00085, 0.0062, holeM, 'z', x, h, pz, posts, 6); hole.rotation.y = 0; }
+      pCyl(0.0055, 0.0055, 0.003, m.blueAlu, null, x, by + 0.0015, pz, posts, 16); // post mount
+      const w = pCyl(0.0058, 0.0058, 0.0012, washerM, null, x, sy + 0.0007, pz, onShell, 18); // rubber body washer on the shell
+      const clip = new THREE.Mesh(clipGeo, m.steel); clip.position.set(x, sy + 0.0045, pz); clip.rotation.y = s > 0 ? 0 : Math.PI; clip.userData.home = clip.position.clone(); clip.userData.out = new THREE.Vector3(s * 0.016, 0, 0); clips.add(clip);
+      tag('Body posts with height holes', post, [x, (top + by) / 2, pz]); tag('R-clips', clip, [x, sy + 0.005, pz]); tag('Rubber body washers', w, [x, sy, pz]);
+    } else {
+      const top = sy - 0.0035, holder = pCyl(0.0042, 0.0042, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
+      const mag = pCyl(0.005, 0.005, 0.003, m.steel, null, x, top + 0.0015, pz, posts, 20);
+      const disc = pCyl(0.0058, 0.0058, 0.0008, m.darkSteel, null, x, sy - 0.0012, pz, onShell, 20);
+      tag('Magnet holders', holder, [x, (top + by) / 2, pz]); tag('Neodymium magnets (10 × 3 mm)', mag, [x, top, pz]); tag('Steel discs inside the shell', disc, [x, sy, pz]);
+    }
+  }
+  // rear post mount bar behind the gearbox
+  const rz = PARTS.MOUNT_POINTS[kind][1][1], rby = PARTS.MOUNT_POINTS[kind][1][2], bar = pBox(0.07, 0.004, 0.008, m.blueAlu, 0, rby - 0.002, rz, posts);
+  const leg = pBox(0.006, rby - 0.012, 0.006, m.blueAlu, 0, (rby + 0.012) / 2 - 0.002, rz + 0.008, posts);
+  tag('Rear mount bar', bar, [0, rby, rz]);
+  root.userData = {
+    parts, type,
+    // t: 0 fitted, 1 off. Clips slide out first, then the shell lifts straight up
+    lift(t) {
+      const a = Math.min(1, t / 0.35), b = Math.max(0, (t - 0.35) / 0.65), e = b * b * (3 - 2 * b), up = e * 0.085;
+      shell.position.y = up;
+      clips.children.forEach(c => { c.position.copy(c.userData.home).addScaledVector(c.userData.out, a); c.position.y += up; });
+    },
+    dispose() { shell.remove(onShell); },
+  };
+  return root;
 }
 /* ======== END PARTS ======== */
 
