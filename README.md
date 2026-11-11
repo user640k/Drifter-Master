@@ -27,6 +27,12 @@ The car loads all black: satin-black paint, black covered rims, slammed 10 mm, 9
 CAMBER runs from 12° negative (tops in) on the left through 0 (neutral) in the middle to 12° positive (tops out) on the right at the front; the rear gets half.
 Changes apply instantly and are saved in the browser. The opponent gets the same car in contrasting colours. The model has a chrome delete: decorative chrome strips, door handles and the boot-lock trim are removed, and the grille, lamp rings, window frames, mirrors and wipers are satin black. The maker's badges are off and the chrome front bumper is replaced by a simple race bumper in body colour (wrapping to the front of the arches) with a black mesh intake, two side ducts and a 7 mm splitter; white 640kFPV plates front and rear.
 
+## Bodies
+Car screen → BODY: the **2002 TII** or the **ŻUK VAN**. Everything else works the same on both: paint schemes and colours, tyres, rims, stickers, ride height, camber, posts or magnets, damage, underglow and the setup.
+- ŻUK VAN: the owner's model of a 1970s Polish Żuk van (`free-zuk-3d-model.zip`, a .blend), converted by `tools/zuk_from_blend.py` (needs Blender's Python module: `uv venv -p 3.11 bpyenv && uv pip install -p bpyenv/bin/python bpy numpy pillow`). Only scaled uniformly to true 1/10 (its 2700 mm wheelbase becomes 270 mm; the body is 440 x 175 x 209 mm) and turned into the game's frame. Made into an RC drift shell: the model's wheels, floor pan, inner arch liners, axles and exhaust are left out, and it sits on the drift chassis on its long (270 mm) setting with the game's wheels. It keeps the model's texture, rust and all (the number plate is replaced by a white 640kFPV plate and the oil-brand sun strip by a DRIFT MASTER one); paint schemes recolour its blue paint. Lamps glow from the model's own glow map. Stickers: No Fear on the rear-door glass, the three small stickers on the cab door. Long body posts reach the 21 cm roof.
+- Slammed, both bodies get their arches opened just enough round the tyres; on the low-poly van the body is first subdivided near the wheels so no big triangle cuts through a tyre.
+- The shell sways on its posts: a springy extra lean on top of the body roll, driven by the sideways acceleration, with a little lag and overshoot. About 1.5° per g on the 2002 and 8° per g on the tall van, so the Żuk visibly rocks from one drift into the next.
+
 ## The car model
 The shell is the owner's model (`BMW_2002ti.usdz`, not in the repo), converted by
 

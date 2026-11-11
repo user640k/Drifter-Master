@@ -20,6 +20,7 @@ code = '\n'.join([
     line('const clamp = '), line('function rng(seed)'),
     between('function tex(', 'const IMG = '),
     line('const BODY_ASSET = '),  # the owner's car model (tools/car_from_usdz.py)
+    line('const ZUK_ASSET = '),   # the owner's Żuk van model (tools/zuk_from_blend.py)
     between('/* ======== PARTS:', '/* ======== END PARTS ======== */', True),
 ])
 out = (root / 'tools' / 'parts_template.html').read_text().replace('/*__PARTS_CODE__*/', code)
