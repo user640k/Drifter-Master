@@ -91,7 +91,9 @@ Stage 3, shells (`parts.html#shell`), original designs lofted from cross-section
 - RALLY HATCH (418 x 224 x 148 mm): tall rally hatchback with boxed flares, round headlights, a four-lamp pod, roof scoop, hatch spoiler and mudflaps.
 The lab shows each shell over its chassis (or alone, or see-through) with the suspension still working underneath.
 
-Next: decals and colour schemes, body posts and clips, damage.
+Stage 4, paint (`parts.html#paint`): six schemes worked out per pixel from the shell's own shape (SOLID, TWO-TONE, TWIN STRIPES over the bonnet, roof and boot, SIDE SWEEP with a pinstripe, FADE nose to tail, CONTRAST ROOF), six palettes (SIGNAL, MIDNIGHT, LIME RUSH, SUNSET, ARCTIC, GOLD RUSH) plus free main / second / accent colour pickers, and decals laid onto the body surface: race numbers on the doors and bonnet (any number 0-99), made-up sponsors (GRIPLINE, VOLTCELL, APEX GEARS, NITRO-X, DRIFT MASTER), a windscreen banner, and mud splatter on the rally hatch. All artwork is original.
+
+Next: body posts and clips, damage.
 
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:

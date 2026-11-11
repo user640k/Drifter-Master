@@ -54,6 +54,15 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .steps li.done .n::after { content: " ✓"; }
 .col { display: flex; flex-direction: column; gap: 12px; }
 .grp { display: contents; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { flex: 1 1 auto; }
+.sw { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -2px; }
+.sw i { width: 10px; height: 12px; display: block; border: 1px solid rgba(0,0,0,.4); }
+.pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12px; letter-spacing: .06em; color: var(--dim); }
+.pair { display: inline-flex; align-items: center; gap: 6px; }
+.pick input[type=color] { width: 36px; height: 26px; padding: 0; border: 1px solid var(--line); background: none; cursor: pointer; }
+.pick input[type=number] { width: 64px; font: inherit; font-size: 14px; color: var(--fg); background: #1d222c; border: 1px solid var(--line); padding: 4px 6px; }
+.pick input:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
 [hidden] { display: none !important; }
 #rimsets button { flex: 0 0 auto; min-width: 2.4em; }
 @media (max-width: 760px) {
@@ -71,7 +80,7 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   <div class="hint">Drag: rotate · Scroll / pinch: zoom · Double-click: reset</div>
 </div>
 <aside>
-  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button><button type="button" id="sShell">3 · SHELLS</button></div></div>
+  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button><button type="button" id="sShell">3 · SHELLS</button><button type="button" id="sPaint">4 · PAINT</button></div></div>
   <div id="pWheels" class="col">
     <div class="card"><h2>TYRE</h2><div class="row" id="tyres"></div><p id="tnote"></p></div>
     <div class="card"><h2>RIMS</h2><ol id="rims"></ol></div>
@@ -83,6 +92,13 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   <div id="pShell" class="col">
     <div class="card"><h2>SHELL</h2><div class="row" id="shells"></div><p id="snote"></p><div class="row"><button type="button" id="vChassis" aria-pressed="true">WITH CHASSIS</button><button type="button" id="vGlass" aria-pressed="false">SEE-THROUGH</button></div></div>
     <div class="card"><h2>PARTS</h2><ol id="slist"></ol></div>
+  </div>
+  <div id="pPaint" class="col">
+    <div class="card"><h2>SHELL</h2><div class="row" id="pshells"></div></div>
+    <div class="card"><h2>SCHEME</h2><div class="chips" id="schemes"></div></div>
+    <div class="card"><h2>COLOURS</h2><div class="chips" id="palettes"></div>
+      <div class="pick"><span class="pair"><label for="cA">MAIN</label><input type="color" id="cA"></span><span class="pair"><label for="cB">SECOND</label><input type="color" id="cB"></span><span class="pair"><label for="cC">ACCENT</label><input type="color" id="cC"></span></div></div>
+    <div class="card"><h2>DECALS</h2><div class="chips" id="decals"></div><div class="pick"><label for="num">RACE NUMBER</label><input type="number" id="num" min="0" max="99" inputmode="numeric"></div></div>
   </div>
   <div class="card"><h2>SPEC</h2><dl id="spec"></dl></div>
   <div class="card"><h2>BUILD ORDER</h2><ol class="steps" id="steps">
@@ -125,7 +141,7 @@ function grain(g, w, h, rgb, amp, seed) {
 
 /* ======== PARTS: an original 1/10 car, built from scratch (work in progress; the game still drives the old car) ========
    Units are metres. A wheel is built with its axle along local x and its outer face towards +x.
-   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. */
+   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. Stage 4: paint schemes, colours, decals. */
 const PARTS = {};
 PARTS.TYRES = {
   // hard plastic drift tyre: smooth, slightly glossy, three shallow grooves (1/10 drift: 26 mm wide, 64 mm tall)
@@ -577,8 +593,7 @@ function buildShellGeo(S, C) {
   for (let i = 0; i <= NS; i++) zs[i] = S.z0 + (S.z1 - S.z0) * (0.5 - 0.5 * Math.cos(i / NS * Math.PI)) * 0.3 + (S.z1 - S.z0) * (i / NS) * 0.7;
   const zone = z => z >= G.wind[0] && z <= G.wind[1] ? 'wind' : z >= G.roof[0] && z < G.roof[1] ? 'roof' : z >= G.rear[0] && z < G.rear[1] ? 'rear' : 'body';
   const cabin = z => { const a = G.rear[0], b = G.wind[1], e = 0.012; return Math.max(0, Math.min(1, (z - a + e) / e, (b + e - z) / e)); };
-  const half = [];
-  for (const z of zs) {
+  const section = z => {
     const yt = top(z), yb = Math.min(belt(z), yt - 0.003), w = width(z), c = cabin(z);
     let y0 = rocker(z); for (const wz of wzs) { const d = z - wz; if (Math.abs(d) < ra) y0 = Math.max(y0, wR + Math.sqrt(ra * ra - d * d)); }
     y0 = Math.min(y0, yb - 0.006);
@@ -587,8 +602,9 @@ function buildShellGeo(S, C) {
     const L = (a, b) => [a[0] + (b[0] - a[0]) * c, a[1] + (b[1] - a[1]) * c];
     const q4 = L(q4h, q4c);
     const ctrl = [[w * 0.955, y0], [w, y0 + (yb - y0) * 0.45], [w * 0.985, yb], L(q3h, q3c), q4, [q4[0] * 0.45, yt - 0.0008], [0, yt]];
-    half.push({ z, ...catmull2(ctrl, 3) });
-  }
+    return { z, y0, yb, yt, ...catmull2(ctrl, 3) };
+  };
+  const half = zs.map(section);
   const n = half[0].out.length; ringN = 2 * n - 1;
   for (const h of half) {
     for (let j = 0; j < n; j++) pos.push(h.out[j][0], h.out[j][1], h.z);
@@ -600,21 +616,21 @@ function buildShellGeo(S, C) {
     for (let j = 0; j < ringN - 1; j++) {
       const a = i * ringN + j, b = a + 1, c2 = a + ringN, d = c2 + 1, sg = Math.min(segOf(j), segOf(j + 1));
       const glass = (zn === 'wind' || zn === 'rear') ? sg >= 3 : zn === 'roof' && !bp ? sg === 3 : false;
-      (glass ? glassIdx : paintIdx).push(a, c2, b, b, c2, d);
+      (glass ? glassIdx : paintIdx).push(a, b, c2, b, d, c2); // outward-facing
     }
   }
   // close the nose and the tail with a fan to the section centre
   for (const [i, flip] of [[0, true], [NS, false]]) {
     const base = i * ringN; let cx = 0, cy = 0; for (let j = 0; j < ringN; j++) { cy += pos[(base + j) * 3 + 1]; } cy /= ringN;
     const ci = pos.length / 3; pos.push(cx, cy, zs[i]);
-    for (let j = 0; j < ringN - 1; j++) flip ? paintIdx.push(ci, base + j + 1, base + j) : paintIdx.push(ci, base + j, base + j + 1);
+    for (let j = 0; j < ringN - 1; j++) flip ? paintIdx.push(ci, base + j, base + j + 1) : paintIdx.push(ci, base + j + 1, base + j);
   }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex([...paintIdx, ...glassIdx]); geo.addGroup(0, paintIdx.length, 0); geo.addGroup(paintIdx.length, glassIdx.length, 1);
   geo.computeVertexNormals();
   // UVs for the decals later: side projection (z along, y up)
   const uv = []; for (let k = 0; k < pos.length; k += 3) uv.push((pos[k + 2] - S.z0) / (S.z1 - S.z0), pos[k + 1] / 0.16); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  return { geo, top, belt, width, rocker };
+  return { geo, top, belt, width, rocker, section };
 }
 PARTS.shellMats = (paint = 0xd8261c) => ({
   paint: new THREE.MeshPhongMaterial({ color: paint, specular: 0xffffff, shininess: 120, envMap: PARTS.envTex, reflectivity: 0.22, side: THREE.DoubleSide }),
@@ -626,7 +642,7 @@ PARTS.shellMats = (paint = 0xd8261c) => ({
 });
 function buildShell(kind, paint) {
   const S = PARTS.SHELLS[kind], C = PARTS.CHASSIS[S.chassis], mt = PARTS.shellMats(paint), root = new THREE.Group();
-  const { geo, top, belt, width } = buildShellGeo(S, C);
+  const { geo, top, belt, width, section } = buildShellGeo(S, C);
   const body = new THREE.Mesh(geo, [mt.paint, mt.glass]); root.add(body);
   const parts = [], tag = (name, obj, focus) => { obj.name = name; parts.push({ name, obj, focus }); return obj; };
   tag('Body: polycarbonate, 0.75 mm', body, [0, 0.07, 0]);
@@ -668,8 +684,136 @@ function buildShell(kind, paint) {
     tag('Hatch spoiler', sp, [0, 0.14, -0.18]);
   }
   tag('Windows: tinted, inside-painted', body, [0.05, 0.1, -0.03]);
-  root.userData = { kind, parts, mats: mt };
+  root.userData = { kind, parts, mats: mt, section, S };
   return root;
+}
+// ======== Stage 4: paint schemes, colours and decals ========
+// The paint is worked out per pixel from the shell's own position and normal (a few lines added to the phong shader),
+// so scheme edges stay crisp at any distance. Decals are thin meshes laid onto the body surface, each with its own
+// canvas texture, all original artwork (made-up sponsors, no real brands).
+PARTS.SCHEMES = [
+  { key: 'solid', name: 'SOLID', id: 0 },
+  { key: 'twotone', name: 'TWO-TONE', id: 1 },
+  { key: 'stripes', name: 'TWIN STRIPES', id: 2 },
+  { key: 'sweep', name: 'SIDE SWEEP', id: 3 },
+  { key: 'fade', name: 'FADE', id: 4 },
+  { key: 'roof', name: 'CONTRAST ROOF', id: 5 },
+];
+PARTS.PALETTES = [
+  { name: 'SIGNAL', a: '#d8261c', b: '#f2f2ee', c: '#141416' },
+  { name: 'MIDNIGHT', a: '#14224a', b: '#c8ccd4', c: '#ff7a1a' },
+  { name: 'LIME RUSH', a: '#9ad21e', b: '#141416', c: '#f2f2ee' },
+  { name: 'SUNSET', a: '#ff6a13', b: '#6a1e8c', c: '#ffd21a' },
+  { name: 'ARCTIC', a: '#eef0f2', b: '#16a8b8', c: '#1a1c22' },
+  { name: 'GOLD RUSH', a: '#17181b', b: '#d4a23a', c: '#c8202a' },
+];
+// per-shell lines for the schemes: two-tone line (y at z=0, slope), sweep line (y at z=0, slope), stripe |x| range, roof line
+PARTS.SCHEME_GEO = {
+  drift: { tone: [0.05, 0.05], sweep: [0.046, -0.1], stripe: [0.007, 0.021], roof: 0.111 },
+  offroad: { tone: [0.058, 0.03], sweep: [0.06, -0.1], stripe: [0.008, 0.024], roof: 0.137 },
+};
+PARTS.LIVERY_DEFAULT = { scheme: 'stripes', palette: 0, a: '#d8261c', b: '#f2f2ee', c: '#141416', number: 27, decals: { numbers: true, sponsors: true, banner: true, mud: false } };
+function paintMaterial(kind) {
+  const mt = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xffffff, shininess: 120, envMap: PARTS.envTex, reflectivity: 0.22, side: THREE.DoubleSide });
+  const SG = PARTS.SCHEME_GEO[kind], S = PARTS.SHELLS[kind];
+  const u = { uScheme: { value: 0 }, uA: { value: new THREE.Color() }, uB: { value: new THREE.Color() }, uC: { value: new THREE.Color() },
+    uTone: { value: new THREE.Vector2(...SG.tone) }, uSweep: { value: new THREE.Vector2(...SG.sweep) }, uStripe: { value: new THREE.Vector2(...SG.stripe) }, uRoof: { value: SG.roof }, uZ: { value: new THREE.Vector2(S.z0, S.z1) } };
+  mt.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP; varying vec3 vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vOP; varying vec3 vON; uniform float uScheme; uniform vec3 uA; uniform vec3 uB; uniform vec3 uC;
+uniform vec2 uTone; uniform vec2 uSweep; uniform vec2 uStripe; uniform float uRoof; uniform vec2 uZ;`).replace('#include <color_fragment>', `#include <color_fragment>
+{ vec3 c = uA; float ax = abs(vOP.x), y = vOP.y, z = vOP.z;
+  if (uScheme > 0.5 && uScheme < 1.5) { if (y < uTone.x + z * uTone.y) c = uB; }
+  else if (uScheme < 2.5 && uScheme > 1.5) { if (vON.y > 0.2 && ax > uStripe.x && ax < uStripe.y) c = uB; else if (vON.y > 0.2 && ax > uStripe.y && ax < uStripe.y + 0.0018) c = uC; }
+  else if (uScheme < 3.5 && uScheme > 2.5) { float l = y - (uSweep.x + z * uSweep.y); if (abs(vON.x) > 0.25 && l > 0.0 && l < 0.013) c = uB; else if (abs(vON.x) > 0.25 && l > 0.016 && l < 0.019) c = uC; }
+  else if (uScheme < 4.5 && uScheme > 3.5) { c = mix(uB, uA, smoothstep(uZ.x, uZ.y, z)); }
+  else if (uScheme > 4.5) { if (y > uRoof) c = uC; else if (y < uTone.x - 0.008 + z * uTone.y) c = uB; }
+  diffuseColor.rgb = c; }`);
+  };
+  mt.userData.u = u; return mt;
+}
+// ---- decal artwork (canvas) ----
+function decalTex(w, h, draw) { const t = tex(w, h, draw); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.anisotropy = 4; return t; }
+const DECAL_ART = {
+  number: (n, ring) => decalTex(128, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.fillStyle = ring; g.beginPath(); g.arc(64, 64, 60, 0, 7); g.fill(); g.fillStyle = '#f6f6f2'; g.beginPath(); g.arc(64, 64, 51, 0, 7); g.fill();
+    g.fillStyle = '#141416'; g.font = 'bold 72px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 68);
+  }),
+  sponsor: (name) => decalTex(256, 64, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    if (name === 'GRIPLINE') { g.fillStyle = '#141416'; g.fillRect(0, 6, w, 52); g.fillStyle = '#ffd21a'; g.font = 'bold italic 38px Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText('GRIPLINE', 14, 30); for (let x = 14; x < 236; x += 12) g.fillRect(x, 46, 7, 5); }
+    else if (name === 'VOLTCELL') { g.fillStyle = '#f2f2ee'; g.font = 'bold 40px Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText('VOLTCELL', 58, 34); g.fillStyle = '#3a9aff'; g.beginPath(); [[30, 4], [12, 36], [26, 36], [18, 60], [46, 24], [32, 24], [42, 4]].forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.fill(); }
+    else if (name === 'APEX GEARS') { g.fillStyle = '#f2f2ee'; g.fillRect(0, 8, w, 48); g.fillStyle = '#c8202a'; g.beginPath(); for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, r = i % 2 ? 22 : 17; g.lineTo(32 + r * Math.cos(a), 32 + r * Math.sin(a)); } g.fill(); g.fillStyle = '#f2f2ee'; g.beginPath(); g.arc(32, 32, 8, 0, 7); g.fill(); g.fillStyle = '#141416'; g.font = 'bold 32px Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText('APEX GEARS', 62, 33); }
+    else if (name === 'NITRO-X') { g.fillStyle = '#ff7a1a'; g.beginPath(); g.moveTo(10, 8); g.lineTo(250, 8); g.lineTo(236, 56); g.lineTo(0, 56); g.fill(); g.fillStyle = '#141416'; g.font = 'bold italic 40px Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText('NITRO-X', 40, 33); }
+    else { g.fillStyle = '#f2f2ee'; g.font = 'bold 28px Arial, sans-serif'; g.textBaseline = 'middle'; g.fillText(name, 8, 33); g.fillStyle = '#ffb21e'; g.fillRect(8, 54, 240, 4); }
+  }),
+  banner: (text) => decalTex(512, 64, (g, w, h) => { g.fillStyle = '#121316'; g.fillRect(0, 0, w, h); g.fillStyle = '#f2f2ee'; g.font = 'bold 40px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, 34); }),
+  mud: () => decalTex(512, 64, (g, w, h) => {
+    const r = rng(11); g.clearRect(0, 0, w, h);
+    const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(92,70,44,0.95)'); gr.addColorStop(0.45, 'rgba(110,84,52,0.55)'); gr.addColorStop(1, 'rgba(110,84,52,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { const x = r() * w, y = h - Math.pow(r(), 1.7) * h, rad = 0.6 + r() * 3.2; g.fillStyle = `rgba(${80 + r() * 30 | 0},${60 + r() * 20 | 0},${36 + r() * 16 | 0},${0.5 + r() * 0.5})`; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); }
+  }),
+};
+// ---- decals laid on the body: side decals follow the body side at (z, y); top decals follow the bonnet / roof at (x, z) ----
+function shellSidePoint(sec, y) { // x on the side of a section at height y (clamped to the side)
+  const o = sec.out; if (y <= o[0][1]) return o[0][0];
+  for (let j = 0; j < o.length - 1; j++) { const a = o[j], b = o[j + 1]; if (b[1] >= y && a[1] <= y) return a[0] + (b[0] - a[0]) * (y - a[1]) / Math.max(1e-6, b[1] - a[1]); if (b[0] < a[0] * 0.8) return a[0]; }
+  return o[o.length - 1][0];
+}
+function shellTopPoint(sec, x) { // y on the top of a section at |x|
+  const o = sec.out, ax = Math.abs(x); for (let j = o.length - 1; j > 0; j--) { const a = o[j], b = o[j - 1]; if (b[0] >= ax && a[0] <= ax) return a[1] + (b[1] - a[1]) * (ax - a[0]) / Math.max(1e-6, b[0] - a[0]); }
+  return o[0][1];
+}
+function decalMesh(pts, uvs, nx, ny, map) {
+  const idx = []; for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i; idx.push(a, a + 1, a + nx + 1, a + 1, a + nx + 2, a + nx + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({ map, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, specular: 0x666666, shininess: 90, side: THREE.DoubleSide }));
+  m.renderOrder = 3; return m;
+}
+function sideDecal(shell, side, zc, yc, w, h, map) {
+  const sec = shell.userData.section, nx = 14, ny = 5, pts = [], uvs = [];
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
+    const u = i / nx, v = j / ny, z = zc + (side > 0 ? 0.5 - u : u - 0.5) * w, s = sec(z), y = Math.max(s.y0 + 0.001, Math.min(s.yb, yc + (v - 0.5) * h));
+    pts.push(side * (shellSidePoint(s, y) + 0.0007), y, z); uvs.push(u, v);
+  }
+  return decalMesh(pts, uvs, nx, ny, map);
+}
+function topDecal(shell, xc, zc, w, d, map) { // reads from the front of the car: text up towards the tail
+  const sec = shell.userData.section, nx = 10, ny = 10, pts = [], uvs = [];
+  for (let j = 0; j <= ny; j++) { const v = j / ny, z = zc - (v - 0.5) * d, s = sec(z); for (let i = 0; i <= nx; i++) { const u = i / nx, x = xc + (u - 0.5) * w; pts.push(x, shellTopPoint(s, x) + 0.0007, z); uvs.push(u, v); } }
+  return decalMesh(pts, uvs, nx, ny, map);
+}
+// where each shell carries its decals
+PARTS.DECAL_LAYOUT = {
+  drift: { door: [-0.035, 0.056, 0.042], hood: [0.115, 0.05], sill: [-0.03, 0.033, 0.13, 0.011], quarter: [-0.195, 0.058, 0.05, 0.0125], nose: [0.185, 0.05, 0.04, 0.01], banner: [-0.008, 0.02, 0.12], mud: null, sponsors: ['GRIPLINE', 'VOLTCELL', 'APEX GEARS'] },
+  offroad: { door: [-0.04, 0.07, 0.044], hood: [0.115, 0.05], sill: [-0.04, 0.047, 0.12, 0.012], quarter: [-0.185, 0.082, 0.045, 0.012], nose: [0.19, 0.068, 0.03, 0.009], banner: [0.01, 0.02, 0.13], mud: [0.0, 0.05, 0.4, 0.028], sponsors: ['NITRO-X', 'GRIPLINE', 'VOLTCELL'] },
+};
+function applyLivery(shell, L) {
+  const kind = shell.userData.kind, D = PARTS.DECAL_LAYOUT[kind], sch = PARTS.SCHEMES.find(s => s.key === L.scheme) || PARTS.SCHEMES[0];
+  let pm = shell.userData.paintMat; if (!pm) { pm = shell.userData.paintMat = paintMaterial(kind); shell.children[0].material[0] = pm; }
+  const u = pm.userData.u; u.uScheme.value = sch.id; u.uA.value.set(L.a); u.uB.value.set(L.b); u.uC.value.set(L.c);
+  // mirrors and wing / spoiler stay the main colour: a plain material kept in step
+  shell.userData.mats.paint.color.set(L.a);
+  if (shell.userData.decals) { shell.remove(shell.userData.decals); shell.userData.decals.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); }
+  const g = shell.userData.decals = new THREE.Group(); shell.add(g);
+  const dc = L.decals || {};
+  if (dc.mud && D.mud) { const t = DECAL_ART.mud(); for (const s of [-1, 1]) g.add(sideDecal(shell, s, D.mud[0], D.mud[1] - 0.008, D.mud[2], D.mud[3], t)); }
+  if (dc.numbers) {
+    const t = DECAL_ART.number(L.number, L.c); for (const s of [-1, 1]) g.add(sideDecal(shell, s, D.door[0], D.door[1], D.door[2], D.door[2], t));
+    g.add(topDecal(shell, 0, D.hood[0], D.hood[1], D.hood[1], t));
+  }
+  if (dc.sponsors) {
+    const [s1, s2, s3] = D.sponsors.map(n => DECAL_ART.sponsor(n)), dm = DECAL_ART.sponsor('DRIFT MASTER');
+    for (const s of [-1, 1]) {
+      g.add(sideDecal(shell, s, D.sill[0], D.sill[1], D.sill[2], D.sill[3], dm));
+      g.add(sideDecal(shell, s, D.quarter[0], D.quarter[1], D.quarter[2], D.quarter[3], s1));
+      g.add(sideDecal(shell, s, D.nose[0], D.nose[1], D.nose[2], D.nose[3], s2));
+    }
+    g.add(topDecal(shell, 0, D.hood[0] + 0.045, 0.06, 0.015, s3));
+  }
+  if (dc.banner) g.add(topDecal(shell, 0, D.banner[0], D.banner[2], D.banner[1], DECAL_ART.banner(kind === 'drift' ? 'DRIFT MASTER' : 'DRIFT MASTER RALLY')));
 }
 /* ======== END PARTS ======== */
 scene.add(new THREE.HemisphereLight(0xf2f4ff, 0x30333a, 0.7));
@@ -687,6 +831,10 @@ const TYPES = Object.keys(PARTS.TYRES), wheels = {}, wheelGroup = new THREE.Grou
 for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = buildWheel(t, i); wheelGroup.add(w); return w; });
 // stage 2: chassis, rebuilt when the build or rim set changes
 let chassis = null, shell = null;
+const LIV = {}; for (const k of Object.keys(PARTS.SHELLS)) LIV[k] = JSON.parse(JSON.stringify(PARTS.LIVERY_DEFAULT));
+LIV.offroad.scheme = 'roof'; LIV.offroad.palette = 1; Object.assign(LIV.offroad, { a: PARTS.PALETTES[1].a, b: PARTS.PALETTES[1].b, c: PARTS.PALETTES[1].c, number: 7 }); LIV.offroad.decals.mud = true;
+try { const l = JSON.parse(localStorage.getItem('dm-parts-livery') || 'null'); if (l) for (const k in LIV) if (l[k]) Object.assign(LIV[k], l[k], { decals: { ...LIV[k].decals, ...(l[k].decals || {}) } }); } catch (e) {}
+const saveLiv = () => { try { localStorage.setItem('dm-parts-livery', JSON.stringify(LIV)); } catch (e) {} };
 function makeChassis() { if (chassis) scene.remove(chassis); chassis = buildChassis(sel.build, sel.rim); scene.add(chassis); }
 
 const mm = v => (v * 1000).toFixed(0) + ' mm';
@@ -697,10 +845,10 @@ function listButtons(el, items, cur, onPick) {
 }
 let focusIdx = -1;
 function render() {
-  const W = sel.stage === 'wheels', SH = sel.stage === 'shell';
-  $('pWheels').hidden = !W; $('pChassis').hidden = sel.stage !== 'chassis'; $('pShell').hidden = !SH; $('gWheel').hidden = !W; $('gChassis').hidden = W;
-  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(sel.stage === 'chassis')); $('sShell').setAttribute('aria-pressed', String(SH));
-  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : SH ? 3 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
+  const W = sel.stage === 'wheels', PT = sel.stage === 'paint', SH = sel.stage === 'shell' || PT;
+  $('pWheels').hidden = !W; $('pChassis').hidden = sel.stage !== 'chassis'; $('pShell').hidden = sel.stage !== 'shell'; $('pPaint').hidden = !PT; $('gWheel').hidden = !W; $('gChassis').hidden = W;
+  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(sel.stage === 'chassis')); $('sShell').setAttribute('aria-pressed', String(sel.stage === 'shell')); $('sPaint').setAttribute('aria-pressed', String(PT));
+  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : PT ? 4 : SH ? 3 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
   $('vSpin').setAttribute('aria-pressed', String(sel.roll)); $('vSteer').setAttribute('aria-pressed', String(sel.steer)); $('vSusp').setAttribute('aria-pressed', String(sel.susp));
   wheelGroup.visible = W; if (chassis) chassis.visible = !W && (!SH || sel.withChassis); if (shell) shell.visible = SH;
   if (W) {
@@ -722,12 +870,13 @@ function render() {
     if (!chassis || chassis.userData.kind !== S.chassis) { sel.build = S.chassis; sel.rim = 0; makeChassis(); chassis.userData.rim = 0; }
     chassis.visible = sel.withChassis;
     if (!shell || shell.userData.kind !== sel.shell) { if (shell) scene.remove(shell); shell = buildShell(sel.shell); scene.add(shell); }
-    for (const mt of [shell.userData.mats.paint, shell.userData.mats.glass]) { mt.transparent = sel.xray; mt.opacity = sel.xray ? 0.35 : 1; mt.depthWrite = !sel.xray; }
+    applyLivery(shell, LIV[sel.shell]); if (PT) paintPanel();
+    for (const mt of [shell.userData.mats.paint, shell.userData.mats.glass, shell.userData.paintMat]) { mt.transparent = sel.xray; mt.opacity = sel.xray ? 0.35 : 1; mt.depthWrite = !sel.xray; }
     document.querySelectorAll('#shells button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === sel.shell)));
     $('snote').textContent = S.note; $('vChassis').setAttribute('aria-pressed', String(sel.withChassis)); $('vGlass').setAttribute('aria-pressed', String(sel.xray));
     listButtons($('slist'), shell.userData.parts.map((p, i) => [i + 1, p.name]), focusIdx, i => { focusIdx = i; const f = shell.userData.parts[i].focus; want.target.set(f[0], f[1], f[2]); want.dist = 0.26; $('cur').textContent = shell.userData.parts[i].name.toUpperCase(); render(); });
     setSpec([['LENGTH', mm(S.z1 - S.z0)], ['WIDTH', mm(Math.max(...S.width.map(k => k[1])) * 2)], ['HEIGHT', mm(Math.max(...S.top.map(k => k[1])))], ['WHEELBASE', mm(C.wb)], ['FITS', C.name + ' chassis'], ['MATERIAL', 'polycarbonate, 0.75 mm'], ['WINDOWS', 'tinted, painted inside']]);
-    if (focusIdx < 0) $('cur').textContent = S.name;
+    if (focusIdx < 0 || PT) $('cur').textContent = S.name + (PT ? ' · ' + PARTS.SCHEMES.find(x => x.key === LIV[sel.shell].scheme).name : '');
     floorDisc.visible = true; floorDisc.scale.setScalar(0.34);
   } else {
     if (!chassis || chassis.userData.kind !== sel.build || chassis.userData.rim !== sel.rim) { makeChassis(); chassis.userData.rim = sel.rim; }
@@ -742,23 +891,35 @@ function render() {
   }
 }
 for (const t of TYPES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.t = t; b.textContent = PARTS.TYRES[t].name; b.addEventListener('click', () => { sel.type = t; save(); render(); }); $('tyres').appendChild(b); }
+function chip(el, label, pressed, onClick, swatch) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(pressed)); if (swatch) { const s = document.createElement('span'); s.className = 'sw'; for (const c of swatch) { const i = document.createElement('i'); i.style.background = c; s.appendChild(i); } b.appendChild(s); } b.appendChild(document.createTextNode(label)); b.addEventListener('click', onClick); el.appendChild(b); }
+function paintPanel() {
+  const L = LIV[sel.shell], set = () => { saveLiv(); render(); };
+  $('pshells').innerHTML = ''; for (const k of Object.keys(PARTS.SHELLS)) chip($('pshells'), PARTS.SHELLS[k].name, k === sel.shell, () => { sel.shell = k; save(); render(); home(); });
+  $('schemes').innerHTML = ''; for (const s of PARTS.SCHEMES) chip($('schemes'), s.name, s.key === L.scheme, () => { L.scheme = s.key; set(); });
+  $('palettes').innerHTML = ''; PARTS.PALETTES.forEach((p, i) => chip($('palettes'), p.name, i === L.palette && L.a === p.a && L.b === p.b && L.c === p.c, () => { Object.assign(L, { palette: i, a: p.a, b: p.b, c: p.c }); set(); }, [p.a, p.b, p.c]));
+  $('cA').value = L.a; $('cB').value = L.b; $('cC').value = L.c; $('num').value = L.number;
+  $('decals').innerHTML = ''; for (const [k, n] of [['numbers', 'NUMBERS'], ['sponsors', 'SPONSORS'], ['banner', 'WINDSCREEN BANNER'], ['mud', 'MUD']]) { if (k === 'mud' && !PARTS.DECAL_LAYOUT[sel.shell].mud) continue; chip($('decals'), n, !!L.decals[k], () => { L.decals[k] = !L.decals[k]; set(); }); }
+}
+for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('input', e => { const L = LIV[sel.shell]; L[id.slice(1).toLowerCase()] = e.target.value; L.palette = -1; saveLiv(); applyLivery(shell, L); });
+for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('change', () => render());
+$('num').addEventListener('change', e => { const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)); LIV[sel.shell].number = v; saveLiv(); render(); });
 for (const k of Object.keys(PARTS.SHELLS)) { const b = document.createElement('button'); b.type = 'button'; b.dataset.s = k; b.textContent = PARTS.SHELLS[k].name; b.addEventListener('click', () => { sel.shell = k; focusIdx = -1; save(); render(); home(); }); $('shells').appendChild(b); }
 for (const k of Object.keys(PARTS.CHASSIS)) { const b = document.createElement('button'); b.type = 'button'; b.dataset.b = k; b.textContent = PARTS.CHASSIS[k].name; b.addEventListener('click', () => { sel.build = k; sel.rim = 0; focusIdx = -1; save(); render(); home(); }); $('builds').appendChild(b); }
 
 // orbit camera; yaw 0 looks from +x (a wheel's outer face, the car's right side)
-const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 }, shell: { t: [0, 0.05, 0], yaw: -0.75, pitch: 0.3, dist: 0.66 } };
+const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 }, shell: { t: [0, 0.05, 0], yaw: -0.75, pitch: 0.3, dist: 0.66 }, paint: { t: [0, 0.055, 0], yaw: -0.55, pitch: 0.28, dist: 0.62 } };
 const orbit = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 }, want = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 };
 let fit = 1;
-function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.stage === 'shell' ? HOME.shell : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage !== 'wheels') render(); }
+function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.stage === 'shell' ? HOME.shell : sel.stage === 'paint' ? HOME.paint : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage !== 'wheels') render(); }
 function setStage(st) { sel.stage = st; try { if (location.hash !== '#' + st) history.replaceState(null, '', '#' + st); } catch (e) {} render(); home(); }
-$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis')); $('sShell').addEventListener('click', () => setStage('shell'));
+$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis')); $('sShell').addEventListener('click', () => setStage('shell')); $('sPaint').addEventListener('click', () => setStage('paint'));
 $('vChassis').addEventListener('click', () => { sel.withChassis = !sel.withChassis; render(); }); $('vGlass').addEventListener('click', () => { sel.xray = !sel.xray; render(); });
 $('vOne').addEventListener('click', () => { sel.all = false; render(); home(); });
 $('vAll').addEventListener('click', () => { sel.all = true; render(); home(); });
 $('vSpin').addEventListener('click', () => { sel.roll = !sel.roll; render(); });
 $('vSteer').addEventListener('click', () => { sel.steer = !sel.steer; render(); });
 $('vSusp').addEventListener('click', () => { sel.susp = !sel.susp; render(); });
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis' || h === 'shell') && h !== sel.stage) setStage(h); });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint') && h !== sel.stage) setStage(h); });
 const pts = new Map(); let pinch0 = 0;
 stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
 stage.addEventListener('pointermove', e => {
@@ -772,7 +933,7 @@ stage.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(wan
 stage.addEventListener('dblclick', home);
 function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); fit = Math.max(1, 1.5 / camera.aspect); }
 new ResizeObserver(resize).observe(stage); resize();
-{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis' || h === 'shell') sel.stage = h; }
+{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint') sel.stage = h; }
 render(); home(); Object.assign(orbit, { yaw: want.yaw, pitch: want.pitch, dist: want.dist }); orbit.target.copy(want.target);
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let last = performance.now(), t = 0, spin = 0;
@@ -784,7 +945,7 @@ function frame(now) {
   if (sel.roll && !reduce) spin += dt * 0.9;
   if (sel.stage === 'wheels') { for (const ty of TYPES) for (const w of wheels[ty]) w.userData.spin.rotation.x = spin; }
   else if (chassis) {
-    const tr = PARTS.CHASSIS[chassis.userData.kind].travel * (sel.stage === 'shell' ? 0.5 : 1), a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
+    const tr = PARTS.CHASSIS[chassis.userData.kind].travel * (sel.stage === 'shell' || sel.stage === 'paint' ? 0.5 : 1), a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
     chassis.userData.pose([Math.sin(a) * amp, Math.sin(a + 0.8) * amp, Math.sin(a + 2.2) * amp, Math.sin(a + 3.0) * amp], sel.steer && !reduce ? Math.sin(t * 0.9) * 0.45 : 0, spin * 1.5);
   }
   const cp = Math.cos(orbit.pitch);
