@@ -59,6 +59,7 @@ The warehouse, living-room and drift garage maps are removed for now (they are i
 ## Courses
 Drive through the gates in order (they are not marked on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap. Best lap is kept per course and mode.
 - **FULL FLOOR** (arena): one layout over the whole floor, marked out by low white boards (after a photo of a club track): a long front straight, up the right side, behind the island, down the left side, then an S and a hairpin through the open front and a sweeping drop back onto the straight.
+- **FLOW** (arena): a drift loop in the open front of the warehouse, 1.2 m wide between white boards, with almost nothing straight: big round sweepers (about 2 m radius) at both ends, a gently bowed front run, and a shallow curve in the back run for a right-left-right transition. Tuned so a lap is mostly drifting: a simple test driver slides past 20° for 75% of the lap (40-45% on the other tracks).
 - **FIGURE 8** (arena): a figure of eight in the open front of the arena round two cones, right-hand loop then left-hand loop: constant transitions from one drift into the other.
 - **HOME LOOP** (home track): along the front, up the pink-lit side, behind the islands past the pit building, back down the blue side.
 - **MAIN LAYOUT** (arena): full clockwise lap: the long front sweeper, up the fence side, along the back in front of the stand, down the stand side.
