@@ -103,7 +103,7 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
     <div class="card"><h2>SCHEME</h2><div class="chips" id="schemes"></div></div>
     <div class="card"><h2>COLOURS</h2><div class="chips" id="palettes"></div>
       <div class="pick"><span class="pair"><label for="cA">MAIN</label><input type="color" id="cA"></span><span class="pair"><label for="cB">SECOND</label><input type="color" id="cB"></span><span class="pair"><label for="cC">ACCENT</label><input type="color" id="cC"></span></div></div>
-    <div class="card"><h2>DECALS</h2><div class="chips" id="decals"></div><div class="pick"><label for="num">RACE NUMBER</label><input type="number" id="num" min="0" max="99" inputmode="numeric"></div></div>
+    <div class="card"><h2>DECALS</h2><p>No decals yet: the decal tool is ready for your own decal sheet (see PARTS.DECAL_SLOTS).</p></div>
   </div>
   <div id="pMount" class="col">
     <div class="card"><h2>SHELL</h2><div class="chips" id="mshells"></div></div>
@@ -144,8 +144,9 @@ const rimL = new THREE.DirectionalLight(0xbfd4ff, 0.45); rimL.position.set(-2, 1
 const fillL = new THREE.PointLight(0xffffff, 0.3, 3); fillL.position.set(0.6, 0.2, -0.6); scene.add(fillL);
 const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
 
-const sel = { speed: 5, mount: 'posts', lifted: false, shell: 'drift', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
+const sel = { speed: 5, mount: 'posts', lifted: false, shell: 'eighties', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
 try { const s = JSON.parse(localStorage.getItem('dm-parts-sel2') || 'null'); if (s) for (const k of ['type', 'set', 'build', 'rim', 'shell', 'mount']) if (s[k] !== undefined) sel[k] = s[k]; } catch (e) {}
+if (!PARTS.SHELLS[sel.shell]) sel.shell = Object.keys(PARTS.SHELLS)[0]; if (!PARTS.CHASSIS[sel.build]) sel.build = 'drift'; if (!PARTS.TYRES[sel.type]) sel.type = 'drift'; sel.rim = Math.min(4, sel.rim | 0);
 const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify({ type: sel.type, set: sel.set, build: sel.build, rim: sel.rim, shell: sel.shell, mount: sel.mount })); } catch (e) {} };
 
 // stage 1: all 15 wheels, built once (rows are tyre types, columns the five rim sets)
@@ -154,9 +155,8 @@ for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = 
 // stage 2: chassis, rebuilt when the build or rim set changes
 let chassis = null, shell = null, mounts = null, liftT = 0, dmg = null;
 const LIV = {}; for (const k of Object.keys(PARTS.SHELLS)) LIV[k] = JSON.parse(JSON.stringify(PARTS.LIVERY_DEFAULT));
-LIV.offroad.scheme = 'roof'; LIV.offroad.palette = 1; Object.assign(LIV.offroad, { a: PARTS.PALETTES[1].a, b: PARTS.PALETTES[1].b, c: PARTS.PALETTES[1].c, number: 7 }); LIV.offroad.decals.mud = true;
-try { const l = JSON.parse(localStorage.getItem('dm-parts-livery') || 'null'); if (l) for (const k in LIV) if (l[k]) Object.assign(LIV[k], l[k], { decals: { ...LIV[k].decals, ...(l[k].decals || {}) } }); } catch (e) {}
-const saveLiv = () => { try { localStorage.setItem('dm-parts-livery', JSON.stringify(LIV)); } catch (e) {} };
+try { const l = JSON.parse(localStorage.getItem('dm-parts-livery2') || 'null'); if (l) for (const k in LIV) if (l[k]) Object.assign(LIV[k], l[k], { decalSheet: null }); } catch (e) {}
+const saveLiv = () => { try { localStorage.setItem('dm-parts-livery2', JSON.stringify(LIV)); } catch (e) {} };
 function makeChassis() { if (chassis) scene.remove(chassis); chassis = buildChassis(sel.build, sel.rim); scene.add(chassis); }
 
 const mm = v => (v * 1000).toFixed(0) + ' mm';
@@ -226,12 +226,10 @@ function paintPanel() {
   $('pshells').innerHTML = ''; for (const k of Object.keys(PARTS.SHELLS)) chip($('pshells'), PARTS.SHELLS[k].name, k === sel.shell, () => { sel.shell = k; save(); render(); home(); });
   $('schemes').innerHTML = ''; for (const s of PARTS.SCHEMES) chip($('schemes'), s.name, s.key === L.scheme, () => { L.scheme = s.key; set(); });
   $('palettes').innerHTML = ''; PARTS.PALETTES.forEach((p, i) => chip($('palettes'), p.name, i === L.palette && L.a === p.a && L.b === p.b && L.c === p.c, () => { Object.assign(L, { palette: i, a: p.a, b: p.b, c: p.c }); set(); }, [p.a, p.b, p.c]));
-  $('cA').value = L.a; $('cB').value = L.b; $('cC').value = L.c; $('num').value = L.number;
-  $('decals').innerHTML = ''; for (const [k, n] of [['numbers', 'NUMBERS'], ['sponsors', 'SPONSORS'], ['banner', 'WINDSCREEN BANNER'], ['mud', 'MUD']]) { if (k === 'mud' && !PARTS.DECAL_LAYOUT[sel.shell].mud) continue; chip($('decals'), n, !!L.decals[k], () => { L.decals[k] = !L.decals[k]; set(); }); }
+  $('cA').value = L.a; $('cB').value = L.b; $('cC').value = L.c;
 }
 for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('input', e => { const L = LIV[sel.shell]; L[id.slice(1).toLowerCase()] = e.target.value; L.palette = -1; saveLiv(); applyLivery(shell, L); });
 for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('change', () => render());
-$('num').addEventListener('change', e => { const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)); LIV[sel.shell].number = v; saveLiv(); render(); });
 function damagePanel() {
   $('dshells').innerHTML = ''; for (const k of Object.keys(PARTS.SHELLS)) chip($('dshells'), PARTS.SHELLS[k].name, k === sel.shell, () => { if (dmg) damageRepair(dmg); dmg = null; sel.shell = k; save(); render(); home(); });
   $('dmounts').innerHTML = ''; for (const k of Object.keys(PARTS.MOUNTS)) chip($('dmounts'), PARTS.MOUNTS[k].name, k === sel.mount, () => { if (dmg) damageRepair(dmg); sel.mount = k; save(); render(); });
