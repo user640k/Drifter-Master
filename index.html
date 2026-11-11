@@ -131,7 +131,7 @@ canvas#view { width: 100%; height: 100%; display: block; }
       <span class="lbl">SCORE</span><span class="val" id="dtotal">0</span>
       <span class="lbl">TOP DRIFT</span><span class="val" id="dbest">0</span>
     </div>
-    <div class="box cam" id="camname">CAM · CHASE</div>
+    <div class="box cam" id="camname">CAM · TRACKSIDE</div>
     <div class="box drift" id="drift" aria-live="off"><div class="dpts" id="dpts">0</div><div class="dsub" id="dsub"></div></div>
     <div class="box speed">
       <div><span class="num" id="spd">0</span> <span class="unit">KM/H</span></div>
@@ -761,6 +761,14 @@ const COURSES = [
       [2.6, 1.6, 3.7, 1.6, 'd', 'd'],
     ],
     line: [[1.8, -3.0], [-1.5, -3.2], [-3.3, -1.6], [-3.45, 0.6], [-3.4, 2.6], [-2.6, 3.85], [-0.5, 3.85], [1.6, 3.85], [2.95, 3.35], [3.15, 1.5], [3.05, -0.5], [2.6, -2.3]] },
+  { name: 'FIGURE 8', map: 'arena', note: 'A figure of eight in the open front of the arena, round two cones: right-hand loop, through the middle, left-hand loop, back through the middle. Constant transitions from one drift into the other.',
+    start: [-0.93, -4.11, 0.985], gates: [
+      [0, -4.15, 0, -2.65, 'x', 'x'],
+      [1.75, -3.4, 3.35, -3.4, 'c', 'x'],
+      [0, -4.15, 0, -2.65, 'x', 'x'],
+      [-1.75, -3.4, -3.35, -3.4, 'c', 'x'],
+    ],
+    line: [[0.0, -3.4], [0.7, -2.85], [1.35, -2.45], [1.91, -2.3], [2.34, -2.45], [2.61, -2.85], [2.7, -3.4], [2.61, -3.95], [2.34, -4.35], [1.91, -4.5], [1.35, -4.35], [0.7, -3.95], [0.0, -3.4], [-0.7, -2.85], [-1.35, -2.45], [-1.91, -2.3], [-2.34, -2.45], [-2.61, -2.85], [-2.7, -3.4], [-2.61, -3.95], [-2.34, -4.35], [-1.91, -4.5], [-1.35, -4.35], [-0.7, -3.95]] },
   { name: 'KEYHOLE', map: 'arena', note: 'The main lap with a detour: off the fence side into the infield pad through the opening, round the painted circle and back out onto the back straight.',
     start: [1.8, -3.0, -Math.PI / 2], gates: [
       [0, -0.2, 0, -5.9, 'x', 'x'],
@@ -1293,7 +1301,7 @@ function buildChassis(kind, rimSet = 0, tyre) {
   const plate = new THREE.Mesh(plateGeo(outline, plateT, holes), plateM); plate.position.y = C.plateY; root.add(plate); tag('Main plate', plate, [0, 0.01, 0]);
   // bulkheads / gearboxes front and rear
   const gbM = drift ? m.nylon : m.nylon;
-  const fBulk = pBox(0.05, wR - C.plateY + 0.004, 0.03, drift ? m.blueAlu : gbM, 0, (C.plateY + plateT + wR + 0.004) / 2, fz, root);
+  const fBulk = pBox(0.05, wR - C.plateY + 0.004, 0.03, gbM, 0, (C.plateY + plateT + wR + 0.004) / 2, fz, root);
   const rBox = new THREE.Group(); root.add(rBox);
   pBox(0.052, wR - C.plateY + 0.01, 0.036, gbM, 0, (C.plateY + plateT + wR + 0.01) / 2, rz, rBox);
   pCyl(0.016, 0.016, 0.046, gbM, 'x', 0, wR, rz, rBox, 24); // diff case
@@ -1739,16 +1747,20 @@ function damageRepair(st) {
    roll and pitch), .wheels [{ pivot: steer, m: spin }], .lampM (brake lights) and .shadow. model's x points forward,
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', rims: 0, scheme: 'solid', a: PARTS.MODEL_PAINT, b: '#f2f2ee', c: '#141416', ride: 0.5, mount: 'posts', glow: '#00e5ff', glowOn: 0 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', rims: 0, scheme: 'solid', a: PARTS.MODEL_PAINT, b: '#f2f2ee', c: '#141416', ride: 0.2, camber: 0.75, mount: 'posts', glow: '#00e5ff', glowOn: 0 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
-try { const st = JSON.parse(localStorage.getItem('cc-style4') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+try { const st = JSON.parse(localStorage.getItem('cc-style5') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
 // tyres follow the driving mode: hard drift tyres in DRIFT mode, rubber grip tyres in GRIP mode
 function carTyre(S) { let grip = false; try { grip = setup.car === 1; } catch (e) {} return grip ? 'grip' : 'drift'; }
 // the decal sheet for the car (none yet: the owner's own texture goes here, see PARTS.DECAL_SLOTS)
 let CAR_DECAL_SHEET = null;
-// ride height: -10 .. +10 mm from the slider. The chassis can come down 3 mm before the plate touches the floor;
-// lower than that, the shell drops on its posts over the wheels (tucked, like the reference car)
-function carRide(S) { const r = clamp((S.ride ?? 0.5) - 0.5, -0.5, 0.5) * 0.02, ch = Math.max(r, -0.003); return { chassis: ch, shell: r }; }
+// ride height: -15 .. +10 mm from the slider (default -10: slammed, as in the drift video). The chassis can come down
+// 3 mm before the plate touches the floor; lower than that, the shell drops on its posts and the cambered tyres tuck
+// up inside the arches
+const rideMM = v => -15 + clamp(v ?? 0.6, 0, 1) * 25;
+function carRide(S) { const r = rideMM(S.ride) / 1000, ch = Math.max(r, -0.003); return { chassis: ch, shell: r }; }
+// static camber: the slider sets the front 0-12°, the rear half that (default 9° / 4.5°, as on the video's cars)
+const camberDeg = (S, front) => clamp(S.camber ?? 0.75, 0, 1) * (front ? 12 : 6);
 function buildCar(S = CAR_STYLE) {
   const kind = PARTS.SHELLS[S.shell] ? S.shell : 'nk2002', tyre = carTyre(S), ride = carRide(S);
   const root = new THREE.Group(), model = new THREE.Group(); model.rotation.y = -Math.PI / 2; root.add(model);
@@ -1788,7 +1800,7 @@ function buildCar(S = CAR_STYLE) {
     update(steer, roll) {
       const tr = PARTS.CHASSIS[chassis.userData.kind].travel, bend = chassis.userData.bend;
       chassis.userData.corners.forEach((c, i) => c.g.userData.update(clamp(-roll * c.s * 0.05, -tr, tr) - ride.chassis, c.front ? steer : 0, 0)); // arms reach down to the wheels whatever the ride height
-      wheels.forEach((w, i) => { const b = bend && bend[i]; w.camber.rotation.set(b ? w.s * b.camber : 0, b ? w.s * b.toe : 0, 0); });
+      wheels.forEach((w, i) => { const b = bend && bend[i], cam = camberDeg(S, w.front) * Math.PI / 180; w.camber.rotation.set(w.s * (cam + (b ? b.camber : 0)), b ? w.s * b.toe : 0, 0); });
     },
   };
   root.userData.update(0, 0);
@@ -1814,7 +1826,7 @@ function carImpact(vn, nx, nz, circle) {
   const big = out.find(t => /broke off|knocked off|torn off|bent|clip popped/i.test(t)); if (big) flash(big.toUpperCase(), 1.6);
 }
 // rebuild the car with a new look (customize screen) or new tyres (mode change)
-function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style4', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
+function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style5', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
 
 /* ---------------- driving model: 1/10 electric on-road (RWD drift or 4WD grip) ----------------
    SI units (m, kg, s, N). Body frame: x forward, y left, yaw rate r positive turning left.
@@ -1834,7 +1846,7 @@ const MOTORS = [
   { name: '13.5T DRIFT (HIGH FDR)', short: '13.5T DRIFT', vFree: 10.5, fStall: 24, pitch: 1.3, kind: 'brushless' },
 ];
 const CARS = [
-  { name: 'RWD DRIFT', rwd: true, weightRear: 0.56, steerMax: 1.0, servo: 0.06, tire: 'plastic' },
+  { name: 'RWD DRIFT', rwd: true, weightRear: 0.56, steerMax: 1.15, servo: 0.06, tire: 'plastic' }, // 66° lock like 1/10 drift chassis
   { name: '4WD GRIP', rwd: false, weightRear: 0.5, steerMax: 0.42, servo: 0.1, tire: 'rubber' },
 ];
 // base friction for each tire type on each surface (hard plastic drift tires vs touring rubber)
@@ -1856,16 +1868,19 @@ const SETUP_OPTS = {
 const setup = { layout: 0, car: 0, motor: 3, tire: 1, gyro: 3, spring: 1, oil: 1, arb: 1, assist: 0 };
 try { const s = JSON.parse(localStorage.getItem('cc-setup3') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < (k === 'layout' ? COURSES.length : SETUP_OPTS[k].opts.length)) setup[k] = s[k]; } catch (e) {}
 const VEH = {
-  m: 1.45, L: 0.25, tw: 0.136, h: 0.032, hrc: 0.012, hpc: 0.010, // wheelbase and track from the shell
+  m: 1.45, L: 0.25, tw: 0.136, h: 0.03, hrc: 0.011, hpc: 0.010, // wheelbase and track from the shell; slammed: CG a little lower
   Iz: 0.021, Ixx: 0.0048, Iyy: 0.019, r: 0.0291,
   Kroll: 8.5, Kpitch: 16, zeta: 0.5,
   cdA: 0.0042, rr: 0.42, driveline: 0.035, dragBrake: 0.7, brakeF: 30,
   loadSens: 0.12,
   rubber: { B: 19, C: 1.35 },   // touring rubber: peak at ~7°, drops to ~85% sliding
   plastic: { B: 12, C: 1.1 },   // hard plastic: builds early, then slides at nearly constant friction
-  gyroK: 1.2,                   // rad of steering per rad/s of yaw-rate error at 100% gain
+  gyroK: 1.6,                   // rad of steering per rad/s of yaw-rate error at 100% gain
   rCmdMax: 3.0,                 // yaw rate asked for at full stick (rad/s)
-  gyroMix: 0.6,                 // how much of the direct steering the gyro replaces at full gain
+  rTurn: 1.5,                   // path radius asked for at full stick (m): wide sweeping drifts as in the video
+  betaMax: 1.0, betaK: 2.2,     // drift angle the gyro starts fighting (rad, ~58°) and how hard
+  thrCut: 3, kbSlip: 0.8, kbSlipK: 4, // drift assist: throttle eased past betaMax (trigger); keyboard wheelspin target
+  gyroMix: 0.85,                // how much of the direct steering the gyro replaces at full gain (drift gyros take over most of it)
   mEq: { plastic: 0.25, rubber: 0.4 }, // wheel + rotor inertia as an equivalent mass at the tire surface
 };
 const GRAV = 9.81;
@@ -1896,12 +1911,15 @@ function stepCar(dt, canDrive, walls = true) {
   // drift assist on keyboard: an on/off key can't feather, so it becomes a wheelspin governor that holds
   // the rear tires at a set slip: a little when going straight, more the harder you steer (a drift)
   if (drift && assist && input.thrDigital && thrIn > 0) {
-    // aim for a drift angle set by the steering (~35° at full lock): less wheelspin if the angle runs
-    // past it, more if it's short, so holding the key keeps a drift without spinning
-    const betaT = 0.6 * Math.abs(st), betaNow = Math.abs(car.beta);
-    const slipTarget = clamp(0.12 + 0.3 * Math.abs(st) + 1.2 * (betaT - betaNow) * Math.abs(st), 0.04, 0.9);
+    // aim for a drift angle set by the steering (~50° at full lock, like competition 1/10 drift): less wheelspin
+    // if the angle runs past it, more if it's short, so holding the key keeps a drift without spinning
+    const betaT = 0.87 * Math.abs(st), betaNow = Math.abs(car.beta);
+    const slipTarget = clamp(0.12 + VEH.kbSlip * Math.abs(st) + VEH.kbSlipK * (betaT - betaNow) * Math.abs(st), 0.04, 1.6);
     const wTarget = Math.max(car.u, 0) * (1 + slipTarget) + 0.5;
     thrIn = car.w < wTarget ? 1 : Math.min(1, wTarget / M.vFree);
+  } else if (drift && assist && thrIn > 0) {
+    // drift assist on a trigger: past the angle the gyro starts fighting, ease the throttle so the rear finds grip
+    thrIn *= clamp(1 - (Math.abs(car.beta) - VEH.betaMax) * VEH.thrCut, 0.3, 1);
   }
   const up = thrIn > 0.02, dn = brkIn > 0.02;
   let { u, v, r } = car;
@@ -1913,8 +1931,11 @@ function stepCar(dt, canDrive, walls = true) {
   // the gyro steers to hold it, damping any extra rotation that would become a spin
   const gyroGain = drift ? O.gyro.g[setup.gyro] : 0; // grip touring cars don't run a steering gyro
   const Vg = Math.hypot(u, v), fade = Math.min(1, Vg / 1.2);
-  const rCmd = st * Math.min(VEH.rCmdMax, Vg / 1.1);
-  const gyro = gyroGain * VEH.gyroK * (rCmd - r) * fade;
+  const rCmd = st * Math.min(VEH.rCmdMax, Vg / clamp(0.45 + 0.48 * Vg, 0.65, VEH.rTurn)); // tight when slow, wide sweeping arcs at drift speed
+  // past ~58° of slide the gyro counter-steers harder (as a well-set drift gyro does), so the car holds a big
+  // angle instead of spinning; below that it only damps the yaw rate
+  const over = Math.max(0, Math.abs(car.beta) - VEH.betaMax) * Math.sign(car.beta || 0);
+  const gyro = gyroGain * (VEH.gyroK * (rCmd - r) - VEH.betaK * over) * fade;
   const target = clamp(st * lock * (1 - gyroGain * fade * VEH.gyroMix) + gyro + (canDrive ? carSteerBias() : 0), -C.steerMax, C.steerMax);
   const servoRate = (Math.PI / 3) / C.servo;
   car.steer += clamp(target - car.steer, -servoRate * dt, servoRate * dt);
@@ -2418,7 +2439,15 @@ function raceHud() {
 }
 
 /* ---------------- cameras ---------------- */
-const CAMS = ['CHASE', 'DRIVER POV', 'DRIVER POV 2']; // two driver's spots per map; the ceiling cam code below is kept but switched off
+const CAMS = ['TRACKSIDE', 'CHASE', 'DRIVER POV', 'DRIVER POV 2']; // the ceiling cam code below is kept but switched off
+// trackside: a spectator filming from outside the track like the reference video. Standing spots per map; the
+// camera stays on one spot and pans and zooms to keep the car about a third of the frame wide, and cuts to a better
+// spot when the car moves away (no more than one cut every 1.8 s)
+const SPOTS = {
+  arena: [[-3, 1.9, -6.15], [0, 1.9, -6.15], [3, 1.9, -6.15], [-5.1, 2.0, -3], [-5.1, 2.0, 0.5], [-5.1, 2.0, 3.6], [-2, 2.4, 5.6], [1.5, 2.6, 5.6], [4.7, 1.9, -3], [4.7, 1.9, 0.5], [4.7, 1.9, 3.6]],
+  home: [[-3.65, 1.55, -2.0], [-3.65, 1.55, 0.8], [3.65, 1.55, -2.0], [3.65, 1.55, 0.8], [-2.2, 1.55, -2.85], [1.2, 1.55, -2.85], [-1.5, 1.6, 2.85], [2.4, 1.6, 2.85]],
+};
+const TS = { spot: -1, hold: 0, fov: 30, W: 1.7, best: 3.4 }; // W: frame width at the car (m); best: preferred distance from the spot
 // the driver: standing in the near-left corner like at home, eyes at 1.65 m, head turning to follow the car
 // with a human lag, a 55° field of view (no zoom), and the transmitter held in front at chest height
 const POV = { fov: 55 }; // eye position comes from the map (MAP.pov)
@@ -2470,14 +2499,28 @@ function updateCamera(dt, snap) {
   const fx = Math.sin(camAng), fz = Math.cos(camAng);
   const target = new THREE.Vector3(car.x, 0.05, car.z);
   if (camMode === 0) {
+    const spots = SPOTS[MAP.key] || [[0, 1.8, -MAP.hz + 0.3]], score = q => { const d = Math.hypot(q[0] - car.x, q[2] - car.z); return Math.abs(d - TS.best) + (d < 1.1 ? 3 : 0); };
+    let bi = 0; spots.forEach((q, i) => { if (score(q) < score(spots[bi])) bi = i; });
+    TS.hold += dt || 0;
+    let cut = snap || TS.spot < 0 || TS.spot >= spots.length;
+    if (!cut && bi !== TS.spot && TS.hold > 1.8 && score(spots[TS.spot]) - score(spots[bi]) > 0.8) cut = true;
+    if (cut) { TS.spot = bi; TS.hold = 0; }
+    const q = spots[TS.spot], t = performance.now() / 1000;
+    camPos.set(q[0] + Math.sin(t * 0.9) * 0.012, q[1] + Math.sin(t * 1.7) * 0.006, q[2] + Math.cos(t * 0.7) * 0.012); // handheld
+    const aim = new THREE.Vector3(car.x + car.vx * 0.3, 0.04, car.z + car.vz * 0.3);
+    if (cut) camLook.copy(aim); else camLook.lerp(aim, 1 - Math.exp(-dt * 4.5));
+    const dist = camPos.distanceTo(aim), hf = 2 * Math.atan(TS.W / 2 / dist), vf = 2 * Math.atan(Math.tan(hf / 2) / (1280 / 720)) * 180 / Math.PI;
+    const fovT = clamp(vf, 8, 55); TS.fov = cut ? fovT : TS.fov + (fovT - TS.fov) * (1 - Math.exp(-dt * 3));
+    camera.fov = TS.fov;
+  } else if (camMode === 1) {
     const want = new THREE.Vector3(car.x - fx * 0.78, 0.3, car.z - fz * 0.78);
     want.x = clamp(want.x, -MAP.hx + 0.15, MAP.hx - 0.15); want.z = clamp(want.z, -MAP.hz + 0.15, MAP.hz - 0.15);
     camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * 7));
     camLook.lerp(new THREE.Vector3(car.x + fx * 0.35, 0.07, car.z + fz * 0.35), snap ? 1 : 1 - Math.exp(-dt * 12));
     camera.fov = 62 + Math.min(10, Math.abs(car.vF) * 0.9);
-  } else if (camMode === 1 || camMode === 2) {
+  } else if (camMode === 2 || camMode === 3) {
     // head follows the car with a slight lag; a little idle sway; eyes aim just ahead of the car
-    const t = performance.now() / 1000, E = camMode === 2 && MAP.pov2 ? MAP.pov2 : MAP.pov;
+    const t = performance.now() / 1000, E = camMode === 3 && MAP.pov2 ? MAP.pov2 : MAP.pov;
     camPos.set(E[0] + Math.sin(t * 0.7) * 0.008, E[1] + Math.sin(t * 1.3) * 0.004, E[2] + Math.cos(t * 0.5) * 0.008);
     const ahead = new THREE.Vector3(car.x + car.vx * 0.15, 0.03, car.z + car.vz * 0.15);
     camLook.lerp(ahead, snap ? 1 : 1 - Math.exp(-dt * 5));
@@ -2487,7 +2530,7 @@ function updateCamera(dt, snap) {
     camLook.lerp(target, snap ? 1 : 1 - Math.exp(-dt * 8));
     camera.fov = 70;
   }
-  tx.visible = camMode === 1 || camMode === 2;
+  tx.visible = camMode === 2 || camMode === 3;
   if (tx.visible) { tx.userData.wheel.rotation.x = input.steer * 0.55; tx.userData.trigger.position.z = -input.thr * 0.012 + input.brk * 0.012; }
   camera.position.copy(camPos); camera.lookAt(camLook); camera.updateProjectionMatrix();
 }
@@ -2726,6 +2769,7 @@ const CROWS = [
   { key: 'palette', label: 'COLOURS', kind: 'palette' },
   { key: 'a', label: 'MAIN', kind: 'color' }, { key: 'b', label: 'SECOND', kind: 'color' }, { key: 'c', label: 'ACCENT', kind: 'color' },
   { key: 'ride', label: 'RIDE HEIGHT', kind: 'slider' },
+  { key: 'camber', label: 'CAMBER', kind: 'slider' },
   { key: 'mount', label: 'MOUNT', kind: 'choice', opts: [['POSTS AND CLIPS', 'posts'], ['MAGNETS', 'magnets']] },
   { key: 'glow', label: 'UNDERGLOW', kind: 'glow' },
   { key: 'reset', label: 'RESET LOOK', kind: 'action' },
@@ -2755,9 +2799,9 @@ function renderCustom() {
         pk.addEventListener('input', () => { customRow = ri; setStyle(r.key, pk.value); }); pk.addEventListener('change', () => renderCustom()); ctl.appendChild(pk); }
     } else if (r.kind === 'slider') {
       ctl.className = 'sl'; const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0; inp.max = 100; inp.step = 5; inp.id = 'sl-' + r.key; inp.value = Math.round(CAR_STYLE[r.key] * 100); inp.setAttribute('aria-label', r.label.toLowerCase());
-      const rideMM = v => { const mm = (v - 0.5) * 20; return (mm > 0 ? '+' : '') + mm.toFixed(0) + ' MM'; };
-      const out = document.createElement('span'); out.textContent = r.key === 'ride' ? rideMM(CAR_STYLE.ride) : String(inp.value).padStart(3, ' ');
-      inp.addEventListener('input', () => { customRow = ri; setStyle(r.key, inp.value / 100); out.textContent = r.key === 'ride' ? rideMM(inp.value / 100) : String(inp.value).padStart(3, ' '); });
+      const slLabel = (k, v) => { if (k === 'ride') { const mm = rideMM(v); return (mm > 0 ? '+' : '') + mm.toFixed(0) + ' MM'; } if (k === 'camber') return '-' + (v * 12).toFixed(1) + '° / -' + (v * 6).toFixed(1) + '°'; return String(Math.round(v * 100)).padStart(3, ' '); };
+      const out = document.createElement('span'); out.textContent = slLabel(r.key, CAR_STYLE[r.key]);
+      inp.addEventListener('input', () => { customRow = ri; setStyle(r.key, inp.value / 100); out.textContent = slLabel(r.key, inp.value / 100); });
       ctl.append(inp, out);
     } else if (r.kind === 'choice') {
       ctl.className = 'sw'; for (const [t, v] of r.opts) { const b = document.createElement('button'); b.type = 'button'; b.className = 'swb off'; b.textContent = t; b.setAttribute('aria-pressed', String(CAR_STYLE[r.key] === v)); b.addEventListener('click', () => { customRow = ri; setStyle(r.key, v); renderCustom(); }); ctl.appendChild(b); }
