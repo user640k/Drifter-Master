@@ -50,6 +50,12 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .steps li { display: flex; gap: 8px; font-size: 13px; color: var(--dim); padding: 3px 0; }
 .steps li.now { color: var(--fg); }
 .steps li.now .n::after { content: " ●"; }
+.steps li.done { color: var(--fg); }
+.steps li.done .n::after { content: " ✓"; }
+.col { display: flex; flex-direction: column; gap: 12px; }
+.grp { display: contents; }
+[hidden] { display: none !important; }
+#rimsets button { flex: 0 0 auto; min-width: 2.4em; }
 @media (max-width: 760px) {
   body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 60vh auto; height: auto; }
   .hint { display: none; }
@@ -57,24 +63,31 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
 
-<header><h1>PARTS LAB</h1><span class="sub">An original 1/10 RC car for Drift Master, built part by part. Stage 1: tyres and rims, at real size.</span></header>
+<header><h1>PARTS LAB</h1><span class="sub">An original 1/10 RC car for Drift Master, built part by part at real size.</span></header>
 <div class="stage" id="stage">
   <canvas id="cv"></canvas>
-  <div class="views"><button type="button" id="vOne" aria-pressed="true">SELECTED WHEEL</button><button type="button" id="vAll" aria-pressed="false">ALL 15</button><button type="button" id="vSpin" aria-pressed="true">ROLL</button></div>
+  <div class="views"><span class="grp" id="gWheel"><button type="button" id="vOne" aria-pressed="true">SELECTED WHEEL</button><button type="button" id="vAll" aria-pressed="false">ALL 15</button></span><button type="button" id="vSpin" aria-pressed="true">ROLL</button><span class="grp" id="gChassis"><button type="button" id="vSteer" aria-pressed="true">STEER</button><button type="button" id="vSusp" aria-pressed="true">SUSPENSION</button></span></div>
   <div class="cur" id="cur"></div>
   <div class="hint">Drag: rotate · Scroll / pinch: zoom · Double-click: reset</div>
 </div>
 <aside>
-  <div class="card"><h2>TYRE</h2><div class="row" id="tyres"></div><p id="tnote"></p></div>
-  <div class="card"><h2>RIMS</h2><ol id="rims"></ol></div>
+  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button></div></div>
+  <div id="pWheels" class="col">
+    <div class="card"><h2>TYRE</h2><div class="row" id="tyres"></div><p id="tnote"></p></div>
+    <div class="card"><h2>RIMS</h2><ol id="rims"></ol></div>
+  </div>
+  <div id="pChassis" class="col">
+    <div class="card"><h2>BUILD</h2><div class="row" id="builds"></div><p id="bnote"></p><div class="row" id="rimsets"></div></div>
+    <div class="card"><h2>PARTS</h2><ol id="plist"></ol></div>
+  </div>
   <div class="card"><h2>SPEC</h2><dl id="spec"></dl></div>
-  <div class="card"><h2>BUILD ORDER</h2><ol class="steps">
-    <li class="now"><span class="n">1</span>Tyres and rims</li>
-    <li><span class="n">2</span>Chassis: suspension, shocks, gearbox, motor, brake</li>
-    <li><span class="n">3</span>Shells: drift and off-road</li>
-    <li><span class="n">4</span>Decals and colour schemes</li>
-    <li><span class="n">5</span>Body posts and clips</li>
-    <li><span class="n">6</span>Damage</li>
+  <div class="card"><h2>BUILD ORDER</h2><ol class="steps" id="steps">
+    <li data-s="1"><span class="n">1</span>Tyres and rims</li>
+    <li data-s="2"><span class="n">2</span>Chassis: suspension, shocks, gearbox, motor, brake</li>
+    <li data-s="3"><span class="n">3</span>Shells: drift and off-road</li>
+    <li data-s="4"><span class="n">4</span>Decals and colour schemes</li>
+    <li data-s="5"><span class="n">5</span>Body posts and clips</li>
+    <li data-s="6"><span class="n">6</span>Damage</li>
   </ol></div>
 </aside>
 
@@ -93,51 +106,75 @@ scene.add(new THREE.HemisphereLight(0xf2f4ff, 0x30333a, 0.7));
 const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(2, 2.5, 1.2); scene.add(key);
 const rimL = new THREE.DirectionalLight(0xbfd4ff, 0.45); rimL.position.set(-2, 1.2, -2); scene.add(rimL);
 const fillL = new THREE.PointLight(0xffffff, 0.3, 3); fillL.position.set(0.6, 0.2, -0.6); scene.add(fillL);
-const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(0.075, 48), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
+const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
 
-// all 15 wheels, built once: rows are tyre types, columns the five rim sets
-const TYPES = Object.keys(PARTS.TYRES), wheels = {};
-for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = buildWheel(t, i); scene.add(w); return w; });
-const sel = { type: 'drift', set: 0, all: false, roll: true };
-try { const s = JSON.parse(localStorage.getItem('dm-parts-sel') || 'null'); if (s && PARTS.TYRES[s.type] && s.set >= 0 && s.set < 5) Object.assign(sel, { type: s.type, set: s.set }); } catch (e) {}
+const sel = { stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
+try { const s = JSON.parse(localStorage.getItem('dm-parts-sel2') || 'null'); if (s) for (const k of ['type', 'set', 'build', 'rim']) if (s[k] !== undefined) sel[k] = s[k]; } catch (e) {}
+const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify({ type: sel.type, set: sel.set, build: sel.build, rim: sel.rim })); } catch (e) {} };
 
-function layout() {
-  TYPES.forEach((t, r) => wheels[t].forEach((w, c) => {
-    const me = t === sel.type && c === sel.set;
-    if (sel.all) { w.visible = true; w.position.set(0, 0.215 - r * 0.085, (2 - c) * 0.078); w.rotation.y = -0.35; }
-    else { w.visible = me; w.position.set(0, PARTS.TYRES[t].od / 2, 0); w.rotation.y = 0; }
-  }));
-  floorDisc.visible = !sel.all;
+// stage 1: all 15 wheels, built once (rows are tyre types, columns the five rim sets)
+const TYPES = Object.keys(PARTS.TYRES), wheels = {}, wheelGroup = new THREE.Group(); scene.add(wheelGroup);
+for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = buildWheel(t, i); wheelGroup.add(w); return w; });
+// stage 2: chassis, rebuilt when the build or rim set changes
+let chassis = null;
+function makeChassis() { if (chassis) scene.remove(chassis); chassis = buildChassis(sel.build, sel.rim); scene.add(chassis); }
+
+const mm = v => (v * 1000).toFixed(0) + ' mm';
+function setSpec(rows) { $('spec').innerHTML = ''; for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; $('spec').append(dt, dd); } }
+function listButtons(el, items, cur, onPick) {
+  el.innerHTML = '';
+  items.forEach(([n, d, f], i) => { const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(i === cur)); b.innerHTML = '<span class="n"></span><span class="d"></span><span class="f"></span>'; b.querySelector('.n').textContent = n; b.querySelector('.d').textContent = d; b.querySelector('.f').textContent = f || ''; b.addEventListener('click', () => onPick(i)); li.appendChild(b); el.appendChild(li); });
 }
+let focusIdx = -1;
 function render() {
-  const spec = PARTS.TYRES[sel.type], [design, finish, bead] = PARTS.WHEELSETS[sel.type][sel.set];
-  document.querySelectorAll('#tyres button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === sel.type)));
-  $('tnote').textContent = spec.note;
-  const ol = $('rims'); ol.innerHTML = '';
-  PARTS.WHEELSETS[sel.type].forEach(([d, f, bd], i) => {
-    const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(i === sel.set));
-    b.innerHTML = '<span class="n"></span><span class="d"></span><span class="f"></span>';
-    b.querySelector('.n').textContent = i + 1; b.querySelector('.d').textContent = PARTS.RIMS[d].name; b.querySelector('.f').textContent = PARTS.FINISH[f].name + (bd ? ' / ' + PARTS.FINISH[bd].name : '');
-    b.addEventListener('click', () => pick(sel.type, i)); li.appendChild(b); ol.appendChild(li);
-  });
-  const mm = v => (v * 1000).toFixed(0) + ' mm';
-  const rows = [['TYRE', spec.name], ['OUTSIDE DIAMETER', mm(spec.od)], ['WIDTH', mm(spec.w)], ['RIM DIAMETER', mm(spec.rimD)], ['RIM', PARTS.RIMS[design].name], ['FINISH', PARTS.FINISH[finish].name + (bead ? ', ' + PARTS.FINISH[bead].name + ' ring' : '')], ['DISH', mm(PARTS.RIMS[design].dish)], ['HUB', '12 mm hex']];
-  $('spec').innerHTML = ''; for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; $('spec').append(dt, dd); }
-  $('cur').textContent = spec.name + ' · ' + PARTS.RIMS[design].name + ' · ' + PARTS.FINISH[finish].name;
-  $('vOne').setAttribute('aria-pressed', String(!sel.all)); $('vAll').setAttribute('aria-pressed', String(sel.all)); $('vSpin').setAttribute('aria-pressed', String(sel.roll));
-  layout();
+  const W = sel.stage === 'wheels';
+  $('pWheels').hidden = !W; $('pChassis').hidden = W; $('gWheel').hidden = !W; $('gChassis').hidden = W;
+  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(!W));
+  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
+  $('vSpin').setAttribute('aria-pressed', String(sel.roll)); $('vSteer').setAttribute('aria-pressed', String(sel.steer)); $('vSusp').setAttribute('aria-pressed', String(sel.susp));
+  wheelGroup.visible = W; if (chassis) chassis.visible = !W;
+  if (W) {
+    const spec = PARTS.TYRES[sel.type], [design, finish, bead] = PARTS.WHEELSETS[sel.type][sel.set];
+    document.querySelectorAll('#tyres button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === sel.type)));
+    $('tnote').textContent = spec.note;
+    listButtons($('rims'), PARTS.WHEELSETS[sel.type].map(([d, f, bd], i) => [i + 1, PARTS.RIMS[d].name, PARTS.FINISH[f].name + (bd ? ' / ' + PARTS.FINISH[bd].name : '')]), sel.set, i => { sel.set = i; save(); render(); });
+    setSpec([['TYRE', spec.name], ['OUTSIDE DIAMETER', mm(spec.od)], ['WIDTH', mm(spec.w)], ['RIM DIAMETER', mm(spec.rimD)], ['RIM', PARTS.RIMS[design].name], ['FINISH', PARTS.FINISH[finish].name + (bead ? ', ' + PARTS.FINISH[bead].name + ' ring' : '')], ['DISH', mm(PARTS.RIMS[design].dish)], ['HUB', '12 mm hex']]);
+    $('cur').textContent = spec.name + ' · ' + PARTS.RIMS[design].name + ' · ' + PARTS.FINISH[finish].name;
+    $('vOne').setAttribute('aria-pressed', String(!sel.all)); $('vAll').setAttribute('aria-pressed', String(sel.all));
+    TYPES.forEach((t, r) => wheels[t].forEach((w, c) => {
+      const me = t === sel.type && c === sel.set;
+      if (sel.all) { w.visible = true; w.position.set(0, 0.215 - r * 0.085, (2 - c) * 0.078); w.rotation.y = -0.35; }
+      else { w.visible = me; w.position.set(0, PARTS.TYRES[t].od / 2, 0); w.rotation.y = 0; }
+    }));
+    floorDisc.visible = !sel.all; floorDisc.scale.setScalar(0.075);
+  } else {
+    if (!chassis || chassis.userData.kind !== sel.build || chassis.userData.rim !== sel.rim) { makeChassis(); chassis.userData.rim = sel.rim; }
+    const C = PARTS.CHASSIS[sel.build], drift = sel.build === 'drift';
+    document.querySelectorAll('#builds button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.b === sel.build)));
+    $('bnote').textContent = C.note + ' · wheels: ' + PARTS.TYRES[C.tyre].name.toLowerCase() + ' tyres, rim set:';
+    $('rimsets').innerHTML = ''; PARTS.WHEELSETS[C.tyre].forEach(([d], i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = i + 1; b.title = PARTS.RIMS[d].name; b.setAttribute('aria-pressed', String(i === sel.rim)); b.addEventListener('click', () => { sel.rim = i; save(); render(); }); $('rimsets').appendChild(b); });
+    listButtons($('plist'), chassis.userData.parts.map((p, i) => [i + 1, p.name]), focusIdx, i => { focusIdx = i; const f = chassis.userData.parts[i].focus; want.target.set(f[0], f[1], f[2]); if (f[3] !== undefined) want.yaw = f[3]; want.dist = 0.2; $('cur').textContent = chassis.userData.parts[i].name.toUpperCase(); render(); });
+    setSpec([['DRIVE', drift ? 'RWD, electric' : '4WD, nitro'], ['WHEELBASE', mm(C.wb)], ['TRACK', mm(C.wheelX * 2)], ['RIDE HEIGHT', mm(C.plateY)], ['POWER', drift ? '540 brushless, rear-mid' : '.15 nitro, centre-right'], ['TRANSMISSION', drift ? 'pinion + 64T spur, layshaft' : 'clutch bell + 52T spur, centre shaft'], ['BRAKE', drift ? 'ESC (motor braking)' : 'disc on the centre shaft'], ['SHOCKS', drift ? 'purple alloy, blue springs' : 'gold big-bore, red springs'], ['TRAVEL', '±' + mm(C.travel)]]);
+    if (focusIdx < 0) $('cur').textContent = C.name + ' CHASSIS';
+    floorDisc.visible = true; floorDisc.scale.setScalar(0.32);
+  }
 }
-function pick(t, i) { sel.type = t; sel.set = i; try { localStorage.setItem('dm-parts-sel', JSON.stringify({ type: t, set: i })); } catch (e) {} render(); }
-for (const t of TYPES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.t = t; b.textContent = PARTS.TYRES[t].name; b.addEventListener('click', () => pick(t, Math.min(sel.set, 4))); $('tyres').appendChild(b); }
+for (const t of TYPES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.t = t; b.textContent = PARTS.TYRES[t].name; b.addEventListener('click', () => { sel.type = t; save(); render(); }); $('tyres').appendChild(b); }
+for (const k of Object.keys(PARTS.CHASSIS)) { const b = document.createElement('button'); b.type = 'button'; b.dataset.b = k; b.textContent = PARTS.CHASSIS[k].name; b.addEventListener('click', () => { sel.build = k; sel.rim = 0; focusIdx = -1; save(); render(); home(); }); $('builds').appendChild(b); }
 
-// orbit camera; yaw 0 looks at the wheel's outer face (+x)
-const homeOne = { target: new THREE.Vector3(0, 0.033, 0), yaw: 0.95, pitch: 0.28, dist: 0.32 }, homeAll = { target: new THREE.Vector3(0, 0.13, 0), yaw: 0.12, pitch: 0.1, dist: 0.62 };
-const orbit = { ...homeOne, target: homeOne.target.clone() }, want = { ...homeOne, target: homeOne.target.clone() };
+// orbit camera; yaw 0 looks from +x (a wheel's outer face, the car's right side)
+const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 } };
+const orbit = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 }, want = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 };
 let fit = 1;
-const home = () => { const h = sel.all ? homeAll : homeOne; Object.assign(want, { yaw: h.yaw, pitch: h.pitch, dist: h.dist * (sel.all ? fit : 1), target: h.target.clone() }); };
+function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage === 'chassis') render(); }
+function setStage(st) { sel.stage = st; try { if (location.hash !== '#' + st) history.replaceState(null, '', '#' + st); } catch (e) {} render(); home(); }
+$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis'));
 $('vOne').addEventListener('click', () => { sel.all = false; render(); home(); });
 $('vAll').addEventListener('click', () => { sel.all = true; render(); home(); });
 $('vSpin').addEventListener('click', () => { sel.roll = !sel.roll; render(); });
+$('vSteer').addEventListener('click', () => { sel.steer = !sel.steer; render(); });
+$('vSusp').addEventListener('click', () => { sel.susp = !sel.susp; render(); });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis') && h !== sel.stage) setStage(h); });
 const pts = new Map(); let pinch0 = 0;
 stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
 stage.addEventListener('pointermove', e => {
@@ -151,15 +188,21 @@ stage.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(wan
 stage.addEventListener('dblclick', home);
 function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); fit = Math.max(1, 1.5 / camera.aspect); }
 new ResizeObserver(resize).observe(stage); resize();
-render(); home(); Object.assign(orbit, { yaw: want.yaw, pitch: want.pitch, dist: want.dist, target: want.target.clone() });
+{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis') sel.stage = h; }
+render(); home(); Object.assign(orbit, { yaw: want.yaw, pitch: want.pitch, dist: want.dist }); orbit.target.copy(want.target);
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let last = performance.now();
+let last = performance.now(), t = 0, spin = 0;
 function frame(now) {
-  requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  requestAnimationFrame(frame); const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
   const k = reduce ? 1 : 1 - Math.exp(-dt * 8);
   let dy = want.yaw - orbit.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   orbit.yaw += dy * k; orbit.pitch += (want.pitch - orbit.pitch) * k; orbit.dist += (want.dist - orbit.dist) * k; orbit.target.lerp(want.target, k);
-  if (sel.roll && !reduce) for (const t of TYPES) for (const w of wheels[t]) w.userData.spin.rotation.x -= dt * 0.9;
+  if (sel.roll && !reduce) spin += dt * 0.9;
+  if (sel.stage === 'wheels') { for (const ty of TYPES) for (const w of wheels[ty]) w.userData.spin.rotation.x = spin; }
+  else if (chassis) {
+    const tr = PARTS.CHASSIS[sel.build].travel, a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
+    chassis.userData.pose([Math.sin(a) * amp, Math.sin(a + 0.8) * amp, Math.sin(a + 2.2) * amp, Math.sin(a + 3.0) * amp], sel.steer && !reduce ? Math.sin(t * 0.9) * 0.45 : 0, spin * 1.5);
+  }
   const cp = Math.cos(orbit.pitch);
   camera.position.set(orbit.target.x + Math.cos(orbit.yaw) * cp * orbit.dist, orbit.target.y + Math.sin(orbit.pitch) * orbit.dist, orbit.target.z - Math.sin(orbit.yaw) * cp * orbit.dist);
   camera.lookAt(orbit.target); renderer.render(scene, camera);

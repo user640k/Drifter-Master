@@ -81,7 +81,12 @@ An original 1/10 car is being built part by part in the `PARTS` section of `inde
 
     python3 tools/make_parts.py
 
-Stage 1, tyres and rims: three tyre types at real 1/10 sizes (DRIFT hard plastic 64 x 26 mm, GRIP rubber with a moulded tread 64 x 26 mm, OFF-ROAD block-knob rubber 70 x 30 mm on a 50 mm rim), each with five rim sets (spoke design + finish; one beadlock with a bolted ring). Rims are modelled with a barrel, rounded lips, a dished wall, a spoke face cut from a disc, hub and 12 mm hex nut. Next: chassis (suspension, shocks, gearbox, rear-mid motor, and a disc brake only on the nitro-style off-road build; electric RC cars brake through the ESC), shells, decals, body posts and clips, damage.
+Stage 1, tyres and rims: three tyre types at real 1/10 sizes (DRIFT hard plastic 64 x 26 mm, GRIP rubber with a moulded tread 64 x 26 mm, OFF-ROAD block-knob rubber 70 x 30 mm on a 50 mm rim), each with five rim sets (spoke design + finish; one beadlock with a bolted ring). Rims are modelled with a barrel, rounded lips, a dished wall, a spoke face cut from a disc, hub and 12 mm hex nut. Stage 2, chassis (`parts.html#chassis`), two builds on a 257 mm wheelbase, animated in the lab (wheels roll, steering sweeps, suspension cycles with the shocks compressing):
+- DRIFT: electric RWD. Carbon plate and upper deck, 540 motor lengthways in the rear-middle (as on YD-2 / RMX-style chassis) with pinion and 64T spur on a layshaft into the rear gearbox, ESC with fan, 2S shorty LiPo, receiver and antenna, gyro, steering servo. No friction brake: electric RC cars brake through the ESC.
+- OFF-ROAD: nitro 4WD. Aluminium plate, .15 engine with finned head, carburettor and glow plug, flywheel and clutch bell, tuned pipe, fuel tank, radio box, 52T spur and a disc brake with caliper on the centre shaft, shafts to front and rear diffs, longer gold shocks.
+Both have lower A-arms, uprights, turnbuckle camber links, coil-over shocks on cut-out towers, driveshafts and steering links.
+
+Next: shells (drift and off-road), decals and colour schemes, body posts and clips, damage.
 
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:

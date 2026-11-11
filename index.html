@@ -1003,7 +1003,7 @@ function resetCones() { for (const c of cones) { Object.assign(c, { x: c.hx, z: 
 
 /* ======== PARTS: an original 1/10 car, built from scratch (work in progress; the game still drives the old car) ========
    Units are metres. A wheel is built with its axle along local x and its outer face towards +x.
-   Stage 1: tyres and rims. Three tyre types at real 1/10 sizes, five rims for each. */
+   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. */
 const PARTS = {};
 PARTS.TYRES = {
   // hard plastic drift tyre: smooth, slightly glossy, three shallow grooves (1/10 drift: 26 mm wide, 64 mm tall)
@@ -1166,6 +1166,244 @@ function buildWheel(type, set = 0) {
   const root = new THREE.Group(), spin = new THREE.Group(); root.add(spin);
   spin.add(buildTyre(type)); spin.add(buildRim(design, finish, spec.w, spec.rimD, bead));
   root.userData = { spin, type, set, name: PARTS.RIMS[design].name + ' · ' + PARTS.FINISH[finish].name };
+  return root;
+}
+// ======== Stage 2: chassis ========
+// Car axes: x to the right, y up, z forward (nose at +z). Wheelbase 257 mm like a real 1/10 drift car.
+// Two builds share the layout code:
+//  DRIFT   electric RWD: carbon plate and deck, motor lengthways in the rear-middle, pinion and spur on a layshaft
+//          into the rear gearbox, ESC with fan, shorty LiPo, receiver, gyro, steering servo. No friction brake:
+//          an electric car brakes through the ESC.
+//  OFF-ROAD nitro 4WD: aluminium plate, .15 engine (finned head, carburettor, tuned pipe), fuel tank, clutch bell,
+//          centre shaft to front and rear diffs, a disc brake on the centre shaft, radio box, long shocks.
+PARTS.CHASSIS = {
+  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor', tyre: 'drift', wb: 0.257, wheelX: 0.0845, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.078, shockR: 0.0062, travel: 0.006 },
+  offroad: { name: 'OFF-ROAD', note: 'Nitro 4WD, disc brake', tyre: 'offroad', wb: 0.257, wheelX: 0.095, plateY: 0.013, armIn: 0.03, armY: 0.026, towerY: 0.098, shockR: 0.0075, travel: 0.012 },
+};
+PARTS.carbonTex = () => {
+  const t = tex(64, 64, (g, w, h) => { g.fillStyle = '#16171a'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 8) for (let x = 0; x < w; x += 8) { const a = ((x + y) / 8) % 2; g.fillStyle = a ? '#26282d' : '#1c1d21'; g.fillRect(x, y, 8, 8); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x + (a ? 1 : 0), y + (a ? 0 : 1), a ? 6 : 8, a ? 8 : 6); } });
+  t.repeat.set(220, 220); return t;
+};
+PARTS.mats = () => {
+  if (PARTS._m) return PARTS._m;
+  const ph = (color, shin, env, extra) => new THREE.MeshPhongMaterial({ color, specular: 0xffffff, shininess: shin, envMap: env ? PARTS.envTex : null, reflectivity: env || 0, ...extra });
+  PARTS._m = {
+    carbon: ph(0xffffff, 60, 0.12, { map: PARTS.carbonTex(), specular: 0x666666 }),
+    alu: ph(0x8e949e, 90, 0.45), blueAlu: ph(0x2858c8, 100, 0.35), purpleAlu: ph(0x6a3cc8, 100, 0.35), goldAlu: ph(0xd4a23a, 100, 0.4), redAlu: ph(0xc8202a, 100, 0.3),
+    nylon: ph(0x1d1d20, 18, 0, { specular: 0x333333 }), steel: ph(0xc8ccd2, 120, 0.7), darkSteel: ph(0x50545c, 80, 0.4),
+    spring: ph(0x3a7aff, 80, 0.3), springRed: ph(0xe0302a, 80, 0.3), gear: ph(0xe8e4d8, 30, 0, { specular: 0x444444 }), brass: ph(0xc8a050, 90, 0.4),
+    can: ph(0x9aa2ac, 110, 0.55), lipo: ph(0x222428, 40, 0.05), label: ph(0xffb21e, 30, 0), esc: ph(0x18191c, 30, 0), fan: ph(0x303238, 20, 0),
+    wireR: ph(0xc81818, 40, 0), wireB: ph(0x161616, 40, 0), wireW: ph(0xd8d8d8, 40, 0), antenna: ph(0x101010, 30, 0),
+    head: ph(0xa8acb4, 70, 0.3), fuel: ph(0xe8e8e0, 40, 0, { transparent: true, opacity: 0.85 }), pipe: ph(0x9a9ea6, 120, 0.6), disc: ph(0x8a8e96, 90, 0.5),
+  };
+  return PARTS._m;
+};
+// small builders
+const pBox = (w, h, d, m, x, y, z, p) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); p.add(b); return b; };
+const pCyl = (r0, r1, l, m, axis, x, y, z, p, seg = 20) => { const g = new THREE.CylinderGeometry(r0, r1, l, seg); if (axis === 'x') g.rotateZ(-Math.PI / 2); if (axis === 'z') g.rotateX(Math.PI / 2); const c = new THREE.Mesh(g, m); c.position.set(x, y, z); p.add(c); return c; };
+// a rod between two points (driveshafts, links, wires): unit cylinder along y, re-aimed by setRod
+function pRod(r, m, p, seg = 8) { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, seg), m); p.add(c); return c; }
+const _ru = new THREE.Vector3(0, 1, 0), _rd = new THREE.Vector3();
+function setRod(c, a, b) { _rd.subVectors(b, a); const L = _rd.length(); c.position.copy(a).addScaledVector(_rd, 0.5); c.quaternion.setFromUnitVectors(_ru, _rd.normalize()); c.scale.set(1, L, 1); }
+function pTube(pts, r, m, p, seg = 40) { const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(q => new THREE.Vector3(...q))), seg, r, 8); const t = new THREE.Mesh(g, m); p.add(t); return t; }
+function gearGeo(r, teeth, depth, hole = 0.0015) {
+  const s = new THREE.Shape(), N = teeth * 4, rt = r, rr = r - Math.max(0.0008, r * 0.07);
+  for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2, rad = (i % 4 === 1 || i % 4 === 2) ? rt : rr; i ? s.lineTo(rad * Math.cos(a), rad * Math.sin(a)) : s.moveTo(rad * Math.cos(a), rad * Math.sin(a)); }
+  const hp = new THREE.Path(); hp.absarc(0, 0, hole, 0, Math.PI * 2, true); s.holes.push(hp);
+  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 8 }); g.translate(0, 0, -depth / 2); return g;
+}
+// flat plate from an outline in (x, z), extruded downward from y by t
+function plateGeo(pts, t, holes = []) {
+  const s = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+  for (const [x, z, r] of holes) { const h = new THREE.Path(); h.absarc(x, -z, r, 0, Math.PI * 2, true); s.holes.push(h); }
+  const g = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false, curveSegments: 10 }); g.rotateX(-Math.PI / 2); return g;
+}
+const roundOutline = (x0, z0, x1, z1, r, n = 6) => { const p = [], c = (cx, cz, a0) => { for (let i = 0; i <= n; i++) { const a = a0 + i / n * Math.PI / 2; p.push([cx + r * Math.cos(a), cz + r * Math.sin(a)]); } }; c(x1 - r, z0 + r, -Math.PI / 2); c(x1 - r, z1 - r, 0); c(x0 + r, z1 - r, Math.PI / 2); c(x0 + r, z0 + r, Math.PI); return p; };
+
+// a coil-over shock from the tower mount (top) down to the arm mount; update(top, bottom) re-aims and squeezes the spring
+function buildShock(m, bodyM, springM, r, L0) {
+  const g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
+  const bodyL = L0 * 0.55;
+  pCyl(r * 0.7, r * 0.7, 0.004, m.steel, null, 0, -0.002, 0, inner, 10);                     // top eyelet
+  pCyl(r * 1.15, r * 1.15, 0.004, bodyM, null, 0, -0.006, 0, inner, 20);                    // threaded cap
+  pCyl(r, r, bodyL, bodyM, null, 0, -0.006 - bodyL / 2, 0, inner, 20);                       // body
+  pCyl(r * 1.25, r * 1.25, 0.002, bodyM, null, 0, -0.006 - bodyL * 0.35, 0, inner, 20);      // preload collar
+  const shaft = pCyl(r * 0.28, r * 0.28, 1, m.steel, null, 0, 0, 0, inner, 10);
+  const cup = pCyl(r * 1.3, r * 1.1, 0.0022, bodyM, null, 0, 0, 0, inner, 20);
+  const eye = pCyl(r * 0.55, r * 0.55, 0.005, m.nylon, null, 0, 0, 0, inner, 10);
+  const turns = 9, hp = []; for (let i = 0; i <= turns * 16; i++) { const a = i / 16 * Math.PI * 2; hp.push(new THREE.Vector3(Math.cos(a) * r * 1.3, -i / (turns * 16), Math.sin(a) * r * 1.3)); }
+  const spring = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hp), turns * 16, r * 0.16, 6), springM); inner.add(spring);
+  const top0 = -0.006 - bodyL * 0.35;
+  g.userData.update = (a, b) => {
+    _rd.subVectors(b, a); const L = _rd.length(); g.position.copy(a); g.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), _rd.clone().normalize());
+    const bodyEnd = -0.006 - bodyL, len = L - (-bodyEnd) - 0.003;
+    shaft.position.y = bodyEnd - len / 2; shaft.scale.y = Math.max(0.001, len);
+    cup.position.y = -L + 0.006; eye.position.y = -L;
+    spring.position.y = top0 - 0.001; spring.scale.y = Math.max(0.005, (top0 - 0.001) - cup.position.y);
+  };
+  return g;
+}
+// turnbuckle camber/steering link: rod with two ball ends
+function buildLink(m, r = 0.0013) { const g = new THREE.Group(), rod = pRod(r, m.steel, g), e1 = new THREE.Mesh(new THREE.SphereGeometry(r * 2.4, 8, 6), m.nylon), e2 = e1.clone(); g.add(e1, e2); g.userData.update = (a, b) => { setRod(rod, a, b); e1.position.copy(a); e2.position.copy(b); }; return g; }
+
+// one corner of the suspension on the right-hand side (x > 0); mirrored for the left by flipping x
+function buildCorner(C, m, s, front, k) {
+  const g = new THREE.Group(), z = front ? C.wb / 2 : -C.wb / 2, X = x => s * x;
+  const spec = PARTS.TYRES[C.tyre], wR = spec.od / 2, armLen = C.wheelX - C.armIn - 0.009;
+  // lower A-arm: two beams to the outer ball, a web between them; pivots on the bulkhead
+  const arm = new THREE.Group(); arm.position.set(X(C.armIn), C.armY, z); g.add(arm);
+  const armShape = new THREE.Shape([[0, -0.017], [armLen, -0.004], [armLen, 0.004], [0, 0.017], [0.008, 0.002], [0.008, -0.002]].map(([u, w]) => new THREE.Vector2(u, w)));
+  const ag = new THREE.ExtrudeGeometry(armShape, { depth: 0.004, bevelEnabled: true, bevelThickness: 0.0006, bevelSize: 0.0006, bevelSegments: 1 }); ag.rotateX(Math.PI / 2); ag.translate(0, 0.002, 0);
+  const armMesh = new THREE.Mesh(ag, m.nylon); armMesh.scale.x = s; arm.add(armMesh);
+  pCyl(0.0016, 0.0016, 0.04, m.steel, 'z', 0, 0, 0, arm, 8); // hinge pin
+  // upright / knuckle (front ones steer about a kingpin)
+  const knuckle = new THREE.Group(); g.add(knuckle);
+  const kx = C.wheelX - 0.012;
+  pBox(0.006, wR * 0.95, 0.012, front ? m.blueAlu : m.nylon, X(0.0), 0, 0, knuckle);
+  pCyl(0.004, 0.004, 0.012, m.steel, 'x', X(0.007), 0.002, 0, knuckle, 12);                           // axle stub
+  if (front) { const sa = pBox(0.004, 0.004, 0.016, m.blueAlu, X(-0.002), -0.004, -0.009, knuckle); }   // steering arm, behind the axle
+  // camber link (upper) and the shock
+  const camber = buildLink(m); g.add(camber);
+  const shock = buildShock(m, C.tyre === 'drift' ? m.purpleAlu : m.goldAlu, C.tyre === 'drift' ? m.spring : m.springRed, C.shockR, C.towerY - C.armY); g.add(shock);
+  let tie = null; if (front) { tie = buildLink(m, 0.0011); g.add(tie); }
+  // driveshaft (rear on the drift car, all four on the 4WD)
+  let ds = null; if (!front || C.tyre !== 'drift') { ds = new THREE.Group(); const rod = pRod(0.0018, m.darkSteel, ds), cup1 = new THREE.Mesh(new THREE.SphereGeometry(0.0034, 10, 8), m.steel), cup2 = cup1.clone(); ds.add(cup1, cup2); ds.userData.update = (a, b) => { setRod(rod, a, b); cup1.position.copy(a); cup2.position.copy(b); }; g.add(ds); }
+  const P = (x, y, zz = z) => new THREE.Vector3(X(x), y, zz);
+  // pose: bump = wheel travel up (m), steer = radians (left positive)
+  g.userData.update = (bump, steer, roll) => {
+    const th = Math.asin(Math.max(-0.6, Math.min(0.6, bump / armLen)));
+    arm.rotation.z = s * th;
+    const ox = C.armIn + armLen * Math.cos(th), oy = C.armY + armLen * Math.sin(th);
+    const wc = new THREE.Vector3(X(C.wheelX), oy + (wR - C.armY) + 0.0, z);
+    knuckle.position.set(X(ox + 0.004), wc.y, z); knuckle.rotation.y = front ? steer : 0;
+    k.pos.copy(wc); k.steer = front ? steer : 0; k.roll = roll;
+    camber.userData.update(P(C.armIn + 0.002, C.towerY - 0.022), P(ox + 0.002, wc.y + wR * 0.4));
+    const d = armLen * 0.72; shock.userData.update(P(C.armIn + 0.018 + (C.tyre === 'drift' ? 0.0 : 0.008), C.towerY), P(C.armIn + d * Math.cos(th), C.armY + d * Math.sin(th) + 0.004));
+    if (tie) { const ka = new THREE.Vector3(X(-0.002), -0.004, -0.017).applyAxisAngle(new THREE.Vector3(0, 1, 0), steer).add(knuckle.position); const ti = P(0.012, wR - 0.006, z - 0.018); ti.x -= steer * 0.01; tie.userData.update(ti, ka); }
+    if (ds) ds.userData.update(P(0.022, wR - 0.0005 + (C.tyre === 'drift' ? 0 : 0.002)), new THREE.Vector3(X(C.wheelX - 0.018), wc.y, z));
+  };
+  return g;
+}
+
+function buildChassis(kind, rimSet = 0) {
+  const C = PARTS.CHASSIS[kind], m = PARTS.mats(), root = new THREE.Group(), wb = C.wb, fz = wb / 2, rz = -wb / 2;
+  const spec = PARTS.TYRES[C.tyre], wR = spec.od / 2, drift = kind === 'drift';
+  const parts = []; const tag = (name, obj, focus) => { obj.name = name; parts.push({ name, obj, focus }); return obj; };
+  // main plate
+  const plateM = drift ? m.carbon : m.alu, plateT = drift ? 0.0025 : 0.003;
+  const outline = drift ? [[-0.05, -0.17], [0.05, -0.17], [0.05, 0.08], [0.036, 0.17], [-0.036, 0.17], [-0.05, 0.08]] : roundOutline(-0.052, -0.17, 0.052, 0.17, 0.02);
+  const holes = []; for (let zz = -0.12; zz <= 0.13; zz += 0.05) for (const xx of [-0.03, 0.03]) holes.push([xx, zz, 0.004]);
+  const plate = new THREE.Mesh(plateGeo(outline, plateT, holes), plateM); plate.position.y = C.plateY; root.add(plate); tag('Main plate', plate, [0, 0.01, 0]);
+  // bulkheads / gearboxes front and rear
+  const gbM = drift ? m.nylon : m.nylon;
+  const fBulk = pBox(0.05, wR - C.plateY + 0.004, 0.03, drift ? m.blueAlu : gbM, 0, (C.plateY + plateT + wR + 0.004) / 2, fz, root);
+  const rBox = new THREE.Group(); root.add(rBox);
+  pBox(0.052, wR - C.plateY + 0.01, 0.036, gbM, 0, (C.plateY + plateT + wR + 0.01) / 2, rz, rBox);
+  pCyl(0.016, 0.016, 0.046, gbM, 'x', 0, wR, rz, rBox, 24); // diff case
+  tag('Front bulkhead', fBulk, [0, wR, fz]); tag('Rear gearbox and diff', rBox, [0, wR, rz]);
+  // shock towers (carbon on the drift car, aluminium on the off-roader)
+  for (const [z, nm] of [[fz - 0.01, 'Front shock tower'], [rz + 0.012, 'Rear shock tower']]) {
+    const tw = 0.112, yb = wR + 0.008, sh = new THREE.Shape([[-0.026, yb], [0.026, yb], [tw / 2, C.towerY + 0.002], [tw / 2, C.towerY + 0.011], [-tw / 2, C.towerY + 0.011], [-tw / 2, C.towerY + 0.002]].map(([x, y]) => new THREE.Vector2(x, y)));
+    const win = new THREE.Path([[-0.016, yb + 0.007], [0.016, yb + 0.007], [0.034, C.towerY - 0.003], [-0.034, C.towerY - 0.003]].map(([x, y]) => new THREE.Vector2(x, y))); sh.holes.push(win);
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const h = new THREE.Path(); h.absarc(sx * (0.038 + i * 0.006), C.towerY + 0.007, 0.0013, 0, Math.PI * 2, true); sh.holes.push(h); }
+    const tg = new THREE.ExtrudeGeometry(sh, { depth: 0.003, bevelEnabled: false }); tg.translate(0, 0, -0.0015);
+    const tower = new THREE.Mesh(tg, drift ? m.carbon : m.alu); tower.position.z = z; root.add(tower); tag(nm, tower, [0, C.towerY - 0.01, z]);
+  }
+  // corners and wheels
+  const corners = [], wheels = [];
+  for (const front of [true, false]) for (const s of [1, -1]) {
+    const k = { pos: new THREE.Vector3(), steer: 0, roll: 0 }, cg = buildCorner(C, m, s, front, k); root.add(cg);
+    const w = buildWheel(C.tyre, rimSet); if (s < 0) w.rotation.y = Math.PI; root.add(w);
+    corners.push({ g: cg, k, w, s, front }); wheels.push(w);
+  }
+  tag('Front suspension: A-arms, uprights, camber links', corners[0].g, [C.wheelX - 0.02, C.armY + 0.01, fz]);
+  tag('Shocks: oil-filled coil-overs', corners[2].g, [C.wheelX - 0.035, (C.towerY + C.armY) / 2, rz]);
+  tag('Wheels', corners[0].w, [C.wheelX, wR, fz]);
+  if (drift) {
+    // upper deck on posts
+    const deck = new THREE.Mesh(plateGeo([[-0.022, -0.05], [0.022, -0.05], [0.026, 0.11], [-0.026, 0.11]], 0.002), m.carbon); deck.position.y = 0.04; root.add(deck);
+    for (const [x, z] of [[-0.018, -0.04], [0.018, -0.04], [-0.02, 0.1], [0.02, 0.1], [0, 0.03]]) pCyl(0.0025, 0.0025, 0.04 - C.plateY, m.blueAlu, null, x, (0.04 + C.plateY) / 2, z, root, 8);
+    tag('Upper deck', deck, [0, 0.042, 0.03]);
+    // motor: 540 can, lengthways in the rear-middle, shaft pointing back to the gearbox
+    const mot = new THREE.Group(); mot.position.set(0, 0.026, -0.058); root.add(mot);
+    pCyl(0.018, 0.018, 0.04, m.can, 'z', 0, 0, 0.004, mot, 28);
+    pCyl(0.0185, 0.0185, 0.012, m.blueAlu, 'z', 0, 0, 0.03, mot, 28); // end bell
+    for (let i = 0; i < 6; i++) pCyl(0.0195, 0.0195, 0.0012, m.blueAlu, 'z', 0, 0, -0.012 + i * 0.005, mot, 28); // heatsink fins
+    pCyl(0.0182, 0.0182, 0.014, m.label, 'z', 0, 0, 0.006, mot, 28); // label band round the can
+    pCyl(0.0016, 0.0016, 0.012, m.steel, 'z', 0, 0, -0.022, mot, 8); // shaft
+    tag('Motor: 540 brushless, rear-mid', mot, [0, 0.03, -0.06]);
+    // pinion and spur on a layshaft beside the motor, then a shaft into the rear gearbox
+    const pin = new THREE.Mesh(gearGeo(0.0055, 14, 0.005, 0.0016), m.steel); pin.position.set(0, 0.026, -0.082); root.add(pin);
+    const spur = new THREE.Mesh(gearGeo(0.017, 64, 0.004, 0.002), m.gear); spur.position.set(0, 0.026 + 0.0225, -0.084); root.add(spur);
+    const lay = pCyl(0.002, 0.002, 0.03, m.steel, 'z', 0, 0.0485, -0.097, root, 8);
+    pBox(0.044, 0.05, 0.003, m.blueAlu, 0, 0.034, -0.0775, root); // motor mount plate
+    tag('Pinion and spur gear (visible transmission)', spur, [0, 0.04, -0.085]);
+    // ESC with fan, wires to the motor
+    const esc = new THREE.Group(); esc.position.set(0.032, 0.0185, 0.0); root.add(esc);
+    pBox(0.03, 0.017, 0.036, m.esc, 0, 0, 0, esc); pBox(0.028, 0.004, 0.03, m.alu, 0, 0.0105, 0, esc); pCyl(0.011, 0.011, 0.004, m.fan, null, 0, 0.0145, 0, esc, 20);
+    pTube([[0.026, 0.02, -0.012], [0.02, 0.03, -0.03], [0.008, 0.032, -0.045]], 0.0014, m.wireR, root); pTube([[0.03, 0.02, -0.012], [0.024, 0.026, -0.032], [0.01, 0.028, -0.046]], 0.0014, m.wireB, root);
+    tag('ESC with cooling fan', esc, [0.032, 0.025, 0]);
+    // shorty LiPo on the left
+    const bat = new THREE.Group(); bat.position.set(-0.03, C.plateY + plateT + 0.0125, 0.0); root.add(bat);
+    pBox(0.047, 0.025, 0.096, m.lipo, 0, 0, 0, bat); pBox(0.048, 0.008, 0.06, m.label, 0, 0.002, 0, bat);
+    pTube([[-0.012, 0.02, 0.048], [-0.004, 0.03, 0.055], [0.022, 0.03, 0.02]], 0.0014, m.wireR, root);
+    tag('Battery: 2S shorty LiPo', bat, [-0.03, 0.03, 0]);
+    // receiver with antenna tube, gyro, steering servo with horn and drag link
+    const rx = pBox(0.022, 0.012, 0.03, m.esc, 0.024, C.plateY + plateT + 0.006, 0.07, root); pRod(0.0009, m.antenna, root).position.set(0.03, 0.06, 0.08); root.children[root.children.length - 1].scale.y = 0.07;
+    pBox(0.018, 0.012, 0.018, m.redAlu, -0.018, 0.047, 0.07, root);
+    tag('Receiver and antenna', rx, [0.024, 0.02, 0.07]); tag('Gyro', root.children[root.children.length - 1], [-0.018, 0.05, 0.07]);
+    const servo = pBox(0.02, 0.038, 0.04, m.nylon, 0, C.plateY + plateT + 0.019, 0.098, root);
+    pBox(0.004, 0.004, 0.02, m.alu, 0.012, 0.03, 0.105, root);
+    tag('Steering servo', servo, [0, 0.03, 0.1]);
+  } else {
+    // radio box with servos (steering + throttle/brake), receiver pack
+    const rbox = pBox(0.042, 0.03, 0.06, m.nylon, -0.03, C.plateY + plateT + 0.015, 0.05, root); tag('Radio box: servos and receiver', rbox, [-0.03, 0.04, 0.05]);
+    pRod(0.0009, m.antenna, root).position.set(-0.04, 0.08, 0.06); root.children[root.children.length - 1].scale.y = 0.07;
+    // fuel tank with cap and fuel line
+    const tank = new THREE.Group(); tank.position.set(-0.032, C.plateY + plateT + 0.018, -0.02); root.add(tank);
+    pBox(0.038, 0.034, 0.05, m.fuel, 0, 0, 0, tank); pCyl(0.008, 0.008, 0.006, m.redAlu, null, 0, 0.02, 0.01, tank, 16);
+    tag('Fuel tank', tank, [-0.032, 0.04, -0.02]);
+    // .15 nitro engine: crankcase, finned head, carburettor, glow plug, flywheel and clutch bell at the front of the crank
+    const eng = new THREE.Group(); eng.position.set(0.024, C.plateY + plateT + 0.016, -0.03); root.add(eng);
+    pCyl(0.013, 0.013, 0.034, m.head, 'z', 0, 0, 0, eng, 24); pBox(0.04, 0.004, 0.026, m.head, 0, -0.011, 0, eng); // crankcase and mounting lugs
+    pCyl(0.0105, 0.012, 0.012, m.head, null, 0, 0.011, 0, eng, 20); // cylinder
+    for (let i = 0; i < 9; i++) pCyl(0.016 - i * 0.0006, 0.016 - i * 0.0006, 0.0016, i % 2 ? m.blueAlu : m.blueAlu, null, 0, 0.016 + i * 0.0028, 0, eng, 24);
+    pCyl(0.0018, 0.0018, 0.004, m.brass, null, 0, 0.042, 0, eng, 8);
+    pCyl(0.006, 0.006, 0.014, m.head, 'x', -0.019, 0.006, 0.004, eng, 14); pCyl(0.003, 0.003, 0.012, m.darkSteel, 'z', -0.026, 0.006, 0.008, eng, 8);
+    pCyl(0.015, 0.015, 0.004, m.darkSteel, 'z', 0, -0.004, 0.022, eng, 24);   // flywheel
+    pCyl(0.009, 0.009, 0.008, m.steel, 'z', 0, -0.004, 0.03, eng, 18);       // clutch bell
+    const pinion = new THREE.Mesh(gearGeo(0.0065, 16, 0.006, 0.002), m.steel); pinion.position.set(0, -0.004, 0.034); eng.add(pinion);
+    tag('Nitro engine: .15 with finned head', eng, [0.024, 0.045, -0.03]);
+    // tuned pipe: manifold off the right side, pipe back along the chassis
+    pTube([[0.04, 0.03, -0.03], [0.055, 0.03, -0.04], [0.058, 0.026, -0.065]], 0.0045, m.pipe, root);
+    const pipe = pTube([[0.058, 0.026, -0.065], [0.056, 0.026, -0.1], [0.048, 0.028, -0.14], [0.03, 0.03, -0.165]], 0.011, m.pipe, root, 30);
+    pTube([[0.03, 0.03, -0.165], [0.018, 0.03, -0.185]], 0.003, m.pipe, root);
+    tag('Tuned pipe', pipe, [0.05, 0.03, -0.11]);
+    pTube([[-0.032, 0.04, -0.01], [-0.01, 0.05, 0.0], [0.004, 0.036, -0.022]], 0.0012, m.fuel, root);
+    // centre shaft: spur and brake disc, shafts to the front and rear diffs
+    const cy = wR, spur = new THREE.Mesh(gearGeo(0.022, 52, 0.004, 0.002), m.gear); spur.position.set(0, cy - 0.0085 + 0.003, 0.004); root.add(spur);
+    const disc = new THREE.Group(); disc.position.set(0, cy - 0.006, 0.014); root.add(disc);
+    pCyl(0.015, 0.015, 0.002, m.disc, 'z', 0, 0, 0, disc, 28); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pCyl(0.0016, 0.0016, 0.0024, m.darkSteel, 'z', Math.cos(a) * 0.01, Math.sin(a) * 0.01, 0, disc, 8); }
+    pBox(0.012, 0.01, 0.008, m.redAlu, 0, 0.013, 0, disc); // caliper over the top
+    tag('Disc brake on the centre shaft', disc, [0, wR - 0.004, 0.014, Math.PI * 0.85]);
+    setRod(pRod(0.0022, m.darkSteel, root), new THREE.Vector3(0, cy - 0.006, 0.014), new THREE.Vector3(0, wR, fz - 0.016));
+    setRod(pRod(0.0022, m.darkSteel, root), new THREE.Vector3(0, cy - 0.006, -0.006), new THREE.Vector3(0, wR, rz + 0.018));
+    pCyl(0.016, 0.016, 0.044, gbM, 'x', 0, wR, fz, root, 24);
+  }
+  // steering rack / bellcrank bar at the front
+  pBox(0.03, 0.004, 0.006, m.alu, 0, C.plateY + 0.02, fz - 0.018, root);
+  // animate: bump per wheel, steer, wheel spin
+  root.userData = {
+    kind, parts, corners, wheels, spin: 0,
+    pose(bumps = [0, 0, 0, 0], steer = 0, spin = 0) {
+      corners.forEach((c, i) => {
+        c.g.userData.update(bumps[i], c.front ? steer : 0, 0);
+        c.w.position.copy(c.k.pos); c.w.rotation.y = (c.s < 0 ? Math.PI : 0) + (c.front ? steer : 0);
+        c.w.userData.spin.rotation.x = c.s < 0 ? -spin : spin;
+      });
+    },
+  };
+  root.userData.pose();
   return root;
 }
 /* ======== END PARTS ======== */
