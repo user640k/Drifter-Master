@@ -100,9 +100,7 @@ Stage 1, tyres and rims: three tyre types at real 1/10 sizes (DRIFT hard plastic
 Both have lower A-arms, uprights, turnbuckle camber links, coil-over shocks on cut-out towers, driveshafts and steering links.
 
 Stage 3, shells (`parts.html#shell`): now the owner's 2002 model (see The car model). The lofted shells built earlier (drift coupé, rally hatch, '80s coupé) and the off-road nitro chassis are in git history.
-- DRIFT COUPÉ (440 x 200 x 122 mm): low 1990s-style coupé, flared arches, projector headlights, front lip, tail bars, mirrors, wing on stands.
-- RALLY HATCH (418 x 224 x 148 mm): tall rally hatchback with boxed flares, round headlights, a four-lamp pod, roof scoop, hatch spoiler and mudflaps.
-The lab shows each shell over its chassis (or alone, or see-through) with the suspension still working underneath.
+The lab shows the shell over its chassis (or alone, or see-through) with the suspension still working underneath.
 
 Stage 4, paint (`parts.html#paint`): six schemes worked out per pixel from the shell's own shape (SOLID, TWO-TONE, TWIN STRIPES over the bonnet, roof and boot, SIDE SWEEP with a pinstripe, FADE nose to tail, CONTRAST ROOF), six palettes (SIGNAL, MIDNIGHT, LIME RUSH, SUNSET, ARCTIC, GOLD RUSH) plus free main / second / accent colour pickers, and decals laid onto the body surface: race numbers on the doors and bonnet (any number 0-99), made-up sponsors (GRIPLINE, VOLTCELL, APEX GEARS, NITRO-X, DRIFT MASTER), a windscreen banner, and mud splatter on the rally hatch. All artwork is original.
 
