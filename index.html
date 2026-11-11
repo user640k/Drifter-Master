@@ -503,30 +503,7 @@ T.exitRed = canvasTex(64, 24, (g, w, h) => { g.fillStyle = '#1a0606'; g.fillRect
   edgeBlocks(edge, false, 0.16, 0.05, 0.12, [0x111113, 0x1a1a1d], -0.03, G);   // rubber bumper, ribbed
   const redLine = B.filter(([x, z]) => x < -1.2 && z > 0.6);
   edgeBlocks(redLine.map(([x, z]) => { const l = Math.hypot(x + 0.3, z - 1.0) || 1; return [x + (-0.3 - x) / l * 0.14, z + (1.0 - z) / l * 0.14]; }), false, 0.03, 0.003, 0.2, [0xc8242a], 0, G);
-  // the island: a wide C outlined by red/white curbs round its outside (no grass in it now) and a dark rubber edge on the pad side,
-  // open towards the back on the fence side; a painted circle in the left of the pad and a line out through the opening
-  const P = [0.1, 1.6], RO = [2.6, 1.65], RI = [1.75, 1.0], A1 = Math.PI * 0.06, A2 = Math.PI * 0.42;
-  const C = cShape(P, RO, RI, A1, A2); m.island = { P, RO, RI, A1, A2 };
-  // the infield pad: its own surface, smoother and lighter than the track (sampled from the photo's pad)
-  { const pts = []; for (let i = 0; i < 64; i++) pts.push(ellPt(P, RI[0] + 0.02, RI[1] + 0.02, i / 64 * Math.PI * 2));
-    const pad = flatMesh(pts, phong({ map: imgTex('phPad'), color: 0x9a9c9e, shininess: 35, specular: 0x404044, polygonOffset: true, polygonOffsetFactor: -1 }), 0.0008); planarUV(pad, 0.9); G.add(pad); }
-  m.solids.push(C.poly);
-  edgeBlocks([...C.capStart, ...C.outer, ...C.capEnd], false, 0.07, 0.03, 0.12, [0xc8262a, 0xeeece6], 0, G);
-  edgeBlocks(C.inner, false, 0.05, 0.022, 0.2, [0x1a1a1c], 0, G);
-  const lineM = new THREE.MeshBasicMaterial({ color: 0xe8e8e8, polygonOffset: true, polygonOffsetFactor: -2 });
-  const CC = [P[0] - 0.6, P[1]], CR = 0.55;
-  const ring = new THREE.Mesh(new THREE.RingGeometry(CR - 0.022, CR + 0.022, 64), lineM); ring.rotation.x = -Math.PI / 2; ring.position.set(CC[0], 0.002, CC[1]); G.add(ring);
-  { // keyhole line: off the right of the circle, along the pad and curving out through the opening
-    const pts = [[CC[0] + CR, CC[1]], [P[0] + 0.45, P[1] - 0.05], [P[0] + 1.05, P[1] + 0.2], ellPt(P, RI[0] + 0.05, RI[1] + 0.05, (A1 + A2) / 2), ellPt(P, RO[0] - 0.1, RO[1] - 0.1, (A1 + A2) / 2 + 0.05)];
-    const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z))), sp = curve.getSpacedPoints(40);
-    const pos = [];
-    for (let i = 0; i < sp.length - 1; i++) {
-      const a = sp[i], b = sp[i + 1], dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1, nx = -dz / l * 0.02, nz = dx / l * 0.02;
-      pos.push(a.x + nx, 0.002, a.z + nz, a.x - nx, 0.002, a.z - nz, b.x + nx, 0.002, b.z + nz, a.x - nx, 0.002, a.z - nz, b.x - nx, 0.002, b.z - nz, b.x + nx, 0.002, b.z + nz);
-    }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    const ln = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xe8e8e8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 })); G.add(ln);
-  }
+  // (the old C island, infield pad and keyhole line are gone: the floor is open for the layouts)
   // walls: light grey paint to 2.6 m, white band, then a muted red band and black above (back, fence side, front),
   // bare board-formed concrete above the white on the stand side
   const whiteM = lam({ color: 0xd8d8d4 }), redM = lam({ color: 0x8a2a30 }), blackM = lam({ color: 0x131315 });
@@ -784,58 +761,25 @@ function actMood() { moodIdx = (moodIdx + 1) % MOODS.length; try { localStorage.
    [ax, az, bx, bz, aKind, bKind]: 'c' tall cone, 'd' flat dome marker, 'x' nothing (a wall marks it).
    Hitting a cone adds a second to the lap. `map` picks the map. (Ramp support is still here for future layouts.) */
 const COURSES = [
-  { name: 'MAIN LAYOUT', map: 'arena', note: 'Full lap of the arena, clockwise: the long front sweeper, up the fence side, along the back in front of the stand, down the stand side. The turf island and its curbs are solid.',
-    start: [1.8, -3.0, -Math.PI / 2], gates: [
-      [0, -0.2, 0, -5.9, 'x', 'x'],
-      [-2.8, 1.6, -4.1, 1.6, 'd', 'd'],
-      [-0.1, 3.3, -0.1, 4.3, 'd', 'd'],
-      [2.6, 1.6, 3.7, 1.6, 'd', 'd'],
-    ],
-    line: [[1.8, -3.0], [-1.5, -3.2], [-3.3, -1.6], [-3.45, 0.6], [-3.4, 2.6], [-2.6, 3.85], [-0.5, 3.85], [1.6, 3.85], [2.95, 3.35], [3.15, 1.5], [3.05, -0.5], [2.6, -2.3]] },
-  { name: 'FULL FLOOR', map: 'arena', note: 'One layout over the whole floor, marked out by low white boards: a long front straight, up the right side, behind the island, down the left side, then an S and a hairpin through the open front and a sweeping drop back onto the straight.',
-    track: { ctrl: [[-2.4, -5.4], [-0.5, -5.4], [1.5, -5.4], [2.7, -5.25], [3.15, -4.6], [3.15, -3.5], [3.15, -1.5], [3.15, 0.5], [3.15, 2.5], [2.95, 3.55], [2.3, 3.85], [0.5, 3.85], [-1.5, 3.85], [-2.9, 3.75], [-3.4, 3.1], [-3.45, 1.0], [-3.45, -0.3], [-3.2, -0.85], [-2.5, -1.05], [-1.5, -0.9], [-0.5, -1.2], [0.5, -0.9], [1.4, -1.05], [2.0, -1.25], [2.15, -1.8], [2.0, -2.35], [1.4, -2.55], [0.4, -2.45], [-0.6, -2.75], [-1.6, -2.5], [-2.4, -2.7], [-2.95, -3.2], [-3.1, -4.2], [-2.9, -5.05]], width: 0.85, style: 'boards' }, start: [0, 0, 0], gates: [],
-    line: [[-2.4, -5.4], [-0.5, -5.4], [1.5, -5.4], [2.7, -5.25], [3.15, -4.6], [3.15, -3.5], [3.15, -1.5], [3.15, 0.5], [3.15, 2.5], [2.95, 3.55], [2.3, 3.85], [0.5, 3.85], [-1.5, 3.85], [-2.9, 3.75], [-3.4, 3.1], [-3.45, 1.0], [-3.45, -0.3], [-3.2, -0.85], [-2.5, -1.05], [-1.5, -0.9], [-0.5, -1.2], [0.5, -0.9], [1.4, -1.05], [2.0, -1.25], [2.15, -1.8], [2.0, -2.35], [1.4, -2.55], [0.4, -2.45], [-0.6, -2.75], [-1.6, -2.5], [-2.4, -2.7], [-2.95, -3.2], [-3.1, -4.2], [-2.9, -5.05]] },
+  { name: 'EMPTY', map: 'arena', note: 'The open warehouse floor, no layout: cones scattered at random (a new set every time) and a few groups of plastic chairs. Practice: drift round whatever you like; you can drive under the chairs.',
+    empty: true, start: [0, -4.6, 0], gates: [] },
   { name: 'FLOW', map: 'arena', note: 'A drift loop in the open front of the warehouse, 1.2 m wide, with almost nothing straight: big round sweepers (about 2 m radius) at both ends, a gently bowed run along the front, and a shallow curve in the back run that makes it a right-left-right transition you can carry speed through.',
     decor: [-0.2, -3.35], display: 'flow', track: { ctrl: [[-2.0, -5.1], [0.0, -4.75], [2.0, -5.1], [2.9, -4.4], [3.05, -3.1], [2.7, -1.8], [1.8, -1.1], [0.0, -1.85], [-1.8, -1.1], [-3.0, -1.7], [-3.45, -3.1], [-3.0, -4.5]], width: 1.2, style: 'boards' }, start: [0, 0, 0], gates: [],
     line: [[-2.0, -5.1], [0.0, -4.75], [2.0, -5.1], [2.9, -4.4], [3.05, -3.1], [2.7, -1.8], [1.8, -1.1], [0.0, -1.85], [-1.8, -1.1], [-3.0, -1.7], [-3.45, -3.1], [-3.0, -4.5]] },
-  { name: 'FIGURE 8', map: 'arena', note: 'A figure of eight in the open front of the arena, round two cones: right-hand loop, through the middle, left-hand loop, back through the middle. Constant transitions from one drift into the other.',
-    start: [-0.93, -4.11, 0.985], gates: [
-      [0, -4.15, 0, -2.65, 'x', 'x'],
-      [1.75, -3.4, 3.35, -3.4, 'c', 'x'],
-      [0, -4.15, 0, -2.65, 'x', 'x'],
-      [-1.75, -3.4, -3.35, -3.4, 'c', 'x'],
-    ],
-    line: [[0.0, -3.4], [0.7, -2.85], [1.35, -2.45], [1.91, -2.3], [2.34, -2.45], [2.61, -2.85], [2.7, -3.4], [2.61, -3.95], [2.34, -4.35], [1.91, -4.5], [1.35, -4.35], [0.7, -3.95], [0.0, -3.4], [-0.7, -2.85], [-1.35, -2.45], [-1.91, -2.3], [-2.34, -2.45], [-2.61, -2.85], [-2.7, -3.4], [-2.61, -3.95], [-2.34, -4.35], [-1.91, -4.5], [-1.35, -4.35], [-0.7, -3.95]] },
-  { name: 'KEYHOLE', map: 'arena', note: 'The main lap with a detour: off the fence side into the infield pad through the opening, round the painted circle and back out onto the back straight.',
-    start: [1.8, -3.0, -Math.PI / 2], gates: [
-      [0, -0.2, 0, -5.9, 'x', 'x'],
-      [-2.8, 0.9, -4.1, 0.9, 'd', 'd'],
-      [0.5, 1.6, 0.5, 0.7, 'd', 'x'],
-      [0.5, 1.6, 1.6, 1.6, 'd', 'x'],
-      [0.5, 1.6, 0.5, 2.5, 'd', 'x'],
-      [2.6, 1.6, 3.7, 1.6, 'd', 'd'],
-    ],
-    line: [[1.8, -3.0], [-1.5, -3.2], [-3.3, -1.6], [-3.45, 0.6], [-3.3, 2.3], [-2.3, 2.9], [-1.4, 2.25], [-0.6, 1.2], [0.5, 0.85], [1.3, 1.3], [1.3, 2.0], [0.5, 2.35], [-0.5, 2.4], [-1.2, 2.75], [-1.0, 3.85], [0.6, 3.9], [1.9, 3.85], [2.95, 3.35], [3.15, 1.5], [3.05, -0.5], [2.6, -2.3]] },
-  { name: 'KEYHOLE LINK', map: 'arena', note: 'The keyhole with a technical front: a snake through the open front of the warehouse (a hairpin round a cone at the far left, back through the middle, an S round a cone on the right), then up the stand side, through the opening into the infield pad, round the painted circle and out, along the back and down the fence side.',
-    start: [2.4, -5.2, -Math.PI / 2], gates: [
-      [1.2, -4.7, 1.2, -5.85, 'd', 'd'],
-      [-2.55, -4.2, -3.95, -4.2, 'c', 'x'],
-      [0.2, -2.6, 0.2, -3.75, 'd', 'd'],
-      [1.4, -2.1, 2.55, -2.1, 'c', 'x'],
-      [-1.0, -0.35, -1.0, -1.45, 'd', 'd'],
-      [-2.8, 0.9, -4.1, 0.9, 'd', 'd'],
-      [0.5, 1.6, 0.5, 0.7, 'd', 'x'],
-      [0.5, 1.6, 1.6, 1.6, 'd', 'x'],
-      [0.5, 1.6, 0.5, 2.5, 'd', 'x'],
-      [2.6, 1.6, 3.7, 1.6, 'd', 'd'],
-    ],
-    line: [[2.4, -5.2], [0.0, -5.35], [-2.4, -5.1], [-3.3, -4.2], [-2.6, -3.2], [-0.6, -3.3], [1.0, -3.0], [1.9, -2.1], [1.2, -1.0], [-1.0, -0.9], [-2.8, -0.6], [-3.4, 0.6], [-3.3, 2.3], [-2.3, 2.9], [-1.4, 2.25], [-0.6, 1.2], [0.5, 0.85], [1.3, 1.3], [1.3, 2.0], [0.5, 2.35], [-0.5, 2.4], [-1.2, 2.75], [-1.0, 3.85], [0.6, 3.9], [1.9, 3.85], [2.95, 3.35], [3.15, 1.5], [3.1, -0.5], [3.05, -2.6], [2.95, -4.3]] },
   { name: 'HILLSIDE', map: 'arena', note: 'A figure of eight between low white boards with a climb and an overpass: out of the right-hand loop you pass under the bridge, round the left-hand loop, then climb about 24 cm (4-5°) up its far side, cross over the bridge at the top and drift down the descent into the right-hand loop.',
     track: { ctrl: [[2.9, -4.6], [1.8, -4.9], [1.0, -4.3], [0.0, -3.3], [-1.0, -2.3], [-2.2, -1.9], [-3.2, -2.6], [-3.4, -3.6, 0.01], [-2.9, -4.6, 0.05], [-1.8, -4.9, 0.13], [-1.0, -4.3, 0.2], [0.0, -3.3, 0.24], [1.0, -2.3, 0.22], [2.2, -1.9, 0.13], [3.2, -2.6, 0.04], [3.4, -3.6, 0]], width: 1.0, style: 'boards' }, start: [0, 0, 0], gates: [],
     line: [[2.9, -4.6], [1.8, -4.9], [1.0, -4.3], [0.0, -3.3], [-1.0, -2.3], [-2.2, -1.9], [-3.2, -2.6], [-3.4, -3.6], [-2.9, -4.6], [-1.8, -4.9], [-1.0, -4.3], [0.0, -3.3], [1.0, -2.3], [2.2, -1.9], [3.2, -2.6], [3.4, -3.6]] },
   { name: 'CLUB TRACK', map: 'arena', note: 'After the club track in the photo: open dark floor round green turf islands. A sweeper round the big kidney island (the display cars are parked on it), a hairpin round the tip of the J, a long left-hand loop round the strip island and a flat-out bend along the front. Red and white kerbs on the tight corners; the islands are solid.',
     club: true, display: 'club', start: [0, 0, 0], gates: [],
     line: [[-2.0, -5.2], [0.0, -5.3], [1.8, -5.15], [2.9, -4.55], [3.25, -3.3], [3.1, -1.75], [2.4, -0.85], [1.3, -0.75], [0.55, -1.3], [0.45, -2.5], [0.4, -3.45], [-0.1, -4.1], [-0.75, -3.9], [-0.95, -3.0], [-0.95, -2.0], [-1.25, -1.1], [-2.1, -0.75], [-3.05, -1.05], [-3.45, -2.2], [-3.4, -3.6], [-2.9, -4.7]] },
+  { name: 'JUMP', map: 'arena', note: 'A drift loop over the whole floor between low white boards with a jump on the fence-side run: a 13 cm, 20 degree kicker launches you over two cars parked across the track onto a landing ramp. Hit the lip at about 3 m/s (11 km/h) or you land on the cars.',
+    jump: { x: 3.05, lip: -1.0, land: -0.36, h: 0.13, hl: 0.10, w: 1.2 }, lowSolids: [[2.84, -0.8, 3.26, -0.62, 0.136], [2.82, -0.6, 3.24, -0.42, 0.136]],
+    ramps: [
+      { x: 3.05, z: -1.36, ang: 0, w: 1.2, style: 'deck', prof: [[0, 0], [0.36, 0.13]] },
+      { x: 3.05, z: -0.36, ang: 0, w: 1.2, style: 'deck', prof: [[0, 0.1], [0.1, 0.1], [0.85, 0]] },
+    ],
+    display: 'jump', track: { ctrl: [[-2.6, -5.0], [0.0, -5.25], [2.3, -4.95], [3.15, -3.8], [3.1, -2.2], [3.05, -0.6], [3.05, 1.0], [2.85, 2.5], [2.1, 3.5], [0.8, 3.65], [-0.2, 3.0], [-1.2, 2.4], [-2.4, 2.9], [-3.3, 2.4], [-3.5, 0.8], [-3.0, -0.6], [-2.2, -1.6], [-2.9, -3.0], [-3.4, -4.2]], width: 1.1, style: 'boards' }, start: [0, 0, 0], gates: [],
+    line: [[-2.6, -5.0], [0.0, -5.25], [2.3, -4.95], [3.15, -3.8], [3.1, -2.2], [3.05, -0.6], [3.05, 1.0], [2.85, 2.5], [2.1, 3.5], [0.8, 3.65], [-0.2, 3.0], [-1.2, 2.4], [-2.4, 2.9], [-3.3, 2.4], [-3.5, 0.8], [-3.0, -0.6], [-2.2, -1.6], [-2.9, -3.0], [-3.4, -4.2]] },
 ];
 paintWear(COURSES);
 let course = COURSES[0], courseGroup = null;
@@ -954,6 +898,13 @@ function buildTrackRibbon(tr, g) {
   const sameLevel = (x, z, r, e) => TP.some((q, k) => Math.abs(E[k] - e) < 0.06 && Math.hypot(x - q.x, z - q.z) < r);
   const underIt = (x, z, r, e) => TP.some((q, k) => e - E[k] > 0.06 && Math.hypot(x - q.x, z - q.z) < r);
   if (elev) buildTrackDeck(g, E, HWt, underIt);
+  // racing line: the centreline pulled to the inside of each bend within the lane (relaxed towards its neighbours at a
+  // few scales: a quick minimum-curvature line), kept 0.16 m off the boards. The opponent drives it
+  { const lim = HWt - 0.16, off = new Float32Array(N);
+    for (const k of [40, 24, 12, 6, 3, 1]) for (let it = 0; it < 50; it++) for (let i = 0; i < N; i++) { const a = (i - k + N) % N, b = (i + k) % N;
+      const tx = (TP[a].x + TN[a].x * off[a] + TP[b].x + TN[b].x * off[b]) / 2, tz = (TP[a].z + TN[a].z * off[a] + TP[b].z + TN[b].z * off[b]) / 2;
+      off[i] = clamp((tx - TP[i].x) * TN[i].x + (tz - TP[i].z) * TN[i].z, -lim, lim); }
+    tr.raceLine = []; for (let i = 0; i < N; i += 8) tr.raceLine.push([TP[i].x + TN[i].x * off[i], TP[i].z + TN[i].z * off[i]]); }
   // no painted lane: the floor itself is the track, only the barriers mark it
   // foam barrier blocks along both edges; red/white outside, blue/white inside
   const boards = tr.style === 'boards', BL = boards ? 0.06 : 0.11, BH = boards ? 0.05 : 0.06, BT = boards ? 0.012 : 0.05, blocks = []; // boards: low white flexible walls, as at club tracks
@@ -1035,7 +986,7 @@ function droneStep(dt) {
 /* ---------------- CLUB TRACK: turf islands, kerbs, painted lines ----------------
    Islands are artificial turf on a 12 mm base with a dark rubber edge; red and white kerb blocks wrap the tips and
    apexes of the tight corners. Each island is solid (COURSE_SOLIDS). Lines are painted on the floor. */
-let COURSE_SOLIDS = [];
+let COURSE_SOLIDS = [], LOW_SOLIDS = [];
 T.turfIsl = tex(128, 128, (g, w, h) => {
   grain(g, w, h, [52, 112, 50], 30, 91); const r = rng(92);
   for (let i = 0; i < 900; i++) { const x = r() * w, y = r() * h, l = 2 + r() * 4; g.strokeStyle = r() < 0.5 ? 'rgba(120,190,90,0.35)' : 'rgba(20,60,24,0.35)'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 2, y - l); g.stroke(); }
@@ -1080,15 +1031,18 @@ function buildClub(g, c) {
   paintLine(g, [[-3.9, -5.4], [-3.0, -5.65], [-1.0, -5.75], [1.2, -5.7]], 0.022, 0xe8c21a);
   paintLine(g, [[-1.55, -0.45], [-2.6, -0.35], [-3.6, -0.9], [-3.95, -2.4], [-3.85, -4.0]], 0.02, 0xeeeeea);
   paintLine(g, [[0.95, -0.3], [0.0, -0.75], [0.0, -1.0]], 0.02, 0xeeeeea);
-  // laps: four timing lines across the lane, at quarters of the racing line; start just before the first
+  // laps: timing lines across the lane; start just before the first
   const curve = new THREE.CatmullRomCurve3(c.line.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal'), gates = [];
-  for (const u of [0, 0.25, 0.5, 0.75]) { const p = curve.getPointAt(u), t = curve.getTangentAt(u), hw = 0.5; gates.push([p.x + t.z * hw, p.z - t.x * hw, p.x - t.z * hw, p.z + t.x * hw, 'x', 'x']); }
+  // eight checkpoints round the racing line: every island has to be gone round the right way for the lap to count
+  for (let q = 0; q < 8; q++) { const u = q / 8, p = curve.getPointAt(u), t = curve.getTangentAt(u), hw = 0.6; gates.push([p.x + t.z * hw, p.z - t.x * hw, p.x - t.z * hw, p.z + t.x * hw, 'x', 'x']); }
   c.gates = gates; const s = curve.getPointAt(0.985), ts = curve.getTangentAt(0.985); c.start = [s.x, s.z, Math.atan2(ts.x, ts.z)];
   const sf = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.08), lam({ map: T.checker, polygonOffset: true, polygonOffsetFactor: -1 })); const p0 = curve.getPointAt(0), t0 = curve.getTangentAt(0);
   sf.rotation.set(-Math.PI / 2, 0, Math.atan2(-t0.z, t0.x) + Math.PI / 2); sf.position.set(p0.x, 0.003, p0.z); g.add(sf);
 }
 // display cars: three setups standing still, parked on an island or round the FLOW centrepiece
 const DISPLAY_SETS = {
+  jump: [[{ a: '#c8ccd4', b: '#141416', c: '#c8202a', scheme: 'solid', rim: 'modern', rimColor: '', ride: 0.3, camber: 0.3, glowOn: 0, lights: 0 }, 3.05, -0.71, Math.PI / 2],
+         [{ a: '#d8261c', b: '#f2f2ee', c: '#141416', scheme: 'twotone', rim: 'covered', rimColor: '#f2f2ee', ride: 0.3, camber: 0.4, glowOn: 0, lights: 0 }, 3.03, -0.51, -Math.PI / 2]],
   flow: [[{ a: '#e8e6e0', b: '#c8202a', c: '#141416', scheme: 'twotone', rim: 'covered', rimColor: '#f2f2ee', ride: 0, camber: 0, glowOn: 1, glow: '#00e5ff' }, -0.2 + 0.66 * Math.cos(0.35), -3.35 + 0.66 * Math.sin(0.35), 0.35 + Math.PI + 0.35],
          [{ a: '#14224a', b: '#c8ccd4', c: '#ff7a1a', scheme: 'stripes', rim: 'original', tyres: 'original', rimColor: '', ride: 0.82, camber: 0.625, glowOn: 0 }, -0.2 + 0.66 * Math.cos(1.75), -3.35 + 0.66 * Math.sin(1.75), 1.75 + Math.PI + 0.35],
          [{ a: '#d8261c', b: '#141416', c: '#ffd21a', scheme: 'sweep', rim: 'modern', rimColor: '#d4a23a', ride: 0.45, camber: 0.225, glowOn: 1, glow: '#39ff6a' }, -0.2 + 0.66 * Math.cos(3.3), -3.35 + 0.66 * Math.sin(3.3), 3.3 + Math.PI + 0.35]],
@@ -1102,6 +1056,24 @@ function buildDisplay(g, set, y = 0) {
     o.position.set(x, y, z); o.rotation.y = hd; g.add(o);
   }
 }
+// EMPTY: random cones (knockable, a new set each time) and a few groups of full-size plastic chairs; the car fits
+// under a seat, the legs are solid
+function plasticChair(g, x, z, a, col) {
+  const c = new THREE.Group(); c.position.set(x, 0, z); c.rotation.y = a; g.add(c); const m = phong({ color: col, shininess: 40, specular: 0x333333 });
+  box(0.44, 0.03, 0.42, m, 0, 0.44, 0, c); const back = box(0.44, 0.38, 0.025, m, 0, 0.66, -0.2, c); back.rotation.x = -0.12;
+  const legs = [[-0.19, 0.17], [0.19, 0.17], [-0.19, -0.18], [0.19, -0.18]];
+  for (const [lx, lz] of legs) { const l = box(0.028, 0.44, 0.028, m, lx, 0.22, lz, c); l.rotation.x = lz > 0 ? 0.06 : -0.06;
+    const wx = x + lx * Math.cos(a) + lz * Math.sin(a), wz = z - lx * Math.sin(a) + lz * Math.cos(a); OBST.push([wx - 0.016, wz - 0.016, wx + 0.016, wz + 0.016]); }
+  for (const [lx, lz] of [[-0.205, 0.0], [0.205, 0.0]]) { const wx = x + lx * Math.cos(a), wz = z - lx * Math.sin(a); OBST.push([wx - 0.016, wz - 0.016, wx + 0.016, wz + 0.016]); } // back legs' rail
+  shadowBlob(g, x, z, 0.32, 0.35, 0.003);
+}
+function buildEmpty(g) {
+  const used = [[0, -4.6, 0.9]], free = (x, z, r) => used.every(([ux, uz, ur]) => Math.hypot(x - ux, z - uz) > r + ur), rnd = (a, b) => a + Math.random() * (b - a);
+  const cols = [0xf2f2ee, 0x1b1c1f, 0xc8202a, 0x2a5bd4];
+  for (let k = 0, n = 0; k < 60 && n < 4; k++) { const x = rnd(-3.0, 2.8), z = rnd(-5.0, 3.3); if (!free(x, z, 0.9)) continue; used.push([x, z, 0.8]); n++;
+    const a0 = rnd(0, Math.PI * 2), col = cols[n % cols.length]; for (let j = 0; j < 2 + (Math.random() < 0.5); j++) plasticChair(g, x + Math.cos(a0) * j * 0.5, z - Math.sin(a0) * j * 0.5, a0 + rnd(-0.2, 0.2), col); }
+  for (let k = 0, n = 0; k < 400 && n < 26; k++) { const x = rnd(-3.4, 3.2), z = rnd(-5.3, 3.7); if (!free(x, z, 0.25)) continue; used.push([x, z, 0.1]); n++; cones.push(makeCone(x, z, 'c')); }
+}
 function buildCourse(ci) {
   course = COURSES[ci] || COURSES[0];
   if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry && !Object.values(coneGeo).includes(o.geometry)) o.geometry.dispose(); }); }
@@ -1113,7 +1085,8 @@ function buildCourse(ci) {
   DRONE = null; if (course.decor) buildCentrepiece(courseGroup, course.decor[0], course.decor[1]);
   COURSE_SOLIDS = []; if (course.club) buildClub(courseGroup, course);
   if (course.display) buildDisplay(courseGroup, course.display, course.display === 'club' ? 0.012 : 0);
-  if (course.track) { buildTrackRibbon(course.track, courseGroup); course.gates = course.track.gates; course.start = course.track.start; }
+  if (course.track) { buildTrackRibbon(course.track, courseGroup); course.gates = course.track.gates; course.start = course.track.start; course.line = course.track.raceLine; }
+  LOW_SOLIDS = course.lowSolids || []; if (course.empty) buildEmpty(courseGroup);
   const seen = new Set();
   for (const g of course.gates) for (const [x, z, k] of [[g[0], g[1], g[4]], [g[2], g[3], g[5]]]) {
     const key = x.toFixed(2) + ',' + z.toFixed(2);
@@ -1125,6 +1098,7 @@ function buildCourse(ci) {
   setGateBar(0);
 }
 function setGateBar(i) {
+  if (!course.gates.length) { gateBar.visible = false; return; }
   const g = course.gates[i % course.gates.length], dx = g[2] - g[0], dz = g[3] - g[1];
   gateBar.position.set((g[0] + g[2]) / 2, 0.006, (g[1] + g[3]) / 2);
   gateBar.scale.x = Math.hypot(dx, dz) - 0.04; gateBar.rotation.z = -Math.atan2(dz, dx);
@@ -1157,6 +1131,8 @@ function contactsFor(cx, cz, out) {
   if (MAP.bounds) polyContacts(cx, cz, MAP.bounds, true, out);
   for (const poly of MAP.solids || []) polyContacts(cx, cz, poly, false, out);
   for (const poly of COURSE_SOLIDS) polyContacts(cx, cz, poly, false, out);
+  for (const [x0, z0, x1, z1, hh] of LOW_SOLIDS) { if (Math.max(car.y || 0, groundAt(cx, cz)) + 0.018 > hh) continue; // this end of the car clears the roof // low things (parked cars on the jump): clear them in the air
+    const px = clamp(cx, x0, x1), pz = clamp(cz, z0, z1), dx = cx - px, dz = cz - pz, d = Math.hypot(dx, dz); if (d < CAR_R && d > 1e-5) out.push([dx / d, dz / d, CAR_R - d]); }
   for (const r of MAP.rails) { // thin rails as segments [x0, z0, x1, z1]
     const ex = r[2] - r[0], ez = r[3] - r[1], t = Math.max(0, Math.min(1, ((cx - r[0]) * ex + (cz - r[1]) * ez) / (ex * ex + ez * ez || 1e-9)));
     const dx = cx - (r[0] + ex * t), dz = cz - (r[1] + ez * t), d = Math.hypot(dx, dz), lim = CAR_R + 0.03;
@@ -2528,9 +2504,9 @@ function stepCar(dt, canDrive, walls = true) {
   if (RAMPS.length || car.y > 0 || (TRACK && TRACK.E)) {
     const gNew = groundAt(car.x, car.z);
     if (!car.air) {
-      // vertical speed from the ground slope, capped at what a ~12° ramp gives at this speed
+      // vertical speed from the ground slope, capped at what a ~22° kicker gives at this speed
       // (stepping onto a ramp from the side just lifts the car, it doesn't launch it)
-      const vyCap = Math.hypot(car.vx, car.vz) * 0.22 + 0.05, vyG = clamp((gNew - car.y) / dt, -vyCap, vyCap);
+      const vyCap = Math.hypot(car.vx, car.vz) * 0.4 + 0.05, vyG = clamp((gNew - car.y) / dt, -vyCap, vyCap);
       // on a smoothly sloped track (no kickers) only a real drop leaves the ground, not the change of slope over a crest
       const smooth = TRACK && TRACK.E && !RAMPS.length;
       if (gNew < car.y && vyG < car.vy - GRAV * dt * 2 && (!smooth || car.y - gNew > 0.004)) car.air = true;
@@ -2768,12 +2744,12 @@ let clock = 0;
 function resetRun() {
   carRepair();
   placeCar(); resetCones(); setGateBar(0);
-  Object.assign(race, { lap: 0, lapStart: 0, last: null, next: 0, pen: 0, count: 0, goT: 0, finished: false, place: 0 });
+  Object.assign(race, { lap: 0, lapStart: 0, last: null, next: 0, pen: 0, count: 0, goT: 0, finished: false, place: 0, total: 0 });
   oppSetup();
   if (oppActive()) { // grid: you to one side of the start, the opponent on the line to the other; lights count down
     const lx = Math.cos(car.h), lz = -Math.sin(car.h); car.x += lx * 0.38; car.z += lz * 0.38;
     race.count = 3.6;
-  }
+  } else if (timed()) race.count = 3.6; // time trial: a countdown too
   loadBest(); ghostLapStart(); idleT = 0; if (ghost.obj) ghost.obj.visible = false; setHudLabels(); driftReset(); updateCamera(0, true);
 }
 function startRace() {
@@ -2847,16 +2823,21 @@ function crosses(px, pz, qx, qz, g) {
   return t >= 0 && t <= 1 && s2 >= -0.02 && s2 <= 1.02;
 }
 function gateLogic(px, pz) {
-  const n = course.gates.length;
+  const n = course.gates.length; if (!n) return; // open floor: no laps
   if (!crosses(px, pz, car.x, car.z, course.gates[race.next])) return;
   if (race.next === 0) {
     if (race.lap > 0) {
-      const t = clock - race.lapStart + race.pen; race.last = t; $('last').textContent = fmt(t);
+      const t = clock - race.lapStart + race.pen; race.last = t; race.total = (race.total || 0) + t; $('last').textContent = fmt(t);
       if (best == null || t < best) { best = t; ghostSave(); $('best').textContent = fmt(best); try { localStorage.setItem(bestKey(), String(best)); } catch (e) {} flash('BEST LAP ' + fmt(t), 1.6); }
       else { flash('LAP ' + fmt(t), 1.2); }
     }
     race.lap++; race.lapStart = clock; race.pen = 0; ghostLapStart();
-    if (oppActive() && race.lap > RACE_LAPS && !race.finished) {
+    if (timed() && race.lap > raceLapsN() && !race.finished) { // time trial done: total of the laps (cone seconds included)
+      race.finished = true; let bt = null; try { bt = parseFloat(localStorage.getItem(ttKey())); } catch (e) {}
+      const nb = !(bt > 0) || race.total < bt; if (nb) try { localStorage.setItem(ttKey(), String(race.total)); } catch (e) {}
+      flash(`FINISH · ${fmt(race.total)}` + (nb ? ' · NEW BEST' : ` · BEST ${fmt(bt)}`), 5);
+    }
+    if (oppActive() && race.lap > raceLapsN() && !race.finished) {
       race.finished = true; race.place = opp.doneT == null ? 1 : 2; const t = clock - race.goT;
       flash(race.place === 1 ? `1ST · YOU WIN · ${fmt(t)}` : `2ND · ${fmt(t)} · +${(t - opp.doneT).toFixed(2)} S`, 4);
     }
@@ -2869,10 +2850,19 @@ function gateLogic(px, pz) {
    than simulated: speed comes from a profile set by the corner radius (lateral grip), with braking and
    acceleration limits, scaled by the difficulty. In drift mode it holds a drift angle that grows with
    cornering load and countersteers; in grip mode it stays straight. It is solid to your car. A race is
-   RACE_LAPS laps from a 3-2-1 start; positions come from both cars' progress along the line. */
-const OPP_LEVELS = ['OFF', 'EASY', 'MEDIUM', 'HARD'], OPP_PACE = [0, 0.8, 0.9, 1.0], RACE_LAPS = 3;
-let oppLevel = 0;
-try { const v = parseInt(localStorage.getItem('cc-opp'), 10); if (v >= 0 && v < OPP_LEVELS.length) oppLevel = v; } catch (e) {}
+   LAPS laps from a 3-2-1 start; positions come from both cars' progress along the line. */
+const OPP_LEVELS = ['OFF', 'EASY', 'MEDIUM', 'HARD'], OPP_PACE = [0, 0.8, 0.9, 1.0];
+// MODE: PRACTICE (endless laps, best lap), TIME TRIAL (LAPS laps against the clock from a countdown; best total kept per
+// track and lap count) or RACE (LAPS laps against the opponent)
+const MODES = ['PRACTICE', 'TIME TRIAL', 'RACE'], LAP_OPTS = [3, 5, 10, 20];
+let oppLevel = 0, raceMode = 0, lapIdx = 0, oppPick = 2;
+try { const v = parseInt(localStorage.getItem('cc-opp'), 10); if (v >= 1 && v < OPP_LEVELS.length) oppPick = v;
+  const md = parseInt(localStorage.getItem('cc-mode'), 10); if (md >= 0 && md < MODES.length) raceMode = md;
+  const lp = parseInt(localStorage.getItem('cc-laps'), 10); if (lp >= 0 && lp < LAP_OPTS.length) lapIdx = lp; } catch (e) {}
+oppLevel = raceMode === 2 ? oppPick : 0;
+const raceLapsN = () => LAP_OPTS[lapIdx];
+const timed = () => raceMode === 1 && course.gates.length > 0;
+const ttKey = () => 'cc-tt1-' + course.name + '-' + raceLapsN() + '-' + (setup.car ? 'grip' : 'drift');
 const opp = { obj: null, path: null, s: 0, v: 0, laps: 0, prevS: 0, slip: 0, spin: 0, off: 0, doneT: null, idx: 0, pIdx: 0 };
 function oppStyle() { const P = PARTS.PALETTES[CAR_STYLE.a.toLowerCase() === PARTS.PALETTES[1].a ? 2 : 1]; return { ...CAR_STYLE, scheme: 'twotone', a: P.a, b: P.b, c: P.c, glowOn: 0, lights: 0, rims: (CAR_STYLE.rims + 2) % 5 }; } // same shell as yours, contrasting colours
 function buildOppPath(c) {
@@ -2904,7 +2894,9 @@ function oppPose() {
   const q = oppSample(opp.s), lx = Math.cos(q.h), lz = -Math.sin(q.h), o = opp.obj;
   opp.x = q.x + lx * opp.off; opp.z = q.z + lz * opp.off; opp.h = q.h + opp.slip + (opp.slipK || 0);
   const ti = TRACK && TRACK.E ? Math.round(opp.s / opp.path.L * N) % N : undefined; // its own place on the lap (for bridges)
-  const y = groundAt(opp.x, opp.z, ti), fx = Math.sin(q.h), fz = Math.cos(q.h); opp.y = y;
+  let y = groundAt(opp.x, opp.z, ti); const fx = Math.sin(q.h), fz = Math.cos(q.h);
+  const J = course.jump; if (J && Math.abs(opp.x - J.x) < J.w / 2 && opp.z > J.lip && opp.z < J.land) { const t = (opp.z - J.lip) / (J.land - J.lip); y = J.h + (J.hl - J.h) * t + 0.2 * t * (1 - t); } // the opponent flies the gap
+  opp.y = y;
   o.position.set(opp.x, y, opp.z); o.rotation.y = opp.h;
   o.userData.model.rotation.z = Math.atan2(groundAt(opp.x + fx * 0.13, opp.z + fz * 0.13, ti) - groundAt(opp.x - fx * 0.13, opp.z - fz * 0.13, ti), 0.26);
   const kk = opp.path.k[q.i];
@@ -2949,7 +2941,7 @@ function oppStep(dt, go) {
   opp.prevS = opp.s; opp.s += opp.v * dt; if (opp.s >= p.L) opp.s -= p.L;
   // crossing the start line
   const a = (opp.prevS - p.sLine + p.L) % p.L, b = (opp.s - p.sLine + p.L) % p.L;
-  if (go && opp.v > 0 && b < a) { opp.laps++; if (opp.laps > RACE_LAPS && opp.doneT == null) { opp.doneT = clock - race.goT; if (!race.finished) flash('OPPONENT FINISHED', 1.4); } }
+  if (go && opp.v > 0 && b < a) { opp.laps++; if (opp.laps > raceLapsN() && opp.doneT == null) { opp.doneT = clock - race.goT; if (!race.finished) flash('OPPONENT FINISHED', 1.4); } }
   const kk = p.k[i], load = kk * opp.v * opp.v / p.aLat;
   const slipT = setup.car ? 0 : clamp(load * 1.25, -1, 1) * 0.62 * Math.min(1, opp.v / 1.2);
   opp.slip += (slipT - opp.slip) * Math.min(1, dt * 3);
@@ -2969,10 +2961,10 @@ function oppProgress(x, z, laps, hint) {
 function raceHud() {
   const on = oppActive(); $('posl').hidden = $('pos').hidden = !on; if (!on) return;
   const me = oppProgress(car.x, car.z, race.lap, opp.pIdx); opp.pIdx = me.i;
-  const them = (opp.laps > RACE_LAPS ? 99 : 0) + Math.max(0, opp.laps - 1) + ((opp.s - opp.path.sLine + opp.path.L) % opp.path.L) / opp.path.L;
+  const them = (opp.laps > raceLapsN() ? 99 : 0) + Math.max(0, opp.laps - 1) + ((opp.s - opp.path.sLine + opp.path.L) % opp.path.L) / opp.path.L;
   const mine = race.finished ? (race.place === 1 ? 999 : -1) : me.prog;
   $('pos').textContent = (mine >= them ? 1 : 2) + '/2';
-  $('lap').textContent = `${Math.min(race.lap, RACE_LAPS)}/${RACE_LAPS}`;
+  $('lap').textContent = `${Math.min(race.lap, raceLapsN())}/${raceLapsN()}`;
 }
 
 /* ---------------- cameras ---------------- */
@@ -3130,7 +3122,9 @@ function menuItems() {
   ];
   const shared = [
     opt('TRACK', COURSES[setup.layout].name, d => { setCourse(setup.layout + d); if (menu.kind === 'pause') resetRun(); }),
-    opt('OPPONENT', oppLevel ? OPP_LEVELS[oppLevel] : 'NONE', d => { oppLevel = (oppLevel + d + OPP_LEVELS.length) % OPP_LEVELS.length; try { localStorage.setItem('cc-opp', String(oppLevel)); } catch (e) {} if (menu.kind === 'pause') resetRun(); }),
+    opt('MODE', course.gates.length ? MODES[raceMode] : 'FREE DRIVE', d => { raceMode = (raceMode + (d || 1) + MODES.length) % MODES.length; oppLevel = raceMode === 2 ? oppPick : 0; try { localStorage.setItem('cc-mode', String(raceMode)); } catch (e) {} if (menu.kind === 'pause') resetRun(); }),
+    ...(raceMode === 2 ? [opt('OPPONENT', OPP_LEVELS[oppPick], d => { oppPick = 1 + ((oppPick - 1 + (d || 1) + 3) % 3); oppLevel = oppPick; try { localStorage.setItem('cc-opp', String(oppPick)); } catch (e) {} if (menu.kind === 'pause') resetRun(); })] : []),
+    ...(raceMode > 0 ? [opt('LAPS', String(raceLapsN()), d => { lapIdx = (lapIdx + (d || 1) + LAP_OPTS.length) % LAP_OPTS.length; try { localStorage.setItem('cc-laps', String(lapIdx)); } catch (e) {} if (menu.kind === 'pause') resetRun(); })] : []),
     act('CAR', () => toggleCustom(true)),
     act('OPTIONS', () => menuSub('options'), true),
   ];
@@ -3564,7 +3558,7 @@ function frame(now) {
     $('scale').textContent = `SCALE SPEED ${(kmh * 10).toFixed(0)} KM/H`;
     const ba = Math.abs(car.beta * 180 / Math.PI); $('angle').textContent = `DRIFT ANGLE ${ba.toFixed(0)}°`; $('angle').style.color = ba > 15 ? 'var(--hot)' : '';
     driftHud();
-    if (race.state === 'race') { $('lap').textContent = String(race.lap); $('cur').textContent = race.lap > 0 ? fmt(clock - race.lapStart + race.pen) : fmt(0); $('gate').textContent = `${race.next}/${course.gates.length}`; }
+    if (race.state === 'race') { $('lap').textContent = timed() ? `${Math.min(race.lap, raceLapsN())}/${raceLapsN()}` : String(race.lap); $('cur').textContent = race.lap > 0 ? fmt(clock - race.lapStart + race.pen) : fmt(0); $('gate').textContent = `${race.next}/${course.gates.length}`; }
     raceHud();
   }
   renderer.render(scene, camera);
