@@ -151,10 +151,10 @@ canvas#view { width: 100%; height: 100%; display: block; }
       <div class="mcontrols" id="mcontrols" hidden>
         <div class="mcol"><b>KEYBOARD</b>
           <span><kbd>↑</kbd> throttle</span><span><kbd>↓</kbd> brake · hold to reverse</span><span><kbd>←</kbd><kbd>→</kbd> steer</span>
-          <span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset car</span><span><kbd>V</kbd> drift / grip</span><span><kbd>M</kbd> mute</span><span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>Esc</kbd> pause</span></div>
+          <span><kbd>C</kbd> camera</span><span><kbd>R</kbd> reset car</span><span><kbd>M</kbd> mute</span><span><kbd>G</kbd> car setup</span><span><kbd>T</kbd> telemetry</span><span><kbd>Esc</kbd> pause</span></div>
         <div class="mcol"><b>GAMEPAD</b>
           <span><kbd>RT</kbd> throttle</span><span><kbd>LT</kbd> brake · hold to reverse</span><span>Left stick steer</span>
-          <span><kbd>Y</kbd> camera</span><span><kbd>X</kbd> reset car</span><span>D-pad <kbd>↓</kbd> drift / grip</span><span><kbd>View</kbd> car setup</span><span><kbd>LB</kbd> telemetry</span><span><kbd>Menu</kbd> pause</span></div>
+          <span><kbd>Y</kbd> camera</span><span><kbd>X</kbd> reset car</span><span><kbd>View</kbd> car setup</span><span><kbd>LB</kbd> telemetry</span><span><kbd>Menu</kbd> pause</span></div>
         <div class="mback">Enter / A / Esc to go back</div>
       </div>
       <div class="mnote" id="mnote"></div>
@@ -700,6 +700,39 @@ T.door = canvasTex(64, 128, (g, w, h) => { g.fillStyle = '#ece6dc'; g.fillRect(0
 }
 
 let MAP = MAPS.home;
+/* ---------------- floor imperfections ----------------
+   Each venue's floor has a gentle height profile (metres, RC scale): slab or sheet joints (a shallow rounded groove,
+   each slab sitting a touch proud of or below its neighbour so there is a small step), a soft long undulation, and a
+   few patched repairs and dips. The car's suspension feels it at each wheel (stepCar); faint lines mark the joints. */
+const GROUND = {
+  arena: { name: 'cast concrete slabs', sx: 1.5, sz: 1.5, ox: 0.25, oz: 0.1, joint: 0.0011, jw: 0.012, step: 0.00035, und: 0.0008, wl: 2.1, patches: 9, seed: 41 },
+  home: { name: 'plywood sheets', sx: 1.22, sz: 2.44, ox: 0.0, oz: 0.0, joint: 0.0004, jw: 0.006, step: 0.0002, und: 0.0005, wl: 1.6, patches: 4, seed: 17 },
+};
+function hash2(i, j, seed) { let h = (i * 374761393 + j * 668265263 + seed * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function groundBox(M) { if (!M.bounds) return [-M.hx, -M.hz, M.hx, M.hz]; const xs = M.bounds.map(q => q[0]), zs = M.bounds.map(q => q[1]); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; }
+function groundPatches(key) {
+  const G = GROUND[key]; if (G._p) return G._p;
+  const r = rng(G.seed), [x0, z0, x1, z1] = groundBox(MAPS[key]);
+  return G._p = Array.from({ length: G.patches }, () => [x0 + r() * (x1 - x0), z0 + r() * (z1 - z0), 0.08 + r() * 0.14, (r() < 0.5 ? -1 : 1) * (0.0005 + r() * 0.0007)]);
+}
+function microH(x, z, key = MAP.key) {
+  const G = GROUND[key]; if (!G) return 0;
+  const u = (x - G.ox) / G.sx, w = (z - G.oz) / G.sz, iu = Math.floor(u), iw = Math.floor(w), hw = G.jw / 2;
+  let h = (hash2(iu, iw, G.seed) - 0.5) * 2 * G.step; // this slab's level
+  const du = Math.min(u - iu, iu + 1 - u) * G.sx, dw = Math.min(w - iw, iw + 1 - w) * G.sz, dj = Math.min(du, dw);
+  if (dj < hw) h -= G.joint * (0.5 + 0.5 * Math.cos(Math.PI * dj / hw)); // the joint groove
+  const k = 2 * Math.PI / G.wl;
+  h += G.und * (0.6 * Math.sin(x * k + 1.3) * Math.sin(z * k / 1.3 + 0.4) + 0.4 * Math.sin((x + z) * k / 0.7));
+  for (const [px, pz, pr, pa] of groundPatches(key)) { const d2 = ((x - px) ** 2 + (z - pz) ** 2) / (pr * pr); if (d2 < 4) h += pa * Math.exp(-d2 * 2); }
+  return h;
+}
+// faint marks where the joints and patches are
+for (const key in GROUND) {
+  const M = MAPS[key]; if (!M) continue; const G = GROUND[key], [x0, z0, x1, z1] = groundBox(M), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  for (let x = G.ox + Math.ceil((x0 - G.ox) / G.sx) * G.sx; x < x1; x += G.sx) decal(M.group, x, cz, G.jw, z1 - z0, 0, null, 0x000000, 0.1, false, 0.0035);
+  for (let z = G.oz + Math.ceil((z0 - G.oz) / G.sz) * G.sz; z < z1; z += G.sz) decal(M.group, cx, z, x1 - x0, G.jw, 0, null, 0x000000, 0.1, false, 0.0035);
+  for (const [px, pz, pr] of groundPatches(key)) decal(M.group, px, pz, pr * 2.2, pr * 2.2, 0, T.blob, 0x2a2a2a, 0.12, false, 0.0034);
+}
 function setMap(key) {
   const m = MAPS[key] || MAPS.home;
   for (const k in MAPS) MAPS[k].group.visible = MAPS[k] === m;
@@ -1857,7 +1890,6 @@ const SURFACES = [
   { name: 'CARPET', plastic: 0.8, rubber: 1.32 },
 ];
 const SETUP_OPTS = {
-  car: { label: 'MODE', opts: ['DRIFT', 'GRIP'] },
   motor: { label: 'MOTOR', opts: MOTORS.map(m => m.short) },
   tire: { label: 'TIRES', opts: ['SOFT', 'MEDIUM', 'HARD'], mul: [1.12, 1, 0.88] },
   gyro: { label: 'GYRO GAIN', opts: ['OFF', '40%', '70%', '90%'], g: [0, 0.4, 0.7, 0.9] },
@@ -1868,6 +1900,7 @@ const SETUP_OPTS = {
 };
 const setup = { layout: 0, car: 0, motor: 3, tire: 1, gyro: 3, spring: 1, oil: 1, arb: 1, assist: 0 };
 try { const s = JSON.parse(localStorage.getItem('cc-setup3') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < (k === 'layout' ? COURSES.length : SETUP_OPTS[k].opts.length)) setup[k] = s[k]; } catch (e) {}
+setup.car = 0; // drift only for now: grip mode is switched off (its code is kept)
 const VEH = {
   m: 1.45, L: 0.25, tw: 0.136, h: 0.03, hrc: 0.011, hpc: 0.010, // wheelbase and track from the shell; slammed: CG a little lower
   Iz: 0.021, Ixx: 0.0048, Iyy: 0.019, r: 0.0291,
@@ -1895,6 +1928,7 @@ function placeCar() {
     spin: 0, wheelSurf: 0, spinning: false, alphaF: 0, alphaR: 0, slide: 0, rearSlip: 0,
     loads: [0, 0, 0, 0], gripF: 0, gripR: 0, revHold: 0, reversing: false, braking: false,
     flipA: 0, flipV: 0, flipSide: 1, flipStage: 0, flipRest: 0,
+    heave: 0, heaveV: 0, roadR: 0, roadP: 0, roadH: 0, roadRV: 0, roadPV: 0, roadHV: 0, wh: [0, 0, 0, 0],
   });
 }
 const keys = {};
@@ -2007,9 +2041,17 @@ function stepCar(dt, canDrive, walls = true) {
 
   // suspension: roll and pitch as damped springs driven by the chassis accelerations
   const Cr = 2 * VEH.zeta * Math.sqrt(Kr * VEH.Ixx) * cMul, Cp = 2 * VEH.zeta * Math.sqrt(Kp * VEH.Iyy) * cMul;
-  car.rollV += ((m * car.ay * (VEH.h - VEH.hrc) - Kr * car.roll - Cr * car.rollV) / VEH.Ixx) * dt;
+  // the floor under each wheel (joints, slab steps, undulation, patches): the springs follow it, so the body heaves,
+  // pitches and rolls over it
+  { const sh0 = Math.sin(car.h), ch0 = Math.cos(car.h), hw = VEH.tw / 2, at = (d, sd) => microH(car.x + sh0 * d + ch0 * sd * hw, car.z + ch0 * d - sh0 * sd * hw);
+    const fl = at(a, 1), fr = at(a, -1), rl = at(-b, 1), rr = at(-b, -1); car.wh = [fl, fr, rl, rr];
+    const rR = ((fl + rl) - (fr + rr)) / 2 / VEH.tw, rP = ((fl + fr) - (rl + rr)) / 2 / L, rH = (fl + fr + rl + rr) / 4;
+    car.roadRV = (rR - car.roadR) / dt; car.roadPV = (rP - car.roadP) / dt; car.roadHV = (rH - car.roadH) / dt; car.roadR = rR; car.roadP = rP; car.roadH = rH;
+    const Kh = 1600 * kMul, Ch = 2 * VEH.zeta * Math.sqrt(Kh * m) * cMul;
+    car.heaveV += ((-Kh * (car.heave - rH) - Ch * (car.heaveV - car.roadHV)) / m) * dt; car.heave += car.heaveV * dt; }
+  car.rollV += ((m * car.ay * (VEH.h - VEH.hrc) - Kr * (car.roll - car.roadR) - Cr * (car.rollV - car.roadRV)) / VEH.Ixx) * dt;
   car.roll += car.rollV * dt;
-  car.pitchV += ((m * car.ax * (VEH.h - VEH.hpc) - Kp * car.pitch - Cp * car.pitchV) / VEH.Iyy) * dt;
+  car.pitchV += ((m * car.ax * (VEH.h - VEH.hpc) - Kp * (car.pitch - car.roadP) - Cp * (car.pitchV - car.roadPV)) / VEH.Iyy) * dt;
   car.pitch += car.pitchV * dt;
 
   // integrate pose in the world
@@ -2483,8 +2525,7 @@ const VANTAGE = { arena: [-5.15, 3.1, -6.1], home: [-3.6, 2.15, -2.85] };
 const TS = { fov: 40, W: 3.2 };
 // FPV: a little camera inside the car, just behind the windshield on the driver's (left) side, moving with the body
 const FPV = { eye: [-0.02, 0.112, 0.053], fov: 58 };
-// road vibration felt by the FPV camera: grows with speed and the surface's roughness (MAP.rough, 0 glass-smooth .. 1 rough)
-const ROUGH = { arena: 0.3, home: 0.6 }; // windshield runs from y 88 mm (z 84) to 131 mm (z 38): the eye sits 5 mm behind it
+ // windshield runs from y 88 mm (z 84) to 131 mm (z 38): the eye sits 5 mm behind it
 // the driver: standing in the near-left corner like at home, eyes at 1.65 m, head turning to follow the car
 // with a human lag, a 55° field of view (no zoom), and the transmitter held in front at chest height
 const POV = { fov: 55 }; // eye position comes from the map (MAP.pov)
@@ -2508,7 +2549,7 @@ const tx = new THREE.Group();
   tx.position.set(0.05, -0.215, -0.42); tx.rotation.set(0.75, -0.12, 0); tx.scale.setScalar(0.85);
   tx.visible = false; camera.add(tx); scene.add(camera);
 }
-let camAng = 0;
+let camAng = 0, menuSpin = 0;
 let camMode = 0;
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
 function updateCamera(dt, snap) {
@@ -2522,11 +2563,12 @@ function updateCamera(dt, snap) {
   if (camera.view && camera.view.enabled) { camera.clearViewOffset();
   }
   if (race.state === 'menu') {
-    // menu: the map's photo view, drifting very slightly
-    const t = performance.now() / 1000, pc = MAP.photoCam;
-    if (pc) { camera.position.set(pc.pos[0] + Math.sin(t * 0.13) * 0.25, pc.pos[1] + Math.sin(t * 0.21) * 0.05, pc.pos[2] + Math.cos(t * 0.11) * 0.15); camera.lookAt(pc.look[0], pc.look[1], pc.look[2]); camera.fov = pc.fov; }
-    else { camera.position.set(Math.sin(t * 0.06) * MAP.orbit[0], MAP.orbit[1], Math.cos(t * 0.06) * MAP.orbit[0]); camera.lookAt(0, 0.1, 0); camera.fov = 60; }
-    camera.updateProjectionMatrix();
+    // menu: the car on a slow turntable at the start line, seen from just off the car toward the middle of the venue,
+    // framed in the right half of the screen (the menu list sits on the left)
+    const t = performance.now() / 1000, cx = car.x, cz = car.z, dx = -cx, dz = -cz, dl = Math.hypot(dx, dz) || 1;
+    const px = clamp(cx - dx / dl * 1.0, -MAP.hx + 0.08, MAP.hx - 0.08), pz = clamp(cz - dz / dl * 1.0, -MAP.hz + 0.08, MAP.hz - 0.08);
+    camera.position.set(px, 0.3 + Math.sin(t * 0.3) * 0.01, pz); camera.lookAt(cx, 0.045, cz);
+    camera.fov = 34; camera.setViewOffset(1280, 720, -230, 0, 1280, 720); camera.updateProjectionMatrix();
     tx.visible = false; return;
   }
   // during a drift the chase camera swings toward the direction of travel, so you see the car's angle
@@ -2548,12 +2590,15 @@ function updateCamera(dt, snap) {
     const ud = carObj.userData, A = ud.adapt; carObj.updateMatrixWorld(true); // this frame's pose, not last frame's
     camPos.copy(A.localToWorld(new THREE.Vector3(FPV.eye[0], FPV.eye[1] + ud.shellY, FPV.eye[2])));
     camLook.copy(A.localToWorld(new THREE.Vector3(FPV.eye[0], FPV.eye[1] + ud.shellY - 0.045, FPV.eye[2] + 1))); // a few degrees down: bonnet and track
-    // vibration: fine buzz from the surface at speed, plus a decaying shake after every knock (the body's own roll,
-    // pitch and ramp landings already move the camera, since it rides on the sprung body)
-    const t = performance.now() / 1000, sp = Math.hypot(car.vx, car.vz), rough = MAP.rough ?? ROUGH[MAP.key] ?? 0.4;
-    const buzz = (0.00015 + rough * 0.0005) * Math.min(1, sp / 2.5) * (car.air ? 0 : 1), jolt = camJolt * 0.006;
-    const n1 = Math.sin(t * 53) * 0.6 + Math.sin(t * 89 + 1.3) * 0.4, n2 = Math.sin(t * 61 + 2.1) * 0.6 + Math.sin(t * 97) * 0.4, j = Math.sin(t * 70) * jolt;
-    camPos.y += n1 * buzz + j; camPos.x += n2 * buzz * 0.5; camLook.y += n2 * buzz * 6 + j * 3;
+    // vibration: the tyres (slightly out of round: once per turn, plus the tread) and the motor (a buzz that rises with
+    // revs and throttle), plus a decaying shake after every knock. Bumps in the floor come through the suspension, since
+    // the camera rides on the sprung body
+    const t = performance.now() / 1000, wspd = Math.abs(car.w || 0), rev = Math.min(1, wspd / MOTORS[setup.motor].vFree);
+    FPV.mPhase = (FPV.mPhase || 0) + (dt || 0.016) * 2 * Math.PI * (35 + rev * 900);
+    const tyre = 0.00011 * Math.min(1, wspd / 1.5) * (Math.sin(car.spin || 0) + 0.35 * Math.sin((car.spin || 0) * 9));
+    const motor = 0.00006 * (0.2 + car.thr) * Math.min(1, rev * 4) * (Math.sin(FPV.mPhase) + 0.5 * Math.sin(FPV.mPhase * 2.03 + 1));
+    const jolt = camJolt * 0.006, j = Math.sin(t * 70) * jolt;
+    camPos.y += tyre + motor + j; camPos.x += motor * 0.6; camLook.y += (tyre + motor) * 5 + j * 3;
     camJolt *= Math.exp(-(dt || 0.016) * 9);
     camera.fov = FPV.fov;
   } else if (camMode === 2 || camMode === 3) {
@@ -2592,31 +2637,26 @@ function actMute() { muted = !muted; audio.setVolume(); flash(muted ? 'SOUND · 
 function actTele() { telemetryOn = !telemetryOn; $('tele').hidden = !telemetryOn; }
 
 /* ---------------- menu: short list with two submenus, keyboard / mouse / gamepad ----------------
-   Main: DRIVE, TRACK, OPPONENT, GHOST, CAR >, OPTIONS >.   Pause: RESUME, RESTART, the same, MAIN MENU.
-   CAR: MODE, CUSTOMIZE, CAR SETUP.   OPTIONS: CAMERA, VOLUME, CONTROLS. */
+   Main: DRIVE, TRACK, OPPONENT, CAR, OPTIONS >.   Pause: RESUME, RESTART, the same, MAIN MENU.
+   CAR opens the customize screen.   OPTIONS: CAMERA, GHOST, VOLUME, CAR SETUP, CONTROLS. */
 const menu = { open: true, kind: 'main', sel: 0, controls: false, sub: null };
 function menuSub(name) { menu.sub = name; menu.sel = 0; renderMenu(); }
 function menuItems() {
   const opt = (label, value, change) => ({ label, value, change });
   const act = (label, run, more) => ({ label, run, more });
   const back = act('BACK', () => menuSub(null));
-  if (menu.sub === 'car') return [
-    opt('MODE', setup.car ? 'GRIP' : 'DRIFT', () => actMode()),
-    act('CUSTOMIZE', () => toggleCustom(true)),
-    act('CAR SETUP', () => toggleGarage(true)),
-    back,
-  ];
   if (menu.sub === 'options') return [
     opt('CAMERA', CAMS[camMode], () => actCamera()),
+    opt('GHOST', ghostOn ? 'ON' : 'OFF', () => { ghostOn = !ghostOn; try { localStorage.setItem('cc-ghost', ghostOn ? '1' : '0'); } catch (e) {} }),
     opt('VOLUME', volLabel(), d => setVol((muted ? volume : volume + d))),
+    act('CAR SETUP', () => toggleGarage(true)),
     act('CONTROLS', () => { menu.controls = true; renderMenu(); }),
     back,
   ];
   const shared = [
     opt('TRACK', COURSES[setup.layout].name, d => { setCourse(setup.layout + d); if (menu.kind === 'pause') resetRun(); }),
     opt('OPPONENT', oppLevel ? OPP_LEVELS[oppLevel] : 'NONE', d => { oppLevel = (oppLevel + d + OPP_LEVELS.length) % OPP_LEVELS.length; try { localStorage.setItem('cc-opp', String(oppLevel)); } catch (e) {} if (menu.kind === 'pause') resetRun(); }),
-    opt('GHOST', ghostOn ? 'ON' : 'OFF', () => { ghostOn = !ghostOn; try { localStorage.setItem('cc-ghost', ghostOn ? '1' : '0'); } catch (e) {} }),
-    act('CAR', () => menuSub('car'), true),
+    act('CAR', () => toggleCustom(true)),
     act('OPTIONS', () => menuSub('options'), true),
   ];
   return menu.kind === 'main'
@@ -2692,7 +2732,6 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyR') actReset();
   if (e.code === 'KeyG') toggleGarage();
   if (e.code === 'KeyT') actTele();
-  if (e.code === 'KeyV') actMode();
   if (e.code === 'KeyM') actMute();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -2726,7 +2765,6 @@ function padButtons(gp, dt) {
     if (hit(2)) actReset();
     if (hit(8)) toggleGarage(true);
     if (hit(4)) actTele();
-    if (hit(13)) actMode();
   }
   padPrev = now;
 }
@@ -2921,7 +2959,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
   pollInput(dt);
-  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (race.state === 'menu') { carObj.position.set(car.x, car.y || 0, car.z); carObj.rotation.y = car.h; } updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
+  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (race.state === 'menu') { menuSpin += dt * 0.45; carObj.position.set(car.x, car.y || 0, car.z); carObj.rotation.y = car.h + menuSpin; } updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
   clock += dt;
   acc += dt;
   if (race.state === 'race' && race.count > 0) {
@@ -2948,7 +2986,8 @@ function frame(now) {
   const ud = carObj.userData;
   // body sits on its springs: roll, pitch, and a little heave from total compression
   ud.body.rotation.x = car.roll; ud.body.rotation.z = car.pitch;
-  ud.body.position.y = ud.body.userData.baseY - Math.abs(car.roll) * 0.02;
+  ud.body.position.y = ud.body.userData.baseY - Math.abs(car.roll) * 0.02 + (car.heave || 0);
+  for (const w of ud.wheels) { if (w.baseY === undefined) w.baseY = w.pivot.position.y; const wh = car.wh || [0, 0, 0, 0]; w.pivot.position.y = w.baseY + (w.front ? (w.s > 0 ? wh[0] : wh[1]) : (w.s > 0 ? wh[2] : wh[3])); } // each wheel on the floor under it
   for (const w of ud.wheels) { w.m.rotation.z = -car.spin; if (w.front) w.pivot.rotation.y = car.steer; }
   ud.lampM.color.setHex(car.braking && canDrive ? 0xff6a50 : (car.reversing ? 0xffe8d8 : 0xb81a12));
   if (ud.update) ud.update(car.steer, car.roll);

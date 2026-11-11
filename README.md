@@ -10,11 +10,11 @@ Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the
 Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored as a claude.ai Artifact; browsers render it fine as-is.
 
 ## Controls
-Arrows/WASD drive (hold Down at a stop to reverse), V drift/grip mode, C camera, G car setup, T telemetry, M mute (volume is in the menu, saved between sessions), R reset car, Esc/P pause menu.
+Arrows/WASD drive (hold Down at a stop to reverse), C camera, G car setup, T telemetry, M mute (volume is in the menu, saved between sessions), R reset car, Esc/P pause menu.
 
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
-Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
+Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry Menu/Options pause menu. Barrier hits rumble.
 
 ## Customize
 Menu → CAR → CUSTOMIZE: SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (palettes, the model's own orange first) and MAIN / SECOND / ACCENT colours (swatches or any colour), RIDE HEIGHT (-15 to +10 mm, default -10: slammed like the cars in the drift video; the chassis comes down 3 mm before the plate would touch the floor, below that the shell drops on its posts and the tyres tuck up inside the arches; the arms follow so the wheels stay put), CAMBER (front 0-12°, rear half that; default 9° / 4.5° negative, which is also what lets the tyres tuck under the arch lips), MOUNT (posts and R-clips, or magnets) and UNDERGLOW. The wheels are the model's own. Looks only. Saved in the browser. The opponent gets the same car in contrasting colours.
@@ -33,7 +33,9 @@ The shape is never changed: the model is only scaled uniformly to true 1/10 of t
 Hard hits on walls, the track edge or the opponent (over about 4 km/h into the obstacle) damage the car with the Parts Lab damage model: dents, scuffed paint and torn decals where it hit, mirrors, wing, lip, light pod, scoop, spoiler or mudflaps breaking off and lying on the track, the shell knocked off its magnets or out of its clips, and bent suspension. A bent corner pulls the car to one side. Restart or reset (R) repairs everything.
 
 ## Menu
-Short and driven with arrows / mouse / gamepad: DRIVE, TRACK, OPPONENT (none, easy, medium, hard), GHOST (on / off), CAR › and OPTIONS ›. CAR holds MODE (drift / grip), CUSTOMIZE and CAR SETUP; OPTIONS holds CAMERA, VOLUME and CONTROLS. Esc / B goes back out of a submenu. Under the list one line names the venue and the track. Behind it the selected venue is shown from its photo viewpoint. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+DRIVE, TRACK, OPPONENT (none, easy, medium, hard), CAR (opens the customize screen) and OPTIONS › (CAMERA, GHOST, VOLUME, CAR SETUP, CONTROLS). Arrows / mouse / gamepad; Esc / B goes back. Behind the menu your car turns slowly on the start line of the selected track. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+
+Drift only for now: grip mode is switched off (its code is kept).
 
 ## Map: HOME TRACK
 A cozy room with a drift track built in it (own layout, after a picture of a home-made track). Photo textures throughout: textured white paint on the walls, washed with soft scallops of pink and blue light from the LED tape, a herringbone parquet floor, a plaster ceiling, a Persian rug (from the Ardabil carpet), dark grey painted boards for the track, bordered by low white flexible walls with LED tape along their tops (blue on the left fading to pink on the right, warm white round the islands), three turf islands with rocks and marker flags, a little white pit building with lit windows behind the back wall, a silver foil sheet over one wall, a panelled door and a floor lamp. Night-time mood: the LED tape does most of the lighting, all baked except a few point lights.
@@ -78,10 +80,16 @@ A drift counts once the car slides past 12 deg at over 0.7 m/s. Points flow in a
 ## Sound
 The motor is a synthesised whine (triangle fundamental, sine harmonics, a quiet gear-mesh tone, a little wobble) that follows motor speed from about 95 Hz at a crawl to roughly 900 Hz flat out, so you hear every bit of extra revs; it is silent off the throttle. Under it, softened (lowpassed) loops cut from a recording of a real RC drift car add tire and drive-train texture, cross-faded by slide. Everything the car makes is placed at the car and heard from the camera: further away it gets quieter, duller and panned to its side (chase cam close, driver's stand and ceiling cam far).
 
+## Floor imperfections
+Each venue's floor has a gentle height profile at RC scale, felt through the suspension at each wheel (the body heaves, pitches and rolls on its springs and dampers) and so by the FPV camera:
+- Arena: cast concrete slabs 1.5 m square, 12 mm joints 1.1 mm deep, each slab up to 0.35 mm proud or low of its neighbour, a soft ±0.8 mm undulation, and nine patched repairs and dips.
+- Home: plywood sheets 1.22 x 2.44 m, 6 mm seams 0.4 mm deep, ±0.2 mm steps, ±0.5 mm undulation, four lumps.
+Driving across the arena at 2.7 m/s that gives about ±0.6 mm of body heave and up to 0.2° of pitch and roll: felt, not harsh. Faint lines mark the joints. `GROUND` in index.html sets each venue's values.
+
 ## Camera
 Four cameras (C / Y):
 - TRACKSIDE (default): one good vantage point per venue, high in a corner overlooking the whole track (arena: front-left corner at 3.1 m; home: front-left corner of the room). It stays put, turns to stay locked on the car, and zooms so the frame is about 3.2 m wide at the car (8-60°).
-- FPV: a little camera inside the car just behind the windshield (driver's side), looking over the bonnet past the body posts. It rides on the sprung body, so it rolls, pitches and slides with the car and follows ramps and landings; on top it buzzes with the road (more with speed and on rougher surfaces: `ROUGH` per venue, or `MAP.rough`) and shakes after every knock (landings, wall and car hits, cones). A dark dashboard panel inside the shell hides the chassis, and the tinted windshield is nearly clear from inside.
+- FPV: a little camera inside the car just behind the windshield (driver's side), looking over the bonnet past the body posts. It rides on the sprung body, so it rolls, pitches and slides with the car and follows ramps and landings; it also feels the floor bumps through the suspension, vibrates from the tyres (slightly out of round: once per wheel turn plus the tread) and the motor (a buzz that rises with revs and throttle), and shakes after every knock (landings, wall and car hits, cones). A dark dashboard panel inside the shell hides the chassis, and the tinted windshield is nearly clear from inside.
 - DRIVER POV and DRIVER POV 2: two drivers' spots per venue, eyes at standing height with a natural 55° view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs.
 
 The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
