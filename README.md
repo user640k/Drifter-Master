@@ -86,7 +86,12 @@ Stage 1, tyres and rims: three tyre types at real 1/10 sizes (DRIFT hard plastic
 - OFF-ROAD: nitro 4WD. Aluminium plate, .15 engine with finned head, carburettor and glow plug, flywheel and clutch bell, tuned pipe, fuel tank, radio box, 52T spur and a disc brake with caliper on the centre shaft, shafts to front and rear diffs, longer gold shocks.
 Both have lower A-arms, uprights, turnbuckle camber links, coil-over shocks on cut-out towers, driveshafts and steering links.
 
-Next: shells (drift and off-road), decals and colour schemes, body posts and clips, damage.
+Stage 3, shells (`parts.html#shell`), original designs lofted from cross-sections (a smooth roof / bonnet line, beltline, plan width and glasshouse inset at each station, mirrored), with the rocker line rising over the real wheel positions to form the arches and the windows as a separate tinted surface:
+- DRIFT COUPÉ (440 x 200 x 122 mm): low 1990s-style coupé, flared arches, projector headlights, front lip, tail bars, mirrors, wing on stands.
+- RALLY HATCH (418 x 224 x 148 mm): tall rally hatchback with boxed flares, round headlights, a four-lamp pod, roof scoop, hatch spoiler and mudflaps.
+The lab shows each shell over its chassis (or alone, or see-through) with the suspension still working underneath.
+
+Next: decals and colour schemes, body posts and clips, damage.
 
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:

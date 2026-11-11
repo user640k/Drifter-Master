@@ -1003,7 +1003,7 @@ function resetCones() { for (const c of cones) { Object.assign(c, { x: c.hx, z: 
 
 /* ======== PARTS: an original 1/10 car, built from scratch (work in progress; the game still drives the old car) ========
    Units are metres. A wheel is built with its axle along local x and its outer face towards +x.
-   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. */
+   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. */
 const PARTS = {};
 PARTS.TYRES = {
   // hard plastic drift tyre: smooth, slightly glossy, three shallow grooves (1/10 drift: 26 mm wide, 64 mm tall)
@@ -1177,8 +1177,8 @@ function buildWheel(type, set = 0) {
 //  OFF-ROAD nitro 4WD: aluminium plate, .15 engine (finned head, carburettor, tuned pipe), fuel tank, clutch bell,
 //          centre shaft to front and rear diffs, a disc brake on the centre shaft, radio box, long shocks.
 PARTS.CHASSIS = {
-  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor', tyre: 'drift', wb: 0.257, wheelX: 0.0845, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.078, shockR: 0.0062, travel: 0.006 },
-  offroad: { name: 'OFF-ROAD', note: 'Nitro 4WD, disc brake', tyre: 'offroad', wb: 0.257, wheelX: 0.095, plateY: 0.013, armIn: 0.03, armY: 0.026, towerY: 0.098, shockR: 0.0075, travel: 0.012 },
+  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor', tyre: 'drift', wb: 0.257, wheelX: 0.0845, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.06, shockR: 0.0062, travel: 0.006 },
+  offroad: { name: 'OFF-ROAD', note: 'Nitro 4WD, disc brake', tyre: 'offroad', wb: 0.257, wheelX: 0.095, plateY: 0.013, armIn: 0.03, armY: 0.026, towerY: 0.084, shockR: 0.0075, travel: 0.012 },
 };
 PARTS.carbonTex = () => {
   const t = tex(64, 64, (g, w, h) => { g.fillStyle = '#16171a'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 8) for (let x = 0; x < w; x += 8) { const a = ((x + y) / 8) % 2; g.fillStyle = a ? '#26282d' : '#1c1d21'; g.fillRect(x, y, 8, 8); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x + (a ? 1 : 0), y + (a ? 0 : 1), a ? 6 : 8, a ? 8 : 6); } });
@@ -1404,6 +1404,149 @@ function buildChassis(kind, rimSet = 0) {
     },
   };
   root.userData.pose();
+  return root;
+}
+// ======== Stage 3: shells ========
+// Original bodies, lofted from cross-sections along the car: a smooth side silhouette (roof / bonnet line), a beltline,
+// a plan-view width and a glasshouse inset are interpolated at each station, and each section is drawn from the rocker
+// up the side, over the shoulder and the roof to the centreline, then mirrored. The rocker line rises over the real
+// wheel positions to make the arches. Windows are their own (tinted) material. Polycarbonate shells are open underneath.
+PARTS.SHELLS = {
+  drift: {
+    name: 'DRIFT COUPÉ', note: 'Low 1990s-style coupé, flared arches, wing on stands', chassis: 'drift', z0: -0.226, z1: 0.214, archGap: 0.006,
+    top: [[-0.226, 0.058], [-0.22, 0.08], [-0.19, 0.088], [-0.155, 0.09], [-0.12, 0.112], [-0.09, 0.12], [-0.05, 0.122], [-0.02, 0.118], [0.045, 0.084], [0.09, 0.08], [0.15, 0.076], [0.19, 0.066], [0.207, 0.054], [0.214, 0.042]],
+    belt: [[-0.226, 0.056], [-0.2, 0.074], [-0.1, 0.08], [0.0, 0.074], [0.1, 0.064], [0.19, 0.056], [0.214, 0.04]],
+    width: [[-0.226, 0.084], [-0.205, 0.096], [-0.13, 0.1], [-0.07, 0.096], [0.0, 0.095], [0.07, 0.094], [0.13, 0.099], [0.18, 0.096], [0.205, 0.086], [0.214, 0.07]],
+    rocker: [[-0.226, 0.034], [-0.2, 0.024], [0.19, 0.022], [0.214, 0.026]],
+    inset: 0.024, glass: { wind: [-0.018, 0.043], roof: [-0.115, -0.018], rear: [-0.152, -0.115], bPillar: -0.062 },
+  },
+  offroad: {
+    name: 'RALLY HATCH', note: 'Tall rally hatchback, boxed flares, light pod, mudflaps', chassis: 'offroad', z0: -0.212, z1: 0.206, archGap: 0.01,
+    top: [[-0.212, 0.064], [-0.206, 0.088], [-0.19, 0.104], [-0.165, 0.14], [-0.13, 0.145], [-0.06, 0.148], [0.0, 0.144], [0.07, 0.105], [0.12, 0.1], [0.17, 0.094], [0.196, 0.08], [0.206, 0.056]],
+    belt: [[-0.212, 0.062], [-0.19, 0.1], [-0.1, 0.098], [0.0, 0.094], [0.1, 0.088], [0.18, 0.078], [0.206, 0.054]],
+    width: [[-0.212, 0.092], [-0.195, 0.108], [-0.13, 0.112], [-0.085, 0.1], [0.0, 0.098], [0.085, 0.1], [0.13, 0.112], [0.185, 0.106], [0.206, 0.088]],
+    rocker: [[-0.212, 0.044], [-0.19, 0.036], [0.18, 0.036], [0.206, 0.046]],
+    inset: 0.02, glass: { wind: [0.002, 0.068], roof: [-0.168, 0.002], rear: [-0.19, -0.168], bPillar: -0.07 },
+  },
+};
+// smooth interpolation through [z, value] keys (cubic Hermite, Catmull-Rom tangents)
+function partCurve(keys) {
+  return z => {
+    if (z <= keys[0][0]) return keys[0][1]; if (z >= keys[keys.length - 1][0]) return keys[keys.length - 1][1];
+    let i = 0; while (keys[i + 1][0] < z) i++;
+    const [z0, y0] = keys[i], [z1, y1] = keys[i + 1], zp = keys[Math.max(0, i - 1)], zn = keys[Math.min(keys.length - 1, i + 2)];
+    const m0 = (y1 - zp[1]) / Math.max(1e-6, z1 - zp[0]) * (z1 - z0), m1 = (zn[1] - y0) / Math.max(1e-6, zn[0] - z0) * (z1 - z0), t = (z - z0) / (z1 - z0), t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * m1;
+  };
+}
+function catmull2(P, sub) { // Catmull-Rom through 2D points, sub steps per segment; returns points and the segment index of each
+  const out = [], seg = [];
+  for (let i = 0; i < P.length - 1; i++) for (let k = 0; k < sub; k++) {
+    const t = k / sub, p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)], t2 = t * t, t3 = t2 * t;
+    out.push([0, 1].map(j => 0.5 * ((2 * p1[j]) + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3))); seg.push(i);
+  }
+  out.push(P[P.length - 1]); seg.push(P.length - 1); return { out, seg };
+}
+function buildShellGeo(S, C) {
+  const top = partCurve(S.top), belt = partCurve(S.belt), width = partCurve(S.width), rocker = partCurve(S.rocker);
+  const wR = PARTS.TYRES[C.tyre].od / 2, ra = wR + S.archGap, wzs = [C.wb / 2, -C.wb / 2], G = S.glass;
+  const NS = 90, pos = [], paintIdx = [], glassIdx = []; let ringN = 0;
+  const zs = [];
+  for (let i = 0; i <= NS; i++) zs[i] = S.z0 + (S.z1 - S.z0) * (0.5 - 0.5 * Math.cos(i / NS * Math.PI)) * 0.3 + (S.z1 - S.z0) * (i / NS) * 0.7;
+  const zone = z => z >= G.wind[0] && z <= G.wind[1] ? 'wind' : z >= G.roof[0] && z < G.roof[1] ? 'roof' : z >= G.rear[0] && z < G.rear[1] ? 'rear' : 'body';
+  const cabin = z => { const a = G.rear[0], b = G.wind[1], e = 0.012; return Math.max(0, Math.min(1, (z - a + e) / e, (b + e - z) / e)); };
+  const half = [];
+  for (const z of zs) {
+    const yt = top(z), yb = Math.min(belt(z), yt - 0.003), w = width(z), c = cabin(z);
+    let y0 = rocker(z); for (const wz of wzs) { const d = z - wz; if (Math.abs(d) < ra) y0 = Math.max(y0, wR + Math.sqrt(ra * ra - d * d)); }
+    y0 = Math.min(y0, yb - 0.006);
+    const q3h = [w * 0.93, yb + (yt - yb) * 0.45], q4h = [w * 0.62, yt - (yt - yb) * 0.04];
+    const q3c = [w - S.inset * 0.45, yb + 0.004], q4c = [w - S.inset, yt - 0.007];
+    const L = (a, b) => [a[0] + (b[0] - a[0]) * c, a[1] + (b[1] - a[1]) * c];
+    const q4 = L(q4h, q4c);
+    const ctrl = [[w * 0.955, y0], [w, y0 + (yb - y0) * 0.45], [w * 0.985, yb], L(q3h, q3c), q4, [q4[0] * 0.45, yt - 0.0008], [0, yt]];
+    half.push({ z, ...catmull2(ctrl, 3) });
+  }
+  const n = half[0].out.length; ringN = 2 * n - 1;
+  for (const h of half) {
+    for (let j = 0; j < n; j++) pos.push(h.out[j][0], h.out[j][1], h.z);
+    for (let j = n - 2; j >= 0; j--) pos.push(-h.out[j][0], h.out[j][1], h.z);
+  }
+  const segOf = j => half[0].seg[j < n ? j : 2 * n - 2 - j];
+  for (let i = 0; i < NS; i++) {
+    const zm = (zs[i] + zs[i + 1]) / 2, zn = zone(zm), bp = Math.abs(zm - G.bPillar) < 0.004;
+    for (let j = 0; j < ringN - 1; j++) {
+      const a = i * ringN + j, b = a + 1, c2 = a + ringN, d = c2 + 1, sg = Math.min(segOf(j), segOf(j + 1));
+      const glass = (zn === 'wind' || zn === 'rear') ? sg >= 3 : zn === 'roof' && !bp ? sg === 3 : false;
+      (glass ? glassIdx : paintIdx).push(a, c2, b, b, c2, d);
+    }
+  }
+  // close the nose and the tail with a fan to the section centre
+  for (const [i, flip] of [[0, true], [NS, false]]) {
+    const base = i * ringN; let cx = 0, cy = 0; for (let j = 0; j < ringN; j++) { cy += pos[(base + j) * 3 + 1]; } cy /= ringN;
+    const ci = pos.length / 3; pos.push(cx, cy, zs[i]);
+    for (let j = 0; j < ringN - 1; j++) flip ? paintIdx.push(ci, base + j + 1, base + j) : paintIdx.push(ci, base + j, base + j + 1);
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex([...paintIdx, ...glassIdx]); geo.addGroup(0, paintIdx.length, 0); geo.addGroup(paintIdx.length, glassIdx.length, 1);
+  geo.computeVertexNormals();
+  // UVs for the decals later: side projection (z along, y up)
+  const uv = []; for (let k = 0; k < pos.length; k += 3) uv.push((pos[k + 2] - S.z0) / (S.z1 - S.z0), pos[k + 1] / 0.16); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return { geo, top, belt, width, rocker };
+}
+PARTS.shellMats = (paint = 0xd8261c) => ({
+  paint: new THREE.MeshPhongMaterial({ color: paint, specular: 0xffffff, shininess: 120, envMap: PARTS.envTex, reflectivity: 0.22, side: THREE.DoubleSide }),
+  glass: new THREE.MeshPhongMaterial({ color: 0x0c0f14, specular: 0x9aa0aa, shininess: 160, envMap: PARTS.envTex, reflectivity: 0.3, side: THREE.DoubleSide }),
+  trim: new THREE.MeshPhongMaterial({ color: 0x141416, specular: 0x333333, shininess: 30 }),
+  lamp: new THREE.MeshPhongMaterial({ color: 0xf4f6fa, emissive: 0x5a6070, specular: 0xffffff, shininess: 140, envMap: PARTS.envTex, reflectivity: 0.5 }),
+  tail: new THREE.MeshPhongMaterial({ color: 0xc8101a, emissive: 0x400004, specular: 0xffffff, shininess: 120 }),
+  amber: new THREE.MeshPhongMaterial({ color: 0xff9a1e, emissive: 0x402000, specular: 0xffffff, shininess: 120 }),
+});
+function buildShell(kind, paint) {
+  const S = PARTS.SHELLS[kind], C = PARTS.CHASSIS[S.chassis], mt = PARTS.shellMats(paint), root = new THREE.Group();
+  const { geo, top, belt, width } = buildShellGeo(S, C);
+  const body = new THREE.Mesh(geo, [mt.paint, mt.glass]); root.add(body);
+  const parts = [], tag = (name, obj, focus) => { obj.name = name; parts.push({ name, obj, focus }); return obj; };
+  tag('Body: polycarbonate, 0.75 mm', body, [0, 0.07, 0]);
+  const at = (x, y, z, o) => { o.position.set(x, y, z); root.add(o); return o; };
+  const bx = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  const cy = (r, l, m, seg = 16) => { const g = new THREE.CylinderGeometry(r, r, l, seg); g.rotateX(Math.PI / 2); return new THREE.Mesh(g, m); };
+  const lights = new THREE.Group(); root.add(lights);
+  if (kind === 'drift') {
+    // slim projector headlights in the nose corners, a dark intake, a front lip, tail light bars, mirrors, a wing on stands
+    for (const s of [-1, 1]) {
+      const z = 0.2, hl = bx(0.03, 0.009, 0.014, mt.lamp); hl.position.set(s * 0.055, top(z) - 0.004, z); hl.rotation.set(-0.5, s * 0.25, 0); lights.add(hl);
+      const tl = bx(0.04, 0.008, 0.004, mt.tail); tl.position.set(s * 0.058, top(S.z0 + 0.004) + 0.012, S.z0 + 0.002); lights.add(tl);
+      const mir = bx(0.012, 0.008, 0.006, mt.paint); at(s * (width(0.035) - S.inset * 0.3), belt(0.035) + 0.009, 0.035, mir);
+    }
+    at(0, 0.032, S.z1 - 0.004, bx(0.08, 0.012, 0.006, mt.trim));
+    const lip = at(0, 0.021, S.z1 - 0.012, bx(0.15, 0.003, 0.03, mt.trim));
+    tag('Lights: projector headlights, tail bars', lights, [0, 0.06, 0.2]); tag('Front lip and intake', lip, [0, 0.03, 0.2]);
+    const wing = new THREE.Group(); at(0, 0, 0, wing);
+    const wz = -0.205, wy = top(wz) + 0.022;
+    const blade = bx(0.17, 0.0025, 0.03, mt.paint); blade.position.set(0, wy, wz); blade.rotation.x = -0.08; wing.add(blade);
+    for (const s of [-1, 1]) { const st = bx(0.004, 0.022, 0.014, mt.trim); st.position.set(s * 0.045, wy - 0.011, wz); wing.add(st); const ep = bx(0.0025, 0.016, 0.034, mt.trim); ep.position.set(s * 0.086, wy + 0.004, wz); wing.add(ep); }
+    tag('Rear wing on stands', wing, [0, 0.1, -0.2]);
+  } else {
+    // round headlights, a four-lamp pod on the bonnet, roof scoop, hatch spoiler, tail lights, mudflaps
+    for (const s of [-1, 1]) {
+      const hl = cy(0.008, 0.004, mt.lamp); hl.position.set(s * 0.06, top(S.z1 - 0.01) - 0.012, S.z1 - 0.004); lights.add(hl);
+      const tl = bx(0.012, 0.02, 0.004, mt.tail); tl.position.set(s * 0.082, belt(S.z0 + 0.01) + 0.006, S.z0 + 0.004); lights.add(tl);
+      const ind = bx(0.012, 0.006, 0.004, mt.amber); ind.position.set(s * 0.082, belt(S.z0 + 0.01) - 0.008, S.z0 + 0.004); lights.add(ind);
+      for (const wz of [C.wb / 2, -C.wb / 2]) { const fl = bx(0.03, 0.03, 0.002, mt.trim); fl.position.set(s * 0.093, 0.045, wz - 0.045); root.add(fl); if (s > 0 && wz < 0) tag('Mudflaps', fl, [0.09, 0.05, wz - 0.045]); }
+      const mir = bx(0.012, 0.01, 0.006, mt.paint); at(s * (width(0.06) - S.inset * 0.2), belt(0.06) + 0.01, 0.06, mir);
+    }
+    const pod = new THREE.Group(); at(0, 0, 0, pod);
+    const pz = 0.16, py = top(pz) + 0.01; const bar = bx(0.13, 0.004, 0.006, mt.trim); bar.position.set(0, py - 0.006, pz); pod.add(bar);
+    for (let i = 0; i < 4; i++) { const x = (i - 1.5) * 0.031, l = cy(0.0115, 0.008, mt.trim, 20); l.position.set(x, py + 0.004, pz + 0.002); pod.add(l); const f = cy(0.0098, 0.002, mt.lamp, 20); f.position.set(x, py + 0.004, pz + 0.007); pod.add(f); }
+    tag('Light pod: four lamps', pod, [0, 0.11, 0.16]); tag('Lights: headlights, tail lights', lights, [0, 0.08, 0.19]);
+    const scoop = at(0, top(-0.03) + 0.004, -0.03, bx(0.03, 0.007, 0.04, mt.paint)); scoop.rotation.x = -0.06; at(0, top(-0.03) + 0.0045, -0.0095, bx(0.026, 0.005, 0.002, mt.trim));
+    tag('Roof scoop', scoop, [0, 0.15, -0.02]);
+    const sp = at(0, top(-0.17) + 0.004, -0.178, bx(0.16, 0.003, 0.03, mt.paint)); sp.rotation.x = 0.25;
+    tag('Hatch spoiler', sp, [0, 0.14, -0.18]);
+  }
+  tag('Windows: tinted, inside-painted', body, [0.05, 0.1, -0.03]);
+  root.userData = { kind, parts, mats: mt };
   return root;
 }
 /* ======== END PARTS ======== */
