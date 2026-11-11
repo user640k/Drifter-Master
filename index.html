@@ -2676,7 +2676,7 @@ function driftBank() {
   const sc = Math.round(drift.pts * drift.mult); if (sc < 25) return;
   drift.total += sc; drift.kind = 'bank'; drift.show = 1.6; drift.banked = sc;
   drift.label = sc >= 3000 ? 'INSANE DRIFT' : sc >= 1500 ? 'GREAT DRIFT' : sc >= 600 ? 'GOOD DRIFT' : 'DRIFT';
-  if (sc > drift.best) { drift.best = sc; drift.label = 'NEW TOP DRIFT'; try { localStorage.setItem(driftKey(), String(sc)); } catch (e) {} audio.blip(1320, 0.1, 'triangle', 0.08); }
+  if (sc > drift.best) { drift.best = sc; drift.label = 'NEW TOP DRIFT'; try { localStorage.setItem(driftKey(), String(sc)); } catch (e) {} }
   $('dtotal').textContent = fmtPts(drift.total); $('dbest').textContent = fmtPts(drift.best);
 }
 function driftCrash() {
@@ -2694,7 +2694,7 @@ function driftHud() {
 }
 function conePenalty(c) {
   if (race.state !== 'race' || race.lap === 0) return;
-  race.pen += 1; flash('+1 s · CONE', 0.9); audio.blip(300, 0.12, 'square', 0.12);
+  race.pen += 1; flash('+1 s · CONE', 0.9);
 }
 // gate crossing: did the car's path this step cross the segment between the gate's two ends?
 function crosses(px, pz, qx, qz, g) {
@@ -2709,16 +2709,15 @@ function gateLogic(px, pz) {
   if (race.next === 0) {
     if (race.lap > 0) {
       const t = clock - race.lapStart + race.pen; race.last = t; $('last').textContent = fmt(t);
-      if (best == null || t < best) { best = t; ghostSave(); $('best').textContent = fmt(best); try { localStorage.setItem(bestKey(), String(best)); } catch (e) {} flash('BEST LAP ' + fmt(t), 1.6); audio.blip(1320, 0.12); audio.blip(1760, 0.2, 'square', 0.15, 0.12); }
-      else { flash('LAP ' + fmt(t), 1.2); audio.blip(1046, 0.15); }
+      if (best == null || t < best) { best = t; ghostSave(); $('best').textContent = fmt(best); try { localStorage.setItem(bestKey(), String(best)); } catch (e) {} flash('BEST LAP ' + fmt(t), 1.6); }
+      else { flash('LAP ' + fmt(t), 1.2); }
     }
     race.lap++; race.lapStart = clock; race.pen = 0; ghostLapStart();
     if (oppActive() && race.lap > RACE_LAPS && !race.finished) {
       race.finished = true; race.place = opp.doneT == null ? 1 : 2; const t = clock - race.goT;
       flash(race.place === 1 ? `1ST · YOU WIN · ${fmt(t)}` : `2ND · ${fmt(t)} · +${(t - opp.doneT).toFixed(2)} S`, 4);
-      audio.blip(race.place === 1 ? 1568 : 523, 0.3, 'triangle', 0.12);
     }
-  } else audio.blip(880, 0.05, 'triangle', 0.08);
+  }
   race.next = (race.next + 1) % n; setGateBar(race.next);
 }
 
