@@ -631,7 +631,7 @@ function archTable(T, cam, steer) { // max reach from the hub in the y-z plane, 
   return _archTabs[key] = tab;
 }
 function archFlare(geo, F) {
-  const pa = geo.attributes.position, m = 0.0015, s = 0.003;
+  const pa = geo.attributes.position, m = 0.0025, s = 0.003;
   for (let i = 0; i < pa.count; i++) {
     const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), front = z > 0, H = F.hubs[(front ? 'F' : 'R') + (x > 0 ? 'R' : 'L')], tab = front ? F.tF : F.tR;
     const dy = y - H[1], dz = z - H[2], d = Math.hypot(dy, dz); if (d > 0.05 || d < 1e-4 || dy < -0.006) continue;

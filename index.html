@@ -816,6 +816,9 @@ const COURSES = [
       [2.6, 1.6, 3.7, 1.6, 'd', 'd'],
     ],
     line: [[1.8, -3.0], [-1.5, -3.2], [-3.3, -1.6], [-3.45, 0.6], [-3.3, 2.3], [-2.3, 2.9], [-1.4, 2.25], [-0.6, 1.2], [0.5, 0.85], [1.3, 1.3], [1.3, 2.0], [0.5, 2.35], [-0.5, 2.4], [-1.2, 2.75], [-1.0, 3.85], [0.6, 3.9], [1.9, 3.85], [2.95, 3.35], [3.15, 1.5], [3.05, -0.5], [2.6, -2.3]] },
+  { name: 'HILLSIDE', map: 'arena', note: 'A figure of eight between low white boards with a climb and an overpass: out of the right-hand loop you pass under the bridge, round the left-hand loop, then climb about 24 cm (4-5°) up its far side, cross over the bridge at the top and drift down the descent into the right-hand loop.',
+    track: { ctrl: [[2.9, -4.6], [1.8, -4.9], [1.0, -4.3], [0.0, -3.3], [-1.0, -2.3], [-2.2, -1.9], [-3.2, -2.6], [-3.4, -3.6, 0.01], [-2.9, -4.6, 0.05], [-1.8, -4.9, 0.13], [-1.0, -4.3, 0.2], [0.0, -3.3, 0.24], [1.0, -2.3, 0.22], [2.2, -1.9, 0.13], [3.2, -2.6, 0.04], [3.4, -3.6, 0]], width: 1.0, style: 'boards' }, start: [0, 0, 0], gates: [],
+    line: [[2.9, -4.6], [1.8, -4.9], [1.0, -4.3], [0.0, -3.3], [-1.0, -2.3], [-2.2, -1.9], [-3.2, -2.6], [-3.4, -3.6], [-2.9, -4.6], [-1.8, -4.9], [-1.0, -4.3], [0.0, -3.3], [1.0, -2.3], [2.2, -1.9], [3.2, -2.6], [3.4, -3.6]] },
   { name: 'CLUB TRACK', map: 'arena', note: 'After the club track in the photo: open dark floor round green turf islands. A sweeper round the big kidney island (the display cars are parked on it), a hairpin round the tip of the J, a long left-hand loop round the strip island and a flat-out bend along the front. Red and white kerbs on the tight corners; the islands are solid.',
     club: true, display: 'club', start: [0, 0, 0], gates: [],
     line: [[-2.0, -5.2], [0.0, -5.3], [1.8, -5.15], [2.9, -4.55], [3.25, -3.3], [3.1, -1.75], [2.4, -0.85], [1.3, -0.75], [0.55, -1.3], [0.45, -2.5], [0.4, -3.45], [-0.1, -4.1], [-0.75, -3.9], [-0.95, -3.0], [-0.95, -2.0], [-1.25, -1.1], [-2.1, -0.75], [-3.05, -1.05], [-3.45, -2.2], [-3.4, -3.6], [-2.9, -4.7]] },
@@ -844,8 +847,14 @@ function makeCone(x, z, kind) {
 }
 // ramps: ground height under a point (0 on the floor)
 let RAMPS = [];
-function groundAt(x, z) {
+// on an enclosed track with elevation the height follows the lap (TRACK.E per centreline sample), found from the
+// nearest centreline point near a hint (the car's own place on the lap), so a road can pass under a bridge
+function groundAt(x, z, hint) {
   let g = 0;
+  if (TRACK && TRACK.E) {
+    const E = TRACK.E, i = nearestT(x, z, hint == null ? TRACK.idx : hint), t = TRACK.tan[i], along = (x - TP[i].x) * t.x + (z - TP[i].z) * t.z, k = along >= 0 ? (i + 1) % N : (i - 1 + N) % N;
+    g = E[i] + (E[k] - E[i]) * Math.min(1, Math.abs(along) / TRACK.ds);
+  }
   for (const r of RAMPS) {
     const dx = x - r.x, dz = z - r.z, du = dx * Math.sin(r.ang) + dz * Math.cos(r.ang), dv = dx * Math.cos(r.ang) - dz * Math.sin(r.ang);
     if (Math.abs(dv) > r.w / 2 || du <= 0 || du >= r.prof[r.prof.length - 1][0]) continue;
@@ -875,7 +884,8 @@ function rampWall(cx, cz, qx, qz, y) {
 function buildRamp(r, g) {
   const sh = new THREE.Shape(); sh.moveTo(0, 0); for (const [u, h] of r.prof) sh.lineTo(u, Math.max(h, 0.0005)); sh.lineTo(r.prof[r.prof.length - 1][0], 0); sh.closePath();
   const geo = new THREE.ExtrudeGeometry(sh, { depth: r.w, bevelEnabled: false, curveSegments: 1 }); geo.translate(0, 0, -r.w / 2);
-  const mats = r.style === 'black' ? [lam({ color: 0x15131c }), lam({ color: 0x0c0b10 })]
+  const mats = r.style === 'deck' ? [lam({ color: 0x1a1a1d }), phong({ map: imgTex('phTrack', 1.2, 1.2), color: 0x5e6065, shininess: 55, specular: 0x4a4c54 })]
+    : r.style === 'black' ? [lam({ color: 0x15131c }), lam({ color: 0x0c0b10 })]
     : r.style === 'bridge' ? [new THREE.MeshPhongMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, shininess: 90, specular: 0xffffff })]
     : [lam({ map: T.wood, color: 0xe6cfa6 }), phong({ map: T.ptile, color: 0x9a9aa0, shininess: 20 })];
   const m = new THREE.Mesh(geo, mats.length > 1 ? mats : mats[0]);
@@ -895,19 +905,41 @@ function buildRamp(r, g) {
   }
   // yellow lip stripe on the top edge
   const L = r.prof.reduce((a, [u, h]) => h > a[1] ? [u, h] : a, [0, 0]);
-  const lipM = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.003, r.w), new THREE.MeshBasicMaterial({ color: r.style === 'black' ? 0xc24dff : 0xffd21a }));
+  const lipM = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.003, r.w), new THREE.MeshBasicMaterial({ color: r.style === 'black' ? 0xc24dff : r.style === 'deck' ? 0xe8e8e2 : 0xffd21a }));
   if (r.style === 'black') shadow(g, r.x + Math.sin(r.ang) * L[0] * 0.6, r.z + Math.cos(r.ang) * L[0] * 0.6, r.w + 0.2, L[0] * 1.4 + 0.2, r.ang, 0.4, 0.0012); lipM.position.set(L[0], L[1] + 0.0015, 0); m.add(lipM);
 }
 // enclosed track: centreline samples, lane half-width, barrier contact
 const N = 480, TP = [], TN = [];
 let TRACK = null;
+// raised part of an enclosed track: the road surface on its slopes and bridge, dark side skirts down to the floor
+// (left open where another stretch of the lap runs underneath) and square piers under the high parts
+function buildTrackDeck(g, E, HWt, underIt) {
+  const w = HWt + 0.02, pos = [], skirt = [], up = i => E[i] > 0.002 || E[(i + 1) % N] > 0.002;
+  for (let i = 0; i < N; i++) { if (!up(i)) continue; const j = (i + 1) % N, ya = E[i] + 0.0008, yb = E[j] + 0.0008;
+    const P = (k, s, y) => [TP[k].x + TN[k].x * s * w, y, TP[k].z + TN[k].z * s * w];
+    const a1 = P(i, 1, ya), a2 = P(i, -1, ya), b1 = P(j, 1, yb), b2 = P(j, -1, yb); pos.push(...a1, ...a2, ...b1, ...a2, ...b2, ...b1);
+    for (const s of [1, -1]) { const ea = P(i, s, ya), eb = P(j, s, yb); if (underIt((ea[0] + eb[0]) / 2, (ea[2] + eb[2]) / 2, HWt + 0.03, Math.max(ya, yb))) continue;
+      skirt.push(...ea, ...[ea[0], 0, ea[2]], ...eb, ...[ea[0], 0, ea[2]], ...[eb[0], 0, eb[2]], ...eb); } }
+  const mk = (arr, mat) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); geo.computeVertexNormals(); const uv = []; for (let k = 0; k < arr.length; k += 3) uv.push(arr[k] / 1.6, arr[k + 2] / 1.6); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); const m = new THREE.Mesh(geo, mat); g.add(m); return m; };
+  mk(pos, phong({ map: imgTex('phTrack'), color: 0x5e6065, shininess: 55, specular: 0x4a4c54, side: THREE.DoubleSide }));
+  mk(skirt, lam({ color: 0x1b1c1f, side: THREE.DoubleSide }));
+  const pierM = lam({ color: 0x2a2b2f });
+  for (let i = 0, last = -1e9, run = 0; i < N; i++) { run += TP[i].distanceTo(TP[(i + 1) % N]); if (E[i] < 0.09 || run - last < 0.45) continue; last = run;
+    for (const s of [1, -1]) { const x = TP[i].x + TN[i].x * s * (w - 0.02), z = TP[i].z + TN[i].z * s * (w - 0.02); if (underIt(x, z, HWt + 0.06, E[i])) continue; box(0.035, E[i], 0.035, pierM, x, E[i] / 2, z, g); } }
+}
 function buildTrackRibbon(tr, g) {
-  const curve = new THREE.CatmullRomCurve3(tr.ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal');
+  // control points are [x, z] or [x, z, height]: the height rides along the spline as its y
+  const curve = new THREE.CatmullRomCurve3(tr.ctrl.map(([x, z, hh = 0]) => new THREE.Vector3(x, hh, z)), true, 'centripetal');
   TP.length = 0; TN.length = 0; TP.push(...curve.getSpacedPoints(N).slice(0, N));
+  const E = TP.map(p => Math.max(0, p.y)); TP.forEach(p => { p.y = 0; });
   const TT = [];
-  for (let i = 0; i < N; i++) { const a = TP[(i - 1 + N) % N], b = TP[(i + 1) % N], t = new THREE.Vector3().subVectors(b, a).normalize(); TT.push(t); TN.push(new THREE.Vector3(t.z, 0, -t.x)); }
-  const HWt = tr.width / 2;
-  TRACK = { hw: HWt, idx: 0, tan: TT };
+  for (let i = 0; i < N; i++) { const a = TP[(i - 1 + N) % N], b = TP[(i + 1) % N], t = new THREE.Vector3().subVectors(b, a); t.y = 0; t.normalize(); TT.push(t); TN.push(new THREE.Vector3(t.z, 0, -t.x)); }
+  const HWt = tr.width / 2, elev = E.some(e => e > 0.002), Lr = TP.reduce((s, p, i) => s + p.distanceTo(TP[(i + 1) % N]), 0);
+  TRACK = { hw: HWt, idx: 0, tan: TT, E: elev ? E : null, ds: Lr / N };
+  // another stretch of the lap at about the same height within r of (x, z): a level crossing, not a bridge over it
+  const sameLevel = (x, z, r, e) => TP.some((q, k) => Math.abs(E[k] - e) < 0.06 && Math.hypot(x - q.x, z - q.z) < r);
+  const underIt = (x, z, r, e) => TP.some((q, k) => e - E[k] > 0.06 && Math.hypot(x - q.x, z - q.z) < r);
+  if (elev) buildTrackDeck(g, E, HWt, underIt);
   // no painted lane: the floor itself is the track, only the barriers mark it
   // foam barrier blocks along both edges; red/white outside, blue/white inside
   const boards = tr.style === 'boards', BL = boards ? 0.06 : 0.11, BH = boards ? 0.05 : 0.06, BT = boards ? 0.012 : 0.05, blocks = []; // boards: low white flexible walls, as at club tracks
@@ -916,17 +948,17 @@ function buildTrackRibbon(tr, g) {
     let carry = 0, count = 0;
     for (let i = 0; i < N; i++) {
       const a = edge[i], b = edge[(i + 1) % N], seg = a.distanceTo(b); let d = carry;
-      while (d < seg) { const pt = a.clone().lerp(b, d / seg); const j = nearestT(pt.x, pt.z, -1); if (Math.hypot(pt.x - TP[j].x, pt.z - TP[j].z) > HWt + BT / 2 - 0.01) blocks.push({ p: pt, ang: Math.atan2(b.x - a.x, b.z - a.z), c: count++ % 2, side }); d += BL + (boards ? 0.001 : 0.012); }
+      while (d < seg) { const pt = a.clone().lerp(b, d / seg); const j = nearestT(pt.x, pt.z, -1); if (elev ? !sameLevel(pt.x, pt.z, HWt + BT / 2 - 0.01, E[i]) : Math.hypot(pt.x - TP[j].x, pt.z - TP[j].z) > HWt + BT / 2 - 0.01) blocks.push({ p: pt, ang: Math.atan2(b.x - a.x, b.z - a.z), c: count++ % 2, side, y: E[i] }); d += BL + (boards ? 0.001 : 0.012); }
       carry = d - seg;
     }
   }
   const im = new THREE.InstancedMesh(new THREE.BoxGeometry(BT, BH, BL), boards ? phong({ color: 0xffffff, shininess: 40, specular: 0x444444 }) : lam({ map: T.foam }), blocks.length);
   const o = new THREE.Object3D(), red = new THREE.Color(0xd42a26), white = new THREE.Color(0xf0eee6), blue = new THREE.Color(0x2a5bd4);
-  blocks.forEach((b, i) => { o.position.set(b.p.x, BH / 2, b.p.z); o.rotation.set(0, b.ang, 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, boards ? white : b.c ? white : (b.side > 0 ? red : blue)); });
+  blocks.forEach((b, i) => { o.position.set(b.p.x, BH / 2 + b.y, b.p.z); o.rotation.set(0, b.ang, 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, boards ? white : b.c ? white : (b.side > 0 ? red : blue)); });
   g.add(im);
   // checker start line
   const sf = new THREE.Mesh(new THREE.PlaneGeometry(tr.width, 0.1), lam({ map: T.checker, polygonOffset: true, polygonOffsetFactor: -1 }));
-  sf.rotation.set(-Math.PI / 2, 0, Math.atan2(-TT[0].z, TT[0].x) + Math.PI / 2); sf.position.set(TP[0].x, 0.004, TP[0].z); g.add(sf);
+  sf.rotation.set(-Math.PI / 2, 0, Math.atan2(-TT[0].z, TT[0].x) + Math.PI / 2); sf.position.set(TP[0].x, 0.004 + E[0], TP[0].z); g.add(sf);
   // gates: start line and three checkpoints, each spanning the lane; start just behind the line
   const gate = i => { const pt = TP[i], n = TN[i]; return [pt.x + n.x * HWt, pt.z + n.z * HWt, pt.x - n.x * HWt, pt.z - n.z * HWt, 'x', 'x']; };
   tr.gates = [0, N / 4, N / 2, 3 * N / 4].map(gate);
@@ -1021,13 +1053,6 @@ function turfIsland(g, poly, kerbs) {
   for (const k of kerbs || []) edgeBlocks(k, false, 0.05, top + 0.01, 0.055, [0xd42a26, 0xf2f0ea], 0, g);
   COURSE_SOLIDS.push(poly);
 }
-function pottedPlant(g, x, z) { // a little palm in a pot, as on the photo's kerb island
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.04, 0.09, 14), phong({ color: 0x3a2a22, shininess: 10 })); pot.position.set(x, 0.057, z); g.add(pot);
-  const leaf = new THREE.PlaneGeometry(0.05, 0.26, 1, 4), lp = leaf.attributes.position; for (let i = 0; i < lp.count; i++) { const v = lp.getY(i) + 0.13; lp.setZ(i, -v * v * 1.6); lp.setX(i, lp.getX(i) * (1 - v / 0.3)); } leaf.translate(0, 0.13, 0); leaf.computeVertexNormals();
-  const lm = lam({ color: 0x3f7a32, side: THREE.DoubleSide }), r = rng(Math.round(x * 100 + z * 7));
-  for (let i = 0; i < 11; i++) { const l = new THREE.Mesh(leaf, lm); l.position.set(x, 0.1, z); l.rotation.set(-0.5 - r() * 0.6, i / 11 * Math.PI * 2 + r() * 0.3, 0, 'YXZ'); l.scale.setScalar(0.7 + r() * 0.6); g.add(l); }
-  shadowBlob(g, x, z, 0.16, 0.45, 0.0135);
-}
 function buildClub(g, c) {
   const K = blobIsland(1.85, -2.95, 0.62, 1.05, 0.08, 0.28), J = stripIsland([[-0.42, -1.35], [-0.24, -1.7], [-0.3, -2.45], [-0.25, -3.25]], 0.32), L = stripIsland([[-2.15, -1.55], [-2.32, -2.6], [-2.2, -3.7]], 0.34);
   const Rr = blobIsland(-1.55, -4.65, 0.17, 0.17, 0, 0, 28);
@@ -1035,7 +1060,7 @@ function buildClub(g, c) {
   turfIsland(g, K, [arc(K, -0.75, 0.75)]);                    // kerb on the apex of the right-hand sweeper
   turfIsland(g, J.poly, [J.capB]);                            // the hairpin round the J's tip
   turfIsland(g, L.poly, [L.capB, L.capA]);                    // both ends of the long strip
-  turfIsland(g, Rr, [[...Rr, Rr[0]]]); pottedPlant(g, -1.55, -4.65);
+  turfIsland(g, Rr, [[...Rr, Rr[0]]]);
   // painted lines: yellow round the kidney's right side and along the front, white arcs on the left loop
   paintLine(g, [[1.6, -4.45], [2.55, -4.2], [3.0, -3.1], [2.75, -1.75], [2.0, -1.4]], 0.022, 0xe8c21a);
   paintLine(g, [[-3.9, -5.4], [-3.0, -5.65], [-1.0, -5.75], [1.2, -5.7]], 0.022, 0xe8c21a);
@@ -1050,12 +1075,12 @@ function buildClub(g, c) {
 }
 // display cars: three setups standing still, parked on an island or round the FLOW centrepiece
 const DISPLAY_SETS = {
-  flow: [[{ a: '#e8e6e0', b: '#c8202a', c: '#141416', scheme: 'twotone', rim: 'covered', rimColor: '#f2f2ee', ride: 0, camber: 1, glowOn: 1, glow: '#00e5ff' }, -0.2 + 0.66 * Math.cos(0.35), -3.35 + 0.66 * Math.sin(0.35), 0.35 + Math.PI + 0.35],
-         [{ a: '#14224a', b: '#c8ccd4', c: '#ff7a1a', scheme: 'stripes', rim: 'original', tyres: 'original', rimColor: '', ride: 0.82, camber: 0.15, glowOn: 0 }, -0.2 + 0.66 * Math.cos(1.75), -3.35 + 0.66 * Math.sin(1.75), 1.75 + Math.PI + 0.35],
-         [{ a: '#d8261c', b: '#141416', c: '#ffd21a', scheme: 'sweep', rim: 'modern', rimColor: '#d4a23a', ride: 0.45, camber: 0.55, glowOn: 1, glow: '#39ff6a' }, -0.2 + 0.66 * Math.cos(3.3), -3.35 + 0.66 * Math.sin(3.3), 3.3 + Math.PI + 0.35]],
-  club: [[{ a: '#f2f0ea', b: '#16a8b8', c: '#1a1c22', scheme: 'fade', rim: 'covered', rimColor: '#16a8b8', ride: 0.09, camber: 0.9, glowOn: 0 }, 1.85, -2.4, Math.PI / 2 + 0.4],
-         [{ a: '#9ad21e', b: '#141416', c: '#f2f2ee', scheme: 'roof', rim: 'modern', rimColor: '#18181b', ride: 0.3, camber: 0.7, glowOn: 1, glow: '#a24bff' }, 1.85, -2.95, Math.PI / 2 + 0.4],
-         [{ a: '#ff6a13', b: '#6a1e8c', c: '#ffd21a', scheme: 'twotone', rim: 'original', rimColor: '', tyres: 'wide', ride: 0.55, camber: 0.4, glowOn: 0 }, 1.85, -3.5, Math.PI / 2 + 0.4]],
+  flow: [[{ a: '#e8e6e0', b: '#c8202a', c: '#141416', scheme: 'twotone', rim: 'covered', rimColor: '#f2f2ee', ride: 0, camber: 0, glowOn: 1, glow: '#00e5ff' }, -0.2 + 0.66 * Math.cos(0.35), -3.35 + 0.66 * Math.sin(0.35), 0.35 + Math.PI + 0.35],
+         [{ a: '#14224a', b: '#c8ccd4', c: '#ff7a1a', scheme: 'stripes', rim: 'original', tyres: 'original', rimColor: '', ride: 0.82, camber: 0.625, glowOn: 0 }, -0.2 + 0.66 * Math.cos(1.75), -3.35 + 0.66 * Math.sin(1.75), 1.75 + Math.PI + 0.35],
+         [{ a: '#d8261c', b: '#141416', c: '#ffd21a', scheme: 'sweep', rim: 'modern', rimColor: '#d4a23a', ride: 0.45, camber: 0.225, glowOn: 1, glow: '#39ff6a' }, -0.2 + 0.66 * Math.cos(3.3), -3.35 + 0.66 * Math.sin(3.3), 3.3 + Math.PI + 0.35]],
+  club: [[{ a: '#f2f0ea', b: '#16a8b8', c: '#1a1c22', scheme: 'fade', rim: 'covered', rimColor: '#16a8b8', ride: 0.09, camber: 0.05, glowOn: 0 }, 1.85, -2.4, Math.PI / 2 + 0.4],
+         [{ a: '#9ad21e', b: '#141416', c: '#f2f2ee', scheme: 'roof', rim: 'modern', rimColor: '#18181b', ride: 0.3, camber: 0.15, glowOn: 1, glow: '#a24bff' }, 1.85, -2.95, Math.PI / 2 + 0.4],
+         [{ a: '#ff6a13', b: '#6a1e8c', c: '#ffd21a', scheme: 'twotone', rim: 'original', rimColor: '', tyres: 'wide', ride: 0.55, camber: 0.5, glowOn: 0 }, 1.85, -3.5, Math.PI / 2 + 0.4]],
 };
 function buildDisplay(g, set, y = 0) {
   for (const [st, x, z, hd] of DISPLAY_SETS[set] || []) {
@@ -1637,7 +1662,7 @@ function archTable(T, cam, steer) { // max reach from the hub in the y-z plane, 
   return _archTabs[key] = tab;
 }
 function archFlare(geo, F) {
-  const pa = geo.attributes.position, m = 0.0015, s = 0.003;
+  const pa = geo.attributes.position, m = 0.0025, s = 0.003;
   for (let i = 0; i < pa.count; i++) {
     const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), front = z > 0, H = F.hubs[(front ? 'F' : 'R') + (x > 0 ? 'R' : 'L')], tab = front ? F.tF : F.tR;
     const dy = y - H[1], dz = z - H[2], d = Math.hypot(dy, dz); if (d > 0.05 || d < 1e-4 || dy < -0.006) continue;
@@ -1984,9 +2009,11 @@ function damageRepair(st) {
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
 // the car as it loads: satin black, covered rims in black, slammed 10 mm, pink underglow
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.75, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
-try { const st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+try { let st = JSON.parse(localStorage.getItem('cc-style9') || 'null');
+  if (!st) { st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); if (typeof st.camber === 'number') st.camber = 0.5 - st.camber / 2; } // old slider: 0 (none) .. 1 (12° negative)
+  for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
 // tyres follow the driving mode: hard drift tyres in DRIFT mode, rubber grip tyres in GRIP mode
 function carTyre(S) { let grip = false; try { grip = setup.car === 1; } catch (e) {} return grip ? 'grip' : 'drift'; }
 // the decal sheet for the car (none yet: the owner's own texture goes here, see PARTS.DECAL_SLOTS)
@@ -1996,8 +2023,9 @@ let CAR_DECAL_SHEET = null;
 // up inside the arches
 const rideMM = v => -12 + clamp(v ?? 0, 0, 1) * 22; // -12 (slammed: tyres tucked, arches opened round them) .. +10 mm; 0 is stock
 function carRide(S) { const r = rideMM(S.ride) / 1000, ch = Math.max(r, -0.003); return { chassis: ch, shell: r }; }
-// static camber: the slider sets the front 0-12°, the rear half that (default 9° / 4.5°, as on the video's cars)
-const camberDeg = (S, front) => clamp(S.camber ?? 0.75, 0, 1) * (front ? 12 : 6);
+// static camber: the slider runs from 12° negative (tops in) on the left, through 0 in the middle, to 12° positive (tops
+// out) on the right at the front; the rear gets half that. Returned as degrees of NEGATIVE camber (positive = tops in)
+const camberDeg = (S, front) => (0.5 - clamp(S.camber ?? 0.125, 0, 1)) * 2 * (front ? 12 : 6);
 function buildCar(S = CAR_STYLE) {
   const kind = PARTS.SHELLS[S.shell] ? S.shell : 'nk2002', tyre = carTyre(S), ride = carRide(S);
   const root = new THREE.Group(), model = new THREE.Group(); model.rotation.y = -Math.PI / 2; root.add(model);
@@ -2130,7 +2158,7 @@ function carImpact(vn, nx, nz, circle) {
   const big = out.find(t => /broke off|knocked off|torn off|bent|clip popped/i.test(t)); if (big) flash(big.toUpperCase(), 1.6);
 }
 // rebuild the car with a new look (customize screen) or new tyres (mode change)
-function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style8', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
+function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style9', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
 
 /* ---------------- driving model: 1/10 electric on-road (RWD drift or 4WD grip) ----------------
    SI units (m, kg, s, N). Body frame: x forward, y left, yaw rate r positive turning left.
@@ -2168,8 +2196,9 @@ const SETUP_OPTS = {
   arb: { label: 'ROLL BARS', opts: ['FRONT SOFT', 'BALANCED', 'FRONT STIFF'], f: [0.4, 0.5, 0.6] },
   assist: { label: 'DRIVING ASSIST', opts: ['ON', 'OFF'] },
 };
-const setup = { layout: 0, car: 0, motor: 3, tire: 1, gyro: 1, spring: 1, oil: 1, arb: 1, assist: 0 };
-try { const s = JSON.parse(localStorage.getItem('cc-setup4') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < (k === 'layout' ? COURSES.length : SETUP_OPTS[k].opts.length)) setup[k] = s[k]; } catch (e) {}
+// preset for smooth, continuous drifting (picked by measuring slides on the drift loops): drift motor, hard tyres, 90% gyro
+const setup = { layout: 0, car: 0, motor: 3, tire: 2, gyro: 3, spring: 1, oil: 1, arb: 1, assist: 0 };
+try { const s = JSON.parse(localStorage.getItem('cc-setup5') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < (k === 'layout' ? COURSES.length : SETUP_OPTS[k].opts.length)) setup[k] = s[k]; } catch (e) {}
 setup.car = 0; // drift only for now: grip mode is switched off (its code is kept)
 const VEH = {
   m: 1.45, L: 0.25, tw: 0.136, h: 0.03, hrc: 0.011, hpc: 0.010, // wheelbase and track from the shell; slammed: CG a little lower
@@ -2339,7 +2368,7 @@ function stepCar(dt, canDrive, walls = true) {
     }
   }
   // ramps: follow the ground, leave it when it falls away faster than gravity, land with a thump
-  if (RAMPS.length || car.y > 0) {
+  if (RAMPS.length || car.y > 0 || (TRACK && TRACK.E)) {
     const gNew = groundAt(car.x, car.z);
     if (!car.air) {
       // vertical speed from the ground slope, capped at what a ~12° ramp gives at this speed
@@ -2716,9 +2745,10 @@ function oppSample(sv) { const p = opp.path, f = sv / p.ds, i = Math.floor(f) % 
 function oppPose() {
   const q = oppSample(opp.s), lx = Math.cos(q.h), lz = -Math.sin(q.h), o = opp.obj;
   opp.x = q.x + lx * opp.off; opp.z = q.z + lz * opp.off; opp.h = q.h + opp.slip + (opp.slipK || 0);
-  const y = groundAt(opp.x, opp.z), fx = Math.sin(q.h), fz = Math.cos(q.h);
+  const ti = TRACK && TRACK.E ? Math.round(opp.s / opp.path.L * N) % N : undefined; // its own place on the lap (for bridges)
+  const y = groundAt(opp.x, opp.z, ti), fx = Math.sin(q.h), fz = Math.cos(q.h); opp.y = y;
   o.position.set(opp.x, y, opp.z); o.rotation.y = opp.h;
-  o.userData.model.rotation.z = Math.atan2(groundAt(opp.x + fx * 0.13, opp.z + fz * 0.13) - groundAt(opp.x - fx * 0.13, opp.z - fz * 0.13), 0.26);
+  o.userData.model.rotation.z = Math.atan2(groundAt(opp.x + fx * 0.13, opp.z + fz * 0.13, ti) - groundAt(opp.x - fx * 0.13, opp.z - fz * 0.13, ti), 0.26);
   const kk = opp.path.k[q.i];
   for (const w of o.userData.wheels) { w.m.rotation.z = -opp.spin; if (w.front) w.pivot.rotation.y = setup.car ? clamp(kk * 0.26, -0.5, 0.5) : clamp(-opp.slip * 0.9, -0.9, 0.9); }
   o.userData.body.rotation.x = clamp(-kk * opp.v * opp.v * 0.004, -0.06, 0.06);
@@ -2729,6 +2759,7 @@ function oppPose() {
 const CAR_E = 0.25, CAR_IM = VEH.Iz / VEH.m; // restitution; yaw inertia per unit mass (m^2)
 function carsCollide() {
   if (!oppActive() || race.state !== 'race') return;
+  if (Math.abs((car.y || 0) - (opp.y || 0)) > 0.08) return; // one on the bridge, one underneath
   const fx = Math.sin(opp.h), fz = Math.cos(opp.h), oc = [[opp.x + fx * 0.125, opp.z + fz * 0.125], [opp.x - fx * 0.125, opp.z - fz * 0.125]];
   let best = null;
   for (const pc of carCircles()) for (const o of oc) { const dx = pc[0] - o[0], dz = pc[1] - o[1], d = Math.hypot(dx, dz), pen = 2 * CAR_R - d; if (pen > 0 && d > 1e-6 && (!best || pen > best.pen)) best = { pen, nx: dx / d, nz: dz / d, pc, o }; }
@@ -3127,9 +3158,9 @@ function pollInput(dt) {
 const NOTES = {
   layout: ['Wide 1.2 m lane: a long straight, sweepers to link drifts, and a transition at the top where you flick from one direction to the other.', 'Inspired by Ebisu Minami, the D1 course: a long straight into a big, fast first sweeper, then an S-bend and hairpins back. Scaled to the room.', 'Inspired by Meihan Sportsland: big, flowing high-speed sweepers with no tight corners. The easiest to link end to end.', 'Inspired by Japanese RC courses such as Iroha and Team Tetsujin: technical, with back-to-back left-right transitions (manji) and tight hairpins.', 'The original 0.9 m grip circuit with a chicane and a dip.', 'No track. Open floor with one cone in the middle: circle it, figure-eight it, chase your longest drift.'],
   car: ['Drift: rear-wheel drive on hard plastic tires, ~57° of steering lock and a steering gyro. Throttle sets the drift angle.', 'Grip: regular RC driving. 4WD touring setup on rubber tires that stick; brakes, turns and accelerates like a normal RC car.'],
-  gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro (default). Smooth, lets the car rotate; you catch the slide with a little counter-steer.', 'Typical gyro gain. The stick sets how tight the drift is; the gyro counter-steers to hold it.', 'Strong gyro. Most stable; full lock still gives a tight ~1.5 m circle.'],
+  gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro. Lets the car rotate freely; you catch the slide with your own counter-steer.', 'Typical gyro gain. The stick sets how tight the drift is; the gyro counter-steers to hold it.', 'Strong gyro (default). Smoothest, longest slides; full lock still gives a tight ~1.5 m circle.'],
   motor: ['Out-of-the-box RTR motor on a 2S LiPo. About 40 km/h, gentle punch.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.', 'Drift-geared 13.5T brushless. Tops out near 35 km/h with smooth, controllable wheelspin.'],
-  tire: ['Soft carpet rubber. Most grip, best on short tracks.', 'Medium compound. A balanced starting point.', 'Hard compound. Less grip, slides earlier and more progressively.'],
+  tire: ['Soft carpet rubber. Most grip, best on short tracks.', 'Medium compound. A balanced starting point.', 'Hard compound (default). Less grip, slides earlier and more progressively: easiest to hold a long drift.'],
   spring: ['Soft springs. More roll and slower weight transfer; forgiving.', 'Medium springs. Kit standard.', 'Hard springs. Little roll, sharp response, less forgiving over the limit.'],
   oil: ['Thin shock oil. The body moves fast and can bounce after direction changes.', 'Kit standard shock oil.', 'Thick shock oil. Slow, damped body movement; the car settles before it rotates.'],
   arb: ['Softer front roll bar. More front grip: turns in harder, rear can step out.', 'Equal roll stiffness front and rear.', 'Stiffer front roll bar. More load transfer at the front: steadier, but pushes wide (understeer).'],
@@ -3165,7 +3196,7 @@ function buildGarage() {
   }
   $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short;
 }
-function saveSetup() { try { localStorage.setItem('cc-setup4', JSON.stringify(setup)); } catch (e) {} }
+function saveSetup() { try { localStorage.setItem('cc-setup5', JSON.stringify(setup)); } catch (e) {} }
 /* ---------------- customize: shell, paint, rims, decals, mounting ---------------- */
 const SWATCH = {
   rimColor: [['SILVER', '#c8ccd4'], ['GUNMETAL', '#4a4f57'], ['BLACK', '#18181b'], ['WHITE', '#f2f2ee'], ['GOLD', '#d4a23a'], ['BRONZE', '#8c5a28'], ['RED', '#c8202a'], ['BLUE', '#1f6bff']],
@@ -3221,7 +3252,7 @@ function renderCustom() {
         pk.addEventListener('input', () => { customRow = ri; setStyle(r.key, pk.value); }); pk.addEventListener('change', () => renderCustom()); ctl.appendChild(pk); }
     } else if (r.kind === 'slider') {
       ctl.className = 'sl'; const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0; inp.max = 100; inp.step = 5; inp.id = 'sl-' + r.key; inp.value = Math.round(CAR_STYLE[r.key] * 100); inp.setAttribute('aria-label', r.label.toLowerCase());
-      const slLabel = (k, v) => { if (k === 'ride') { const mm = rideMM(v); return (mm > 0 ? '+' : '') + mm.toFixed(0) + ' MM'; } if (k === 'camber') return '-' + (v * 12).toFixed(1) + '° / -' + (v * 6).toFixed(1) + '°'; return String(Math.round(v * 100)).padStart(3, ' '); };
+      const slLabel = (k, v) => { if (k === 'ride') { const mm = rideMM(v); return (mm > 0 ? '+' : '') + mm.toFixed(0) + ' MM'; } if (k === 'camber') { const f = (0.5 - v) * 24, sg = x => Math.abs(x) < 0.05 ? '0' : (x > 0 ? '-' : '+') + Math.abs(x).toFixed(1); return f === 0 || Math.abs(f) < 0.05 ? '0° NEUTRAL' : sg(f) + '° / ' + sg(f / 2) + '°'; } return String(Math.round(v * 100)).padStart(3, ' '); };
       const out = document.createElement('span'); out.textContent = slLabel(r.key, CAR_STYLE[r.key]);
       inp.addEventListener('input', () => { customRow = ri; setStyle(r.key, inp.value / 100); out.textContent = slLabel(r.key, inp.value / 100); });
       ctl.append(inp, out);
