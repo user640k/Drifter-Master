@@ -2440,14 +2440,22 @@ function raceHud() {
 
 /* ---------------- cameras ---------------- */
 const CAMS = ['TRACKSIDE', 'CHASE', 'DRIVER POV', 'DRIVER POV 2']; // the ceiling cam code below is kept but switched off
-// trackside: a spectator filming from outside the track like the reference video. Standing spots per map; the
-// camera stays on one spot and pans and zooms to keep the car about a third of the frame wide, and cuts to a better
-// spot when the car moves away (no more than one cut every 1.8 s)
-const SPOTS = {
-  arena: [[-3, 1.9, -6.15], [0, 1.9, -6.15], [3, 1.9, -6.15], [-5.1, 2.0, -3], [-5.1, 2.0, 0.5], [-5.1, 2.0, 3.6], [-2, 2.4, 5.6], [1.5, 2.6, 5.6], [4.7, 1.9, -3], [4.7, 1.9, 0.5], [4.7, 1.9, 3.6]],
-  home: [[-3.65, 1.55, -2.0], [-3.65, 1.55, 0.8], [3.65, 1.55, -2.0], [3.65, 1.55, 0.8], [-2.2, 1.55, -2.85], [1.2, 1.55, -2.85], [-1.5, 1.6, 2.85], [2.4, 1.6, 2.85]],
-};
-const TS = { spot: -1, hold: 0, fov: 30, W: 1.7, best: 3.4 }; // W: frame width at the car (m); best: preferred distance from the spot
+// trackside: a spectator filming from outside the track like the reference video. The camera never cuts: it walks
+// along a rail round the outside of the track (standing height) toward the point nearest the car, pans to follow it
+// with a slight handheld lag and zooms so the frame is about 2.6 m wide at the car
+const RAILS = { arena: { x0: -5.1, x1: 4.7, z0: -6.15, z1: 5.6, y: 2.0 }, home: { x0: -3.65, x1: 3.65, z0: -2.85, z1: 2.85, y: 1.55 } };
+const TS = { s: null, fov: 30, W: 2.6, walk: 2.8 }; // W: frame width at the car (m); walk: how fast the camera person moves (m/s)
+function railOf(M) { return RAILS[M.key] || { x0: -M.hx + 0.3, x1: M.hx - 0.3, z0: -M.hz + 0.3, z1: M.hz - 0.3, y: 1.6 }; }
+function railLen(R) { return 2 * (R.x1 - R.x0) + 2 * (R.z1 - R.z0); }
+function railPoint(R, sv) { // walk round the rectangle from the front-left corner: front, right side, back, left side
+  const W = R.x1 - R.x0, D = R.z1 - R.z0, L = railLen(R); sv = ((sv % L) + L) % L;
+  if (sv < W) return [R.x0 + sv, R.z0]; sv -= W; if (sv < D) return [R.x1, R.z0 + sv]; sv -= D; if (sv < W) return [R.x1 - sv, R.z1]; sv -= W; return [R.x0, R.z1 - sv];
+}
+function railNearest(R, x, z) { // arc position of the rail point closest to (x, z)
+  const W = R.x1 - R.x0, D = R.z1 - R.z0, cx = clamp(x, R.x0, R.x1), cz = clamp(z, R.z0, R.z1);
+  const c = [[Math.abs(z - R.z0), cx - R.x0], [Math.abs(x - R.x1), W + cz - R.z0], [Math.abs(z - R.z1), W + D + R.x1 - cx], [Math.abs(x - R.x0), 2 * W + D + R.z1 - cz]];
+  c.sort((a, b) => a[0] - b[0]); return c[0][1];
+}
 // the driver: standing in the near-left corner like at home, eyes at 1.65 m, head turning to follow the car
 // with a human lag, a 55° field of view (no zoom), and the transmitter held in front at chest height
 const POV = { fov: 55 }; // eye position comes from the map (MAP.pov)
@@ -2499,18 +2507,20 @@ function updateCamera(dt, snap) {
   const fx = Math.sin(camAng), fz = Math.cos(camAng);
   const target = new THREE.Vector3(car.x, 0.05, car.z);
   if (camMode === 0) {
-    const spots = SPOTS[MAP.key] || [[0, 1.8, -MAP.hz + 0.3]], score = q => { const d = Math.hypot(q[0] - car.x, q[2] - car.z); return Math.abs(d - TS.best) + (d < 1.1 ? 3 : 0); };
-    let bi = 0; spots.forEach((q, i) => { if (score(q) < score(spots[bi])) bi = i; });
-    TS.hold += dt || 0;
-    let cut = snap || TS.spot < 0 || TS.spot >= spots.length;
-    if (!cut && bi !== TS.spot && TS.hold > 1.8 && score(spots[TS.spot]) - score(spots[bi]) > 0.8) cut = true;
-    if (cut) { TS.spot = bi; TS.hold = 0; }
-    const q = spots[TS.spot], t = performance.now() / 1000;
-    camPos.set(q[0] + Math.sin(t * 0.9) * 0.012, q[1] + Math.sin(t * 1.7) * 0.006, q[2] + Math.cos(t * 0.7) * 0.012); // handheld
+    const R = railOf(MAP), L = railLen(R); let goal = railNearest(R, car.x, car.z);
+    { // when the car comes close to the rail, step back along it (keeping to the side the camera is already on) so the
+      // view never ends up looking straight down
+      const [px, pz] = railPoint(R, goal), dp = Math.hypot(px - car.x, pz - car.z), keep = 2.2;
+      if (dp < keep) { let side = TS.s === null ? 1 : TS.s - goal; side -= Math.round(side / L) * L; goal += (side < 0 ? -1 : 1) * Math.sqrt(keep * keep - dp * dp); }
+    }
+    if (snap || TS.s === null || TS.map !== MAP.key) { TS.s = goal; TS.map = MAP.key; }
+    else { let d = goal - TS.s; d -= Math.round(d / L) * L; TS.s += clamp(d, -TS.walk * dt, TS.walk * dt) * (Math.abs(d) > 0.3 ? 1 : Math.abs(d) / 0.3); }
+    const [qx, qz] = railPoint(R, TS.s), t = performance.now() / 1000;
+    camPos.set(qx + Math.sin(t * 0.9) * 0.012, R.y + Math.sin(t * 1.7) * 0.006, qz + Math.cos(t * 0.7) * 0.012); // handheld
     const aim = new THREE.Vector3(car.x + car.vx * 0.3, 0.04, car.z + car.vz * 0.3);
-    if (cut) camLook.copy(aim); else camLook.lerp(aim, 1 - Math.exp(-dt * 4.5));
-    const dist = camPos.distanceTo(aim), hf = 2 * Math.atan(TS.W / 2 / dist), vf = 2 * Math.atan(Math.tan(hf / 2) / (1280 / 720)) * 180 / Math.PI;
-    const fovT = clamp(vf, 8, 55); TS.fov = cut ? fovT : TS.fov + (fovT - TS.fov) * (1 - Math.exp(-dt * 3));
+    if (snap) camLook.copy(aim); else camLook.lerp(aim, 1 - Math.exp(-dt * 4.5));
+    const dist = camPos.distanceTo(camLook), hf = 2 * Math.atan(TS.W / 2 / dist), vf = 2 * Math.atan(Math.tan(hf / 2) / (1280 / 720)) * 180 / Math.PI;
+    const fovT = clamp(vf, 10, 60); TS.fov = snap ? fovT : TS.fov + (fovT - TS.fov) * (1 - Math.exp(-dt * 3));
     camera.fov = TS.fov;
   } else if (camMode === 1) {
     const want = new THREE.Vector3(car.x - fx * 0.78, 0.3, car.z - fz * 0.78);
