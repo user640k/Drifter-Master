@@ -331,7 +331,7 @@ function buildWheel(type, set = 0) {
 //  OFF-ROAD nitro 4WD: aluminium plate, .15 engine (finned head, carburettor, tuned pipe), fuel tank, clutch bell,
 //          centre shaft to front and rear diffs, a disc brake on the centre shaft, radio box, long shocks.
 PARTS.CHASSIS = {
-  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor; wheelbase, track and wheel size taken from the shell', tyre: 'drift', wb: 0.25, wheelX: 0.068, wR: 0.0291, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.06, shockR: 0.0062, travel: 0.006 },
+  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor: 257 mm wheelbase, 195 mm across the tyres, 1.9 in wheels', tyre: 'drift', wb: 0.257, wheelX: 0.0845, wR: 0.032, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.06, shockR: 0.0062, travel: 0.006 },
 };
 PARTS.CHASSIS.driftLong = { ...PARTS.CHASSIS.drift, name: 'DRIFT LONG', note: 'The drift chassis on its long setting: 270 mm wheelbase (longer plate and links), for the van', wb: 0.27 };
 PARTS.carbonTex = () => {
@@ -547,16 +547,22 @@ PARTS.SHELLS = {
   // the owner's model of a 1970s two-door saloon (a BMW 2002 tii), used as-is: only scaled uniformly to true 1/10 of
   // the real car (250 mm wheelbase) and turned into the game's frame by tools/car_from_usdz.py. The chassis, wheels,
   // posts, decals, damage and physics all fit to it. width / top are its outline, for aiming hits in the lab.
-  nk2002: { name: 'SEDAN', note: "The owner's sedan model, true 1/10 scale: 421 × 176 × 137 mm, 250 mm wheelbase", chassis: 'drift', model: true,
-    z0: -0.2225, z1: 0.1985, width: [[-0.2225, 0.0881], [0.1985, 0.0881]], top: [[-0.2225, 0.137], [0.1985, 0.137]], sway: 1.5 },
+  nk2002: { name: 'SEDAN', note: "The owner's sedan model, fitted as an RC body: 426 × 196 × 141 mm on the 257 mm wheelbase", chassis: 'drift', model: true,
+    z0: -0.2225, z1: 0.1985, width: [[-0.2225, 0.0881], [0.1985, 0.0881]], top: [[-0.2225, 0.137], [0.1985, 0.137]], sway: 1.5, fit: [196 / 158.8, 257 / 250] },
   // the owner's model of a 1970s Polish Żuk van (tools/zuk_from_blend.py), true 1/10 (270 mm wheelbase), emptied into an
   // RC shell: no wheels, floor, arch liners or running gear; the long chassis and the game's wheels go underneath. It
   // keeps the model's texture (rust and all); paint schemes recolour its blue paint. Tall and boxy: it sways on its posts.
-  zuk: { name: 'VAN', note: "The owner's van model, true 1/10 scale: 440 × 175 × 209 mm, 270 mm wheelbase", chassis: 'driftLong', model: true,
-    z0: -0.2459, z1: 0.1943, width: [[-0.2459, 0.0875], [0.1943, 0.0875]], top: [[-0.2459, 0.209], [0.1943, 0.209]], sway: 8,
+  zuk: { name: 'VAN', note: "The owner's van model, fitted as an RC body: 419 × 196 × 199 mm on the 257 mm wheelbase", chassis: 'drift', model: true,
+    z0: -0.2459, z1: 0.1943, width: [[-0.2459, 0.0875], [0.1943, 0.0875]], top: [[-0.2459, 0.209], [0.1943, 0.209]], sway: 8, fit: [196 / 171.2, 257 / 270],
     eye: [0, 0.158, 0.105] },
 };
 const BODY_ASSETS = { nk2002: BODY_ASSET, zuk: ZUK_ASSET };
+// Real 1/10 RC drift bodies are not scale models: they are made to fit the standard chassis (257 mm wheelbase, about
+// 195 mm across the tyres). Each body keeps its shape and is fitted the same way: stretched or shrunk lengthwise (and in
+// height, by the same factor) so its wheelbase is 257 mm, and widened to 196 mm so the wheels tuck under the arches.
+// fit = [width factor, length/height factor]; applied as the shell group's scale, so everything on the shell follows
+const shellFit = kind => (PARTS.SHELLS[kind] && PARTS.SHELLS[kind].fit) || [1, 1];
+const STEER_LOCK = 1.22; // 70° front steering throw (real drift chassis: 65° to over 85°)
 // decode the embedded model: quantised positions per mesh, by material role; wheels relative to their hub
 function b64bytes(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
 const MODEL_GEO = {};
@@ -643,7 +649,7 @@ function raceBumper(mt) {
 const _archTabs = {};
 function archTable(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
   const key = [T.od, T.w, cam.toFixed(4), steer, off].join('|'); if (_archTabs[key]) return _archTabs[key];
-  const R = T.od / 2, hw = T.w / 2 + 0.0015, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
+  const R = T.od / 2, hw = T.w / 2 + 0.003, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
   const steps = steer ? 47 : 1;
   for (let k = 0; k < steps; k++) { const st = steer ? -steer + 2 * steer * k / (steps - 1) : 0, ss = Math.sin(st), cs = Math.cos(st);
     // the tyre is tilted by its camber about its own centre; a spacer puts that centre off out from the pivot, where camber
@@ -697,7 +703,7 @@ function archFlare(geo, F) {
 }
 // the Żuk: one textured body (recoloured by the paint schemes where the model is painted blue), glass and two mirrors
 function buildZukShell(flare) {
-  const kind = 'zuk', S = PARTS.SHELLS.zuk, mt = PARTS.shellMats(), root = new THREE.Group();
+  const kind = 'zuk', S = PARTS.SHELLS.zuk, mt = PARTS.shellMats(), root = new THREE.Group(), [FX, FY] = shellFit('zuk');
   const parts = [], tag = (name, obj, focus) => { if (!parts.find(p => p.name === name)) parts.push({ name, obj, focus }); return obj; };
   const trim = new THREE.MeshPhongMaterial({ map: zukTex('zukDif'), emissiveMap: zukTex('zukEmit'), emissive: 0xffffff, specular: 0x444444, shininess: 40, side: THREE.DoubleSide });
   const glass = new THREE.MeshPhongMaterial({ map: zukTex('zukDif'), color: 0xffffff, specular: 0x9aa0aa, shininess: 150, envMap: PARTS.envTex, reflectivity: 0.25, transparent: true, opacity: 0.82, side: THREE.DoubleSide });
@@ -710,8 +716,7 @@ function buildZukShell(flare) {
     place(mesh);
   }
   if (flare) {
-    const C = Object.values(flare.hubs);
-    root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) { refineNear(o.geometry, C, 0.06, 0.004); archFlare(o.geometry, flare); } });
+    root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) flareFitted(o.geometry, flare, FX, FY, true); });
     body.geometry.clearGroups(); body.geometry.addGroup(0, body.geometry.index.count, 0);
   }
   root.remove(body); root.children.unshift(body); body.parent = root;
@@ -723,10 +728,17 @@ function buildZukShell(flare) {
   for (const b of brkGroups) if (b.g) tag(b.name, b.g, new THREE.Box3().setFromObject(b.g).getCenter(new THREE.Vector3()).toArray());
   const brk = brkGroups.filter(b => b.g).map(b => [b.name, b.g, b.tough]);
   root.userData = { kind, parts, mats: { ...mt, glass, trim: mt.black, amber: mt.tail }, S, brk };
+  root.scale.set(FX, FY, FY); // fitted to the chassis as an RC body
   return root;
+}
+// opening the arches works in the chassis frame: the geometry is fitted (scaled) for it, then put back
+function flareFitted(geo, flare, FX, FY, refine) {
+  geo.scale(FX, FY, FY); if (refine) refineNear(geo, Object.values(flare.hubs), 0.06, 0.004); archFlare(geo, flare); geo.scale(1 / FX, 1 / FY, 1 / FY);
+  geo.deleteAttribute('normal'); geo.computeVertexNormals();
 }
 function buildShell(kind, paint, flare) {
   if (kind === 'zuk') return buildZukShell(flare);
+  const [FX, FY] = shellFit(kind);
   const S = PARTS.SHELLS[kind], mt = PARTS.shellMats(paint), root = new THREE.Group();
   const parts = [], tag = (name, obj, focus) => { if (!parts.find(p => p.name === name)) parts.push({ name, obj, focus }); return obj; };
   const roleMat = { paint: mt.paint, chrome: mt.satin, black: mt.black, glass: mt.glass, lens: mt.lens, redlight: mt.tail, emblem: mt.emblem, badge: mt.badge };
@@ -741,7 +753,7 @@ function buildShell(kind, paint, flare) {
     if (/^rear_hood_CP_Black/.test(p.name)) { // the model's inner wheel-well lining: left out where the wheels sweep when they steer (RC shells are open underneath)
       const pa = mesh.geometry.attributes.position, ix = mesh.geometry.index.array, keep = [], hubs = flare ? Object.values(flare.hubs) : Object.values(BODY_ASSET.hubs), cutR = flare ? Math.hypot(flare.R, flare.hw) + 0.005 : 0.036, c = new THREE.Vector3(), v = new THREE.Vector3();
       for (let t = 0; t < ix.length; t += 3) { c.set(0, 0, 0); const pts = []; for (let k = 0; k < 3; k++) { v.fromBufferAttribute(pa, ix[t + k]); pts.push(v.clone()); c.add(v); } c.multiplyScalar(1 / 3); pts.push(c);
-        if (hubs.every(h => pts.every(q => Math.hypot(q.x - h[0], q.y - h[1], q.z - h[2]) > cutR))) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
+        if (hubs.every(h => pts.every(q => Math.hypot(q.x * FX - h[0], q.y * FY - h[1], q.z * FY - h[2]) > cutR))) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
       mesh.geometry.setIndex(keep);
     }
     if (p.role === 'paint') { mesh.geometry.clearGroups(); mesh.geometry.addGroup(0, mesh.geometry.index.count, 0); body = body || mesh; }
@@ -752,7 +764,7 @@ function buildShell(kind, paint, flare) {
     const rp = new THREE.Mesh(new THREE.PlaneGeometry(0.0405, 0.0095), new THREE.MeshPhongMaterial({ map: plateTex(), shininess: 60, specular: 0x333333, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
     rp.name = 'back_buffer_plate'; rp.position.set(0, 0.0602, -0.2168); rp.rotation.y = Math.PI; place(rp);
   }
-  if (flare) root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) archFlare(o.geometry, flare); });
+  if (flare) root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) flareFitted(o.geometry, flare, FX, FY, false); });
   root.remove(body); root.children.unshift(body); body.parent = root; // the paint shell is always children[0]
   { // a dark dashboard under the windshield: from the glass base down and back into the cabin
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.06), new THREE.MeshLambertMaterial({ color: 0x141416, side: THREE.DoubleSide }));
@@ -763,6 +775,7 @@ function buildShell(kind, paint, flare) {
   for (const b of brkGroups) if (b.g) tag(b.name, b.g, new THREE.Box3().setFromObject(b.g).getCenter(new THREE.Vector3()).toArray());
   const brk = brkGroups.filter(b => b.g).map(b => [b.name, b.g, b.tough]);
   root.userData = { kind, parts, mats: { ...mt, trim: mt.black, amber: mt.tail }, S, brk };
+  root.scale.set(FX, FY, FY); // fitted to the chassis as an RC body
   return root;
 }
 // the model's own wheels for one corner ('FR', 'FL', 'RR', 'RL'): { spin: tyre, rim, disc; fixed: caliper }, built at the hub
@@ -897,8 +910,8 @@ PARTS.MOUNTS = {
   magnets: { name: 'MAGNETS', note: 'Hidden: 10 × 3 mm neodymium discs, steel discs in the shell' },
 };
 PARTS.MOUNT_POINTS = { // [x, z, base y] of each post or holder (left side mirrored)
-  nk2002: [[0.022, 0.111, 0.071], [0.024, -0.165, 0.04]],
-  zuk: [[0.022, 0.118, 0.071], [0.024, -0.178, 0.04]], // long posts: the roof is 21 cm up
+  nk2002: [[0.022, 0.114, 0.071], [0.024, -0.17, 0.04]],
+  zuk: [[0.022, 0.114, 0.071], [0.024, -0.17, 0.04]], // long posts: the van's roof is 20 cm up
 };
 function rClipGeo() { // an R-clip in its own plane: straight pin along +x, loop at the end, wavy outer leg back
   const L = 0.016, pts = [[0, 0], [L * 0.5, 0], [L, 0], [L + 0.0028, 0.0018], [L + 0.0022, 0.0048], [L - 0.0012, 0.0058], [L * 0.62, 0.0046], [L * 0.45, 0.0068], [L * 0.28, 0.0046], [L * 0.1, 0.0034]];
@@ -911,18 +924,18 @@ function buildMounts(shell, type) {
   const clipGeo = rClipGeo(), washerM = new THREE.MeshPhongMaterial({ color: 0x18181a, specular: 0x222222, shininess: 12 });
   const holeM = new THREE.MeshBasicMaterial({ color: 0x050505 });
   for (const [px, pz, by] of PARTS.MOUNT_POINTS[kind]) for (const s of [-1, 1]) {
-    const x = s * px, sy = shellTopY(shell, x, pz);
+    const [FX, FY] = shellFit(kind), x = s * px, sy = shellTopY(shell, x / FX, pz / FY) * FY; // the shell is fitted (scaled); posts live in the chassis frame
     if (type === 'posts') {
       const top = sy + 0.014, post = pCyl(0.003, 0.003, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
       for (let h = by + 0.008; h < top - 0.002; h += 0.003) { const hole = pCyl(0.00085, 0.00085, 0.0062, holeM, 'z', x, h, pz, posts, 6); hole.rotation.y = 0; }
       pCyl(0.0055, 0.0055, 0.003, m.redAlu, null, x, by + 0.0015, pz, posts, 16); // post mount
-      const w = pCyl(0.0058, 0.0058, 0.0012, washerM, null, x, sy + 0.0007, pz, onShell, 18); // rubber body washer on the shell
+      const w = pCyl(0.0058, 0.0058, 0.0012, washerM, null, x / FX, (sy + 0.0007) / FY, pz / FY, onShell, 18); // rubber body washer on the shell
       const clip = new THREE.Mesh(clipGeo, m.steel); clip.position.set(x, sy + 0.0045, pz); clip.rotation.y = s > 0 ? 0 : Math.PI; clip.userData.home = clip.position.clone(); clip.userData.out = new THREE.Vector3(s * 0.016, 0, 0); clips.add(clip);
       tag('Body posts with height holes', post, [x, (top + by) / 2, pz]); tag('R-clips', clip, [x, sy + 0.005, pz]); tag('Rubber body washers', w, [x, sy, pz]);
     } else {
       const top = sy - 0.0035, holder = pCyl(0.0042, 0.0042, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
       const mag = pCyl(0.005, 0.005, 0.003, m.steel, null, x, top + 0.0015, pz, posts, 20);
-      const disc = pCyl(0.0058, 0.0058, 0.0008, m.darkSteel, null, x, sy - 0.0012, pz, onShell, 20);
+      const disc = pCyl(0.0058, 0.0058, 0.0008, m.darkSteel, null, x / FX, (sy - 0.0012) / FY, pz / FY, onShell, 20);
       tag('Magnet holders', holder, [x, (top + by) / 2, pz]); tag('Neodymium magnets (10 × 3 mm)', mag, [x, top, pz]); tag('Steel discs inside the shell', disc, [x, sy, pz]);
     }
   }

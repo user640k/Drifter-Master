@@ -773,7 +773,8 @@ const COURSES = [
     club: true, display: 'club', start: [0, 0, 0], gates: [],
     line: [[-2.0, -5.2], [0.0, -5.3], [1.8, -5.15], [2.9, -4.55], [3.25, -3.3], [3.1, -1.75], [2.4, -0.85], [1.3, -0.75], [0.55, -1.3], [0.45, -2.5], [0.4, -3.45], [-0.1, -4.1], [-0.75, -3.9], [-0.95, -3.0], [-0.95, -2.0], [-1.25, -1.1], [-2.1, -0.75], [-3.05, -1.05], [-3.45, -2.2], [-3.4, -3.6], [-2.9, -4.7]] },
   { name: 'JUMP', map: 'arena', note: 'A drift loop over the whole floor between low white boards with a jump on the fence-side run: a 13 cm, 20 degree kicker launches you over two cars parked across the track onto a landing ramp. Hit the lip at about 3 m/s (11 km/h) or you land on the cars.',
-    jump: { x: 3.05, lip: -1.0, land: -0.36, h: 0.13, hl: 0.10, w: 1.2 }, lowSolids: [[2.84, -0.8, 3.26, -0.62, 0.136], [2.82, -0.6, 3.24, -0.42, 0.136]],
+    jump: { x: 3.05, lip: -1.0, land: -0.36, h: 0.13, hl: 0.10, w: 1.2 }, lowSolids: [[2.83,  -0.81,  3.27,  -0.77,  0.1],  [2.83,  -0.77,  3.27,  -0.65,  0.141],  [2.83,  -0.65,  3.27,  -0.61,  0.1],  [2.81,  -0.6,  3.25,  -0.56,  0.1],  [2.81,  -0.56,  3.25,  -0.44,  0.141],  [2.81,  -0.44,  3.25,  -0.4,  0.1]], // the parked cars: lower along their sides, roof height in the middle
+   
     ramps: [
       { x: 3.05, z: -1.36, ang: 0, w: 1.2, style: 'deck', prof: [[0, 0], [0.36, 0.13]] },
       { x: 3.05, z: -0.36, ang: 0, w: 1.2, style: 'deck', prof: [[0, 0.1], [0.1, 0.1], [0.85, 0]] },
@@ -1104,8 +1105,8 @@ function setGateBar(i) {
   gateBar.scale.x = Math.hypot(dx, dz) - 0.04; gateBar.rotation.z = -Math.atan2(dz, dx);
 }
 // car body as two circles on its axles; push out of room walls and furniture
-function carCircles() { const fx = Math.sin(car.h), fz = Math.cos(car.h); return [[car.x + fx * 0.125, car.z + fz * 0.125], [car.x - fx * 0.125, car.z - fz * 0.125]]; }
-const CAR_R = 0.087; // two circles cover the 2002 body (176 mm wide, 421 mm long)
+function carCircles() { const fx = Math.sin(car.h), fz = Math.cos(car.h); return [[car.x + fx * 0.1285, car.z + fz * 0.1285], [car.x - fx * 0.1285, car.z - fz * 0.1285]]; }
+const CAR_R = 0.098; // two circles on the axles cover the 196 mm wide RC body
 // polygon contact for a car circle: keepIn = the circle stays inside (track edge), otherwise outside (island)
 function polyContacts(cx, cz, poly, keepIn, out) {
   let bb = poly.bb; if (!bb) { bb = poly.bb = [1e9, 1e9, -1e9, -1e9]; for (const [x, z] of poly) { bb[0] = Math.min(bb[0], x); bb[1] = Math.min(bb[1], z); bb[2] = Math.max(bb[2], x); bb[3] = Math.max(bb[3], z); } }
@@ -1352,7 +1353,7 @@ function buildWheel(type, set = 0) {
 //  OFF-ROAD nitro 4WD: aluminium plate, .15 engine (finned head, carburettor, tuned pipe), fuel tank, clutch bell,
 //          centre shaft to front and rear diffs, a disc brake on the centre shaft, radio box, long shocks.
 PARTS.CHASSIS = {
-  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor; wheelbase, track and wheel size taken from the shell', tyre: 'drift', wb: 0.25, wheelX: 0.068, wR: 0.0291, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.06, shockR: 0.0062, travel: 0.006 },
+  drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor: 257 mm wheelbase, 195 mm across the tyres, 1.9 in wheels', tyre: 'drift', wb: 0.257, wheelX: 0.0845, wR: 0.032, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.06, shockR: 0.0062, travel: 0.006 },
 };
 PARTS.CHASSIS.driftLong = { ...PARTS.CHASSIS.drift, name: 'DRIFT LONG', note: 'The drift chassis on its long setting: 270 mm wheelbase (longer plate and links), for the van', wb: 0.27 };
 PARTS.carbonTex = () => {
@@ -1568,16 +1569,22 @@ PARTS.SHELLS = {
   // the owner's model of a 1970s two-door saloon (a BMW 2002 tii), used as-is: only scaled uniformly to true 1/10 of
   // the real car (250 mm wheelbase) and turned into the game's frame by tools/car_from_usdz.py. The chassis, wheels,
   // posts, decals, damage and physics all fit to it. width / top are its outline, for aiming hits in the lab.
-  nk2002: { name: 'SEDAN', note: "The owner's sedan model, true 1/10 scale: 421 × 176 × 137 mm, 250 mm wheelbase", chassis: 'drift', model: true,
-    z0: -0.2225, z1: 0.1985, width: [[-0.2225, 0.0881], [0.1985, 0.0881]], top: [[-0.2225, 0.137], [0.1985, 0.137]], sway: 1.5 },
+  nk2002: { name: 'SEDAN', note: "The owner's sedan model, fitted as an RC body: 426 × 196 × 141 mm on the 257 mm wheelbase", chassis: 'drift', model: true,
+    z0: -0.2225, z1: 0.1985, width: [[-0.2225, 0.0881], [0.1985, 0.0881]], top: [[-0.2225, 0.137], [0.1985, 0.137]], sway: 1.5, fit: [196 / 158.8, 257 / 250] },
   // the owner's model of a 1970s Polish Żuk van (tools/zuk_from_blend.py), true 1/10 (270 mm wheelbase), emptied into an
   // RC shell: no wheels, floor, arch liners or running gear; the long chassis and the game's wheels go underneath. It
   // keeps the model's texture (rust and all); paint schemes recolour its blue paint. Tall and boxy: it sways on its posts.
-  zuk: { name: 'VAN', note: "The owner's van model, true 1/10 scale: 440 × 175 × 209 mm, 270 mm wheelbase", chassis: 'driftLong', model: true,
-    z0: -0.2459, z1: 0.1943, width: [[-0.2459, 0.0875], [0.1943, 0.0875]], top: [[-0.2459, 0.209], [0.1943, 0.209]], sway: 8,
+  zuk: { name: 'VAN', note: "The owner's van model, fitted as an RC body: 419 × 196 × 199 mm on the 257 mm wheelbase", chassis: 'drift', model: true,
+    z0: -0.2459, z1: 0.1943, width: [[-0.2459, 0.0875], [0.1943, 0.0875]], top: [[-0.2459, 0.209], [0.1943, 0.209]], sway: 8, fit: [196 / 171.2, 257 / 270],
     eye: [0, 0.158, 0.105] },
 };
 const BODY_ASSETS = { nk2002: BODY_ASSET, zuk: ZUK_ASSET };
+// Real 1/10 RC drift bodies are not scale models: they are made to fit the standard chassis (257 mm wheelbase, about
+// 195 mm across the tyres). Each body keeps its shape and is fitted the same way: stretched or shrunk lengthwise (and in
+// height, by the same factor) so its wheelbase is 257 mm, and widened to 196 mm so the wheels tuck under the arches.
+// fit = [width factor, length/height factor]; applied as the shell group's scale, so everything on the shell follows
+const shellFit = kind => (PARTS.SHELLS[kind] && PARTS.SHELLS[kind].fit) || [1, 1];
+const STEER_LOCK = 1.22; // 70° front steering throw (real drift chassis: 65° to over 85°)
 // decode the embedded model: quantised positions per mesh, by material role; wheels relative to their hub
 function b64bytes(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
 const MODEL_GEO = {};
@@ -1664,7 +1671,7 @@ function raceBumper(mt) {
 const _archTabs = {};
 function archTable(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
   const key = [T.od, T.w, cam.toFixed(4), steer, off].join('|'); if (_archTabs[key]) return _archTabs[key];
-  const R = T.od / 2, hw = T.w / 2 + 0.0015, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
+  const R = T.od / 2, hw = T.w / 2 + 0.003, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
   const steps = steer ? 47 : 1;
   for (let k = 0; k < steps; k++) { const st = steer ? -steer + 2 * steer * k / (steps - 1) : 0, ss = Math.sin(st), cs = Math.cos(st);
     // the tyre is tilted by its camber about its own centre; a spacer puts that centre off out from the pivot, where camber
@@ -1718,7 +1725,7 @@ function archFlare(geo, F) {
 }
 // the Żuk: one textured body (recoloured by the paint schemes where the model is painted blue), glass and two mirrors
 function buildZukShell(flare) {
-  const kind = 'zuk', S = PARTS.SHELLS.zuk, mt = PARTS.shellMats(), root = new THREE.Group();
+  const kind = 'zuk', S = PARTS.SHELLS.zuk, mt = PARTS.shellMats(), root = new THREE.Group(), [FX, FY] = shellFit('zuk');
   const parts = [], tag = (name, obj, focus) => { if (!parts.find(p => p.name === name)) parts.push({ name, obj, focus }); return obj; };
   const trim = new THREE.MeshPhongMaterial({ map: zukTex('zukDif'), emissiveMap: zukTex('zukEmit'), emissive: 0xffffff, specular: 0x444444, shininess: 40, side: THREE.DoubleSide });
   const glass = new THREE.MeshPhongMaterial({ map: zukTex('zukDif'), color: 0xffffff, specular: 0x9aa0aa, shininess: 150, envMap: PARTS.envTex, reflectivity: 0.25, transparent: true, opacity: 0.82, side: THREE.DoubleSide });
@@ -1731,8 +1738,7 @@ function buildZukShell(flare) {
     place(mesh);
   }
   if (flare) {
-    const C = Object.values(flare.hubs);
-    root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) { refineNear(o.geometry, C, 0.06, 0.004); archFlare(o.geometry, flare); } });
+    root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) flareFitted(o.geometry, flare, FX, FY, true); });
     body.geometry.clearGroups(); body.geometry.addGroup(0, body.geometry.index.count, 0);
   }
   root.remove(body); root.children.unshift(body); body.parent = root;
@@ -1744,10 +1750,17 @@ function buildZukShell(flare) {
   for (const b of brkGroups) if (b.g) tag(b.name, b.g, new THREE.Box3().setFromObject(b.g).getCenter(new THREE.Vector3()).toArray());
   const brk = brkGroups.filter(b => b.g).map(b => [b.name, b.g, b.tough]);
   root.userData = { kind, parts, mats: { ...mt, glass, trim: mt.black, amber: mt.tail }, S, brk };
+  root.scale.set(FX, FY, FY); // fitted to the chassis as an RC body
   return root;
+}
+// opening the arches works in the chassis frame: the geometry is fitted (scaled) for it, then put back
+function flareFitted(geo, flare, FX, FY, refine) {
+  geo.scale(FX, FY, FY); if (refine) refineNear(geo, Object.values(flare.hubs), 0.06, 0.004); archFlare(geo, flare); geo.scale(1 / FX, 1 / FY, 1 / FY);
+  geo.deleteAttribute('normal'); geo.computeVertexNormals();
 }
 function buildShell(kind, paint, flare) {
   if (kind === 'zuk') return buildZukShell(flare);
+  const [FX, FY] = shellFit(kind);
   const S = PARTS.SHELLS[kind], mt = PARTS.shellMats(paint), root = new THREE.Group();
   const parts = [], tag = (name, obj, focus) => { if (!parts.find(p => p.name === name)) parts.push({ name, obj, focus }); return obj; };
   const roleMat = { paint: mt.paint, chrome: mt.satin, black: mt.black, glass: mt.glass, lens: mt.lens, redlight: mt.tail, emblem: mt.emblem, badge: mt.badge };
@@ -1762,7 +1775,7 @@ function buildShell(kind, paint, flare) {
     if (/^rear_hood_CP_Black/.test(p.name)) { // the model's inner wheel-well lining: left out where the wheels sweep when they steer (RC shells are open underneath)
       const pa = mesh.geometry.attributes.position, ix = mesh.geometry.index.array, keep = [], hubs = flare ? Object.values(flare.hubs) : Object.values(BODY_ASSET.hubs), cutR = flare ? Math.hypot(flare.R, flare.hw) + 0.005 : 0.036, c = new THREE.Vector3(), v = new THREE.Vector3();
       for (let t = 0; t < ix.length; t += 3) { c.set(0, 0, 0); const pts = []; for (let k = 0; k < 3; k++) { v.fromBufferAttribute(pa, ix[t + k]); pts.push(v.clone()); c.add(v); } c.multiplyScalar(1 / 3); pts.push(c);
-        if (hubs.every(h => pts.every(q => Math.hypot(q.x - h[0], q.y - h[1], q.z - h[2]) > cutR))) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
+        if (hubs.every(h => pts.every(q => Math.hypot(q.x * FX - h[0], q.y * FY - h[1], q.z * FY - h[2]) > cutR))) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
       mesh.geometry.setIndex(keep);
     }
     if (p.role === 'paint') { mesh.geometry.clearGroups(); mesh.geometry.addGroup(0, mesh.geometry.index.count, 0); body = body || mesh; }
@@ -1773,7 +1786,7 @@ function buildShell(kind, paint, flare) {
     const rp = new THREE.Mesh(new THREE.PlaneGeometry(0.0405, 0.0095), new THREE.MeshPhongMaterial({ map: plateTex(), shininess: 60, specular: 0x333333, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
     rp.name = 'back_buffer_plate'; rp.position.set(0, 0.0602, -0.2168); rp.rotation.y = Math.PI; place(rp);
   }
-  if (flare) root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) archFlare(o.geometry, flare); });
+  if (flare) root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) flareFitted(o.geometry, flare, FX, FY, false); });
   root.remove(body); root.children.unshift(body); body.parent = root; // the paint shell is always children[0]
   { // a dark dashboard under the windshield: from the glass base down and back into the cabin
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.06), new THREE.MeshLambertMaterial({ color: 0x141416, side: THREE.DoubleSide }));
@@ -1784,6 +1797,7 @@ function buildShell(kind, paint, flare) {
   for (const b of brkGroups) if (b.g) tag(b.name, b.g, new THREE.Box3().setFromObject(b.g).getCenter(new THREE.Vector3()).toArray());
   const brk = brkGroups.filter(b => b.g).map(b => [b.name, b.g, b.tough]);
   root.userData = { kind, parts, mats: { ...mt, trim: mt.black, amber: mt.tail }, S, brk };
+  root.scale.set(FX, FY, FY); // fitted to the chassis as an RC body
   return root;
 }
 // the model's own wheels for one corner ('FR', 'FL', 'RR', 'RL'): { spin: tyre, rim, disc; fixed: caliper }, built at the hub
@@ -1918,8 +1932,8 @@ PARTS.MOUNTS = {
   magnets: { name: 'MAGNETS', note: 'Hidden: 10 × 3 mm neodymium discs, steel discs in the shell' },
 };
 PARTS.MOUNT_POINTS = { // [x, z, base y] of each post or holder (left side mirrored)
-  nk2002: [[0.022, 0.111, 0.071], [0.024, -0.165, 0.04]],
-  zuk: [[0.022, 0.118, 0.071], [0.024, -0.178, 0.04]], // long posts: the roof is 21 cm up
+  nk2002: [[0.022, 0.114, 0.071], [0.024, -0.17, 0.04]],
+  zuk: [[0.022, 0.114, 0.071], [0.024, -0.17, 0.04]], // long posts: the van's roof is 20 cm up
 };
 function rClipGeo() { // an R-clip in its own plane: straight pin along +x, loop at the end, wavy outer leg back
   const L = 0.016, pts = [[0, 0], [L * 0.5, 0], [L, 0], [L + 0.0028, 0.0018], [L + 0.0022, 0.0048], [L - 0.0012, 0.0058], [L * 0.62, 0.0046], [L * 0.45, 0.0068], [L * 0.28, 0.0046], [L * 0.1, 0.0034]];
@@ -1932,18 +1946,18 @@ function buildMounts(shell, type) {
   const clipGeo = rClipGeo(), washerM = new THREE.MeshPhongMaterial({ color: 0x18181a, specular: 0x222222, shininess: 12 });
   const holeM = new THREE.MeshBasicMaterial({ color: 0x050505 });
   for (const [px, pz, by] of PARTS.MOUNT_POINTS[kind]) for (const s of [-1, 1]) {
-    const x = s * px, sy = shellTopY(shell, x, pz);
+    const [FX, FY] = shellFit(kind), x = s * px, sy = shellTopY(shell, x / FX, pz / FY) * FY; // the shell is fitted (scaled); posts live in the chassis frame
     if (type === 'posts') {
       const top = sy + 0.014, post = pCyl(0.003, 0.003, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
       for (let h = by + 0.008; h < top - 0.002; h += 0.003) { const hole = pCyl(0.00085, 0.00085, 0.0062, holeM, 'z', x, h, pz, posts, 6); hole.rotation.y = 0; }
       pCyl(0.0055, 0.0055, 0.003, m.redAlu, null, x, by + 0.0015, pz, posts, 16); // post mount
-      const w = pCyl(0.0058, 0.0058, 0.0012, washerM, null, x, sy + 0.0007, pz, onShell, 18); // rubber body washer on the shell
+      const w = pCyl(0.0058, 0.0058, 0.0012, washerM, null, x / FX, (sy + 0.0007) / FY, pz / FY, onShell, 18); // rubber body washer on the shell
       const clip = new THREE.Mesh(clipGeo, m.steel); clip.position.set(x, sy + 0.0045, pz); clip.rotation.y = s > 0 ? 0 : Math.PI; clip.userData.home = clip.position.clone(); clip.userData.out = new THREE.Vector3(s * 0.016, 0, 0); clips.add(clip);
       tag('Body posts with height holes', post, [x, (top + by) / 2, pz]); tag('R-clips', clip, [x, sy + 0.005, pz]); tag('Rubber body washers', w, [x, sy, pz]);
     } else {
       const top = sy - 0.0035, holder = pCyl(0.0042, 0.0042, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
       const mag = pCyl(0.005, 0.005, 0.003, m.steel, null, x, top + 0.0015, pz, posts, 20);
-      const disc = pCyl(0.0058, 0.0058, 0.0008, m.darkSteel, null, x, sy - 0.0012, pz, onShell, 20);
+      const disc = pCyl(0.0058, 0.0058, 0.0008, m.darkSteel, null, x / FX, (sy - 0.0012) / FY, pz / FY, onShell, 20);
       tag('Magnet holders', holder, [x, (top + by) / 2, pz]); tag('Neodymium magnets (10 × 3 mm)', mag, [x, top, pz]); tag('Steel discs inside the shell', disc, [x, sy, pz]);
     }
   }
@@ -2087,7 +2101,7 @@ function damageRepair(st) {
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
 // the car as it loads: satin black, covered rims in black, slammed 10 mm, pink underglow
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 6.6 / 14, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 0.5, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
 try { let st = JSON.parse(localStorage.getItem('cc-style9') || 'null');
   if (!st) { st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); if (typeof st.camber === 'number') st.camber = 0.5 - st.camber / 2; } // old slider: 0 (none) .. 1 (12° negative)
@@ -2110,14 +2124,16 @@ const camberDeg = (S, front) => (0.5 - clamp(S.camber ?? 0.125, 0, 1)) * 2 * (fr
 // small rivets along the lip, and slim side skirts joining front and rear, over 10 mm wheel spacers
 function addWideKit(shell, hubs, TY, sp = 0) {
   const mat = shell.userData.mats.paint, g = new THREE.Group(); g.name = 'wide_kit'; shell.add(g);
+  const [FX, FY] = shellFit(shell.userData.kind); g.scale.set(1 / FX, 1 / FY, 1 / FY); // built in the chassis frame
+  const sideX = (s, z, y) => shellSideX(shell, s, z / FY, y / FY) * FX;
   const rivM = new THREE.MeshPhongMaterial({ color: 0x3a3b40, specular: 0xaaaaaa, shininess: 90 }), rivG = new THREE.SphereGeometry(0.0006, 6, 4), R = TY.od / 2;
-  const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }, BELT = 0.077; // keep the flares below the sedan's shoulder line
+  const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }, BELT = 0.077 * FY; // keep the flares below the sedan's shoulder line
   let zF = -1, zR = 1, xOutMax = 0;
   for (const [key, [hx, hy, hz]] of Object.entries(hubs)) {
     const s = Math.sign(hx), front = key[0] === 'F', r1 = R + (front ? 0.008 : 0.0045), xOut = Math.abs(hx) + sp + TY.w / 2 + 0.0015; xOutMax = Math.max(xOutMax, xOut);
     const N = 32, K = 7, a0 = -0.12, a1 = Math.PI + 0.12, ring = [], A = [], XB = [], R2 = [];
     for (let i = 0; i <= N; i++) { const a = a0 + (a1 - a0) * i / N, sa = Math.sin(a), r2 = Math.max(r1 + 0.004, Math.min(r1 + 0.013, sa > 0.05 ? (BELT - hy) / sa : 1)); A.push(a); R2.push(r2);
-      XB.push(clamp(shellSideX(shell, s, hz + (r2 + 0.003) * Math.cos(a), hy + (r2 + 0.003) * sa), xOut - 0.02, xOut - 0.002)); }
+      XB.push(clamp(sideX(s, hz + (r2 + 0.003) * Math.cos(a), hy + (r2 + 0.003) * sa), xOut - 0.02, xOut - 0.002)); }
     for (let pass = 0; pass < 3; pass++) for (let i = 1; i < N; i++) XB[i] = (XB[i - 1] + 2 * XB[i] + XB[i + 1]) / 4; // smooth the panel line
     for (let i = 0; i <= N; i++) { const u = i / N, a = A[i], ca = Math.cos(a), sa = Math.sin(a), f = sm(0, 0.2, u) * sm(0, 0.2, 1 - u), xb = XB[i], r2 = R2[i];
       const P = (r, x) => [s * x, hy + r * sa, hz + r * ca], row = [];
@@ -2131,7 +2147,7 @@ function addWideKit(shell, hubs, TY, sp = 0) {
     if (front) zF = Math.max(zF, hz - r1 - 0.006); else zR = Math.min(zR, hz + r1 + 0.006);
   }
   if (zF > zR) for (const s of [-1, 1]) { // slim side skirts between the fenders
-    const zc = (zF + zR) / 2, xb = shellSideX(shell, s, zc, 0.028), w = Math.max(0.003, xOutMax - 0.006 - xb);
+    const zc = (zF + zR) / 2, xb = sideX(s, zc, 0.028), w = Math.max(0.003, xOutMax - 0.006 - xb);
     const sk = new THREE.Mesh(new THREE.BoxGeometry(w, 0.007, zF - zR), mat); sk.position.set(s * (xb + w / 2 - 0.0006), 0.0225, zc); sk.name = 'wide_skirt'; sk.userData.dent = true; g.add(sk);
   }
   return g;
@@ -2145,7 +2161,10 @@ function buildCar(S = CAR_STYLE) {
   const TY = tyreSpec(S), drop = Math.max(0, -ride.shell), H = (BODY_ASSETS[kind] || BODY_ASSET).hubs, rad = Math.PI / 180, wide = S.kit === 'wide' && kind !== 'zuk', sp = wide ? KIT_SPACER : 0;
   const dR = (TY.od - TY.base) / 2; model.position.y = dR; // bigger or smaller tyres lift or lower the whole car
   // the arches open round the tyres whenever they reach further into the body than stock: slammed, bigger tyres, wider track
-  const flare = drop > 0 || dR > 0.0003 || wide ? { drop, R: TY.od / 2, hw: TY.w / 2 + sp, sp, hubs: Object.fromEntries(Object.entries(H).map(([k, q]) => [k, [Math.sign(q[0]) * PARTS.CHASSIS[PARTS.SHELLS[kind].chassis].wheelX, TY.base / 2 + drop, q[2]]])), tF: archTable(TY, camberDeg(S, true) * rad, 1.15, sp), tR: archTable(TY, camberDeg(S, false) * rad, 0, sp) } : null;
+  // the arches are opened round the tyres wherever they reach into the body (slammed, bigger tyres, the wider track):
+  // in the chassis frame, round the real hubs (wheelbase and track from the chassis)
+  const CH = PARTS.CHASSIS[PARTS.SHELLS[kind].chassis];
+  const flare = { drop, R: TY.od / 2, hw: TY.w / 2 + sp, sp, hubs: Object.fromEntries(Object.entries(H).map(([k, q]) => [k, [Math.sign(q[0]) * CH.wheelX, TY.base / 2 + drop, Math.sign(q[2]) * CH.wb / 2]])), tF: archTable(TY, camberDeg(S, true) * rad, STEER_LOCK, sp), tR: archTable(TY, camberDeg(S, false) * rad, 0, sp) };
   const shell = buildShell(kind, undefined, flare); adapt.add(shell);
   applyLivery(shell, { scheme: S.scheme, a: S.a, b: S.b, c: S.c, decalSheet: CAR_DECAL_SHEET }); if (S.stickers) addStickerKit(shell);
   if (wide) addWideKit(shell, flare.hubs, TY, sp);
@@ -2172,7 +2191,7 @@ function buildCar(S = CAR_STYLE) {
   });
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = 1; root.add(shadow);
-  if (root.userData.beam) { const pl = root.userData.beam; pl.position.z = PARTS.SHELLS[kind].z1 + 0.33; root.add(pl); }
+  if (root.userData.beam) { const pl = root.userData.beam; pl.position.z = PARTS.SHELLS[kind].z1 * shellFit(kind)[1] + 0.33; root.add(pl); }
   if (S.glowOn) {
     // underglow: LED strips tucked under both sills, a soft pool on the floor shaped to the car's footprint, and one
     // short-range light under the car that lights the chassis, the wheel wells and the inside of the shell
@@ -2252,12 +2271,12 @@ function addStickerKit(shell) {
 }
 // wheels: TYRES wide drift (30 mm on a 46 mm rim, as on the video's cars) or the model's original size; RIMS modern,
 // covered or the model's own. Built in the model's frame at the hub, outer face outward
-const CAR_TYRES = { wide: { od: 0.0586, w: 0.030, rimD: 0.046 }, original: { od: 0.0582, w: 0.022, rimD: 0.034 } };
+const CAR_TYRES = { wide: { od: 0.064, w: 0.026, rimD: 0.052 }, original: { od: 0.064, w: 0.022, rimD: 0.046 } }; // 1.9 in (52 mm) wheels with 64 x 26 mm hard drift tyres
 const CAR_RIMS = { modern: ['twin5', 'gunmetal'], covered: ['aero', 'white'], spoke: ['fan14', 'black'] };
 // TYRE SIZE: the drift tyre's outside diameter, 52-66 mm (58.6 stock); rims grow with it, the width stays. The car sits
 // up (or down) on them by the change in radius, so the shell keeps its place over the hubs
-const TYRE_MM = v => 52 + clamp(v ?? 6.6 / 14, 0, 1) * 14;
-function tyreSpec(S) { const B = CAR_TYRES[S.tyres] || CAR_TYRES.wide, k = TYRE_MM(S.tyreSize) / 58.6; return { od: B.od * k, w: B.w, rimD: B.rimD * k, base: B.od }; }
+const TYRE_MM = v => 58 + clamp(v ?? 0.5, 0, 1) * 12;
+function tyreSpec(S) { const B = CAR_TYRES[S.tyres] || CAR_TYRES.wide, k = TYRE_MM(S.tyreSize) / 64; return { od: B.od * k, w: B.w, rimD: B.rimD * k, base: B.od }; }
 const KIT_SPACER = 0.01; // the wide body kit runs 10 mm spacers each side
 function carWheel(S, key, mt) {
   if (S.rimColor && S.rim === 'original') mt.rim.color.set(S.rimColor);
@@ -2305,13 +2324,13 @@ function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => 
    counter-steer against yaw rate (like a Futaba/Yokomo drift gyro).
    Suspension: roll and pitch spring/damper systems; their deflection moves load between wheels. */
 const MOTORS = [
-  { name: 'BRUSHED 540 RTR', short: 'BRUSHED 540', vFree: 12.2, fStall: 34, pitch: 1.0, kind: 'brushed' },
+  { name: '10.5T DRIFT (SENSORED)', short: '10.5T DRIFT', vFree: 12.0, fStall: 30, pitch: 1.4, kind: 'brushless' },
   { name: '13.5T BRUSHLESS STOCK', short: '13.5T STOCK', vFree: 15.6, fStall: 52, pitch: 1.45, kind: 'brushless' },
   { name: '6.5T BRUSHLESS MOD', short: '6.5T MOD', vFree: 24, fStall: 85, pitch: 2.0, kind: 'brushless' },
   { name: '13.5T DRIFT (HIGH FDR)', short: '13.5T DRIFT', vFree: 10.5, fStall: 24, pitch: 1.3, kind: 'brushless' },
 ];
 const CARS = [
-  { name: 'RWD DRIFT', rwd: true, weightRear: 0.56, steerMax: 1.15, servo: 0.06, tire: 'plastic' }, // 66° lock like 1/10 drift chassis
+  { name: 'RWD DRIFT', rwd: true, weightRear: 0.56, steerMax: STEER_LOCK, servo: 0.06, tire: 'plastic' }, // 70° lock, as on 1/10 drift chassis
   { name: '4WD GRIP', rwd: false, weightRear: 0.5, steerMax: 0.42, servo: 0.1, tire: 'rubber' },
 ];
 // base friction for each tire type on each surface (hard plastic drift tires vs touring rubber)
@@ -2334,8 +2353,8 @@ const setup = { layout: 0, car: 0, motor: 3, tire: 2, gyro: 3, spring: 1, oil: 1
 try { const s = JSON.parse(localStorage.getItem('cc-setup5') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < (k === 'layout' ? COURSES.length : SETUP_OPTS[k].opts.length)) setup[k] = s[k]; } catch (e) {}
 setup.car = 0; // drift only for now: grip mode is switched off (its code is kept)
 const VEH = {
-  m: 1.45, L: 0.25, tw: 0.136, h: 0.03, hrc: 0.011, hpc: 0.010, // wheelbase and track from the shell; slammed: CG a little lower
-  Iz: 0.021, Ixx: 0.0048, Iyy: 0.019, r: 0.0291,
+  m: 1.45, L: 0.257, tw: 0.169, h: 0.03, hrc: 0.011, hpc: 0.010, // real 1/10 drift chassis: 257 mm wheelbase, 169 mm between tyre centres
+  Iz: 0.021, Ixx: 0.0050, Iyy: 0.019, r: 0.032,
   Kroll: 8.5, Kpitch: 16, zeta: 0.5,
   cdA: 0.0042, rr: 0.42, driveline: 0.035, dragBrake: 0.7, brakeF: 30,
   loadSens: 0.12,
@@ -2910,7 +2929,7 @@ const CAR_E = 0.25, CAR_IM = VEH.Iz / VEH.m; // restitution; yaw inertia per uni
 function carsCollide() {
   if (!oppActive() || race.state !== 'race') return;
   if (Math.abs((car.y || 0) - (opp.y || 0)) > 0.08) return; // one on the bridge, one underneath
-  const fx = Math.sin(opp.h), fz = Math.cos(opp.h), oc = [[opp.x + fx * 0.125, opp.z + fz * 0.125], [opp.x - fx * 0.125, opp.z - fz * 0.125]];
+  const fx = Math.sin(opp.h), fz = Math.cos(opp.h), oc = [[opp.x + fx * 0.1285, opp.z + fz * 0.1285], [opp.x - fx * 0.1285, opp.z - fz * 0.1285]];
   let best = null;
   for (const pc of carCircles()) for (const o of oc) { const dx = pc[0] - o[0], dz = pc[1] - o[1], d = Math.hypot(dx, dz), pen = 2 * CAR_R - d; if (pen > 0 && d > 1e-6 && (!best || pen > best.pen)) best = { pen, nx: dx / d, nz: dz / d, pc, o }; }
   if (!best) return;
@@ -3053,7 +3072,7 @@ function updateCamera(dt, snap) {
   } else if (camMode === 1) {
     // FPV: eye and gaze fixed in the car's frame, so the view rolls, pitches and slides with the car
     const ud = carObj.userData, A = ud.adapt; carObj.updateMatrixWorld(true); // this frame's pose, not last frame's
-    const EYE = (PARTS.SHELLS[ud.kind] && PARTS.SHELLS[ud.kind].eye) || FPV.eye;
+    const EYE0 = (PARTS.SHELLS[ud.kind] && PARTS.SHELLS[ud.kind].eye) || FPV.eye, [EX, EY] = shellFit(ud.kind), EYE = [EYE0[0] * EX, EYE0[1] * EY, EYE0[2] * EY];
     camPos.copy(A.localToWorld(new THREE.Vector3(EYE[0], EYE[1] + ud.shellY, EYE[2])));
     camLook.copy(A.localToWorld(new THREE.Vector3(EYE[0], EYE[1] + ud.shellY - 0.045, EYE[2] + 1))); // a few degrees down: bonnet and track
     // vibration: the tyres (slightly out of round: once per turn, plus the tread) and the motor (a buzz that rises with
@@ -3312,7 +3331,7 @@ const NOTES = {
   layout: ['Wide 1.2 m lane: a long straight, sweepers to link drifts, and a transition at the top where you flick from one direction to the other.', 'Inspired by Ebisu Minami, the D1 course: a long straight into a big, fast first sweeper, then an S-bend and hairpins back. Scaled to the room.', 'Inspired by Meihan Sportsland: big, flowing high-speed sweepers with no tight corners. The easiest to link end to end.', 'Inspired by Japanese RC courses such as Iroha and Team Tetsujin: technical, with back-to-back left-right transitions (manji) and tight hairpins.', 'The original 0.9 m grip circuit with a chicane and a dip.', 'No track. Open floor with one cone in the middle: circle it, figure-eight it, chase your longest drift.'],
   car: ['Drift: rear-wheel drive on hard plastic tires, ~57° of steering lock and a steering gyro. Throttle sets the drift angle.', 'Grip: regular RC driving. 4WD touring setup on rubber tires that stick; brakes, turns and accelerates like a normal RC car.'],
   gyro: ['(Drift car only.) No gyro. You do all the counter-steer yourself (non-assisted drifting).', 'Light gyro. Lets the car rotate freely; you catch the slide with your own counter-steer.', 'Typical gyro gain. The stick sets how tight the drift is; the gyro counter-steers to hold it.', 'Strong gyro (default). Smoothest, longest slides; full lock still gives a tight ~1.5 m circle.'],
-  motor: ['Out-of-the-box RTR motor on a 2S LiPo. About 40 km/h, gentle punch.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.', 'Drift-geared 13.5T brushless. Tops out near 35 km/h with smooth, controllable wheelspin.'],
+  motor: ['540 sensored brushless, 10.5 turns, drift-geared: more punch and top end than the 13.5T, still smooth with boost and timing on the ESC.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.', 'Drift-geared 13.5T brushless. Tops out near 35 km/h with smooth, controllable wheelspin.'],
   tire: ['Soft carpet rubber. Most grip, best on short tracks.', 'Medium compound. A balanced starting point.', 'Hard compound (default). Less grip, slides earlier and more progressively: easiest to hold a long drift.'],
   spring: ['Soft springs. More roll and slower weight transfer; forgiving.', 'Medium springs. Kit standard.', 'Hard springs. Little roll, sharp response, less forgiving over the limit.'],
   oil: ['Thin shock oil. The body moves fast and can bounce after direction changes.', 'Kit standard shock oil.', 'Thick shock oil. Slow, damped body movement; the car settles before it rotates.'],
