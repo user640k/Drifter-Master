@@ -1773,9 +1773,13 @@ function buildCar(S = CAR_STYLE) {
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = 1; root.add(shadow);
   if (S.glowOn) {
-    const gm = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.62), new THREE.MeshBasicMaterial({ map: T.halo, color: S.glow, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    // underglow: LED strips tucked under both sills, a soft pool on the floor shaped to the car's footprint, and one
+    // short-range light under the car that lights the chassis, the wheel wells and the inside of the shell
+    if (!T.underglow) T.underglow = canvasTex(64, 128, (g, w, h) => { g.clearRect(0, 0, w, h); g.filter = 'blur(9px)'; g.fillStyle = '#fff'; g.fillRect(17, 18, 30, 92); g.filter = 'blur(4px)'; g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(14, 30, 4, 68); g.fillRect(46, 30, 4, 68); });
+    const gm = new THREE.Mesh(new THREE.PlaneGeometry(0.27, 0.52), new THREE.MeshBasicMaterial({ map: T.underglow, color: S.glow, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
     gm.renderOrder = 2; gm.position.set(0, 0, 0.0005); shadow.add(gm);
-    for (const sg of [-1, 1]) box(0.3, 0.003, 0.004, new THREE.MeshBasicMaterial({ color: S.glow }), 0, 0.012, sg * 0.06, model);
+    for (const sg of [-1, 1]) box(0.22, 0.002, 0.003, new THREE.MeshBasicMaterial({ color: S.glow }), 0, 0.012, sg * 0.044, model); // tucked in under the sills
+    const ul = new THREE.PointLight(S.glow, 2.0, 0.34, 1.4); ul.position.set(0, 0.04, 0); root.add(ul); // sits between the chassis and the roof: lights both
   }
   const lampM = shell.userData.mats.tail;
   root.userData = {
