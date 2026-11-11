@@ -20,18 +20,16 @@ Any controller the browser sees with the standard layout (Xbox, PlayStation, mos
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry Menu/Options pause menu. Barrier hits rumble.
 
 ## Car screen
-Menu → CAR (or G while driving) opens one screen with every car option visible at once; the car stands still in a studio on the right (the main menu behind shows only the venue).
-- LOOKS: SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (palettes) and MAIN / SECOND / ACCENT colours, TYRES (WIDE DRIFT: 30 mm hard drift tyres on 46 mm rims, as on the video's cars; or ORIGINAL), RIMS (MODERN deep-concave twin five-spoke, COVERED solid aero disc, or the model's ORIGINAL, scaled to the tyre), RIM COLOUR (the rim's own FINISH, swatches or any colour; the centre nut keeps its finish), STICKERS (on / off: the tyre lettering on both sidewalls, a DRIFT MASTER banner across the top of the windscreen, the rear-window logo, and RACING / RACE MASTER / 640kFPV vertical stickers on the driver's door below the mirror; tyre lettering and rear logo are the owner's supplied artwork), RIDE HEIGHT, CAMBER, MOUNT (posts and R-clips, or magnets), UNDERGLOW, RESET LOOK.
+Menu → CAR (or G while driving): one screen, the car on a turntable at the top in the middle and every option below it.
+- LOOKS: BODY (sedan / van), BODY KIT (original / wide body, sedan only), COLOUR (twelve solid colours or any colour), RIMS (modern, covered, multi-spoke, original), NEON (off or one of five underglow colours), STICKERS (on / off), HEADLIGHTS (on / off), RIDE HEIGHT, CAMBER, MOUNT (posts / magnets) and RESET LOOK.
 - SETUP: MOTOR, TIRES (compound), GYRO GAIN, SPRINGS, SHOCK OIL, ROLL BARS, DRIVING ASSIST, with a note on what each choice does.
-The car loads all black: satin-black paint, black covered rims, slammed 10 mm, 9° negative camber, pink underglow, set up for smooth, continuous drifting: 13.5T drift motor, hard tyres, 90% gyro, medium springs, oil and roll bars, assist on (picked by measuring slide time, spins and drift share on the drift loops; RESET LOOK goes back to the looks).
-CAMBER runs from 12° negative (tops in) on the left through 0 (neutral) in the middle to 12° positive (tops out) on the right at the front; the rear gets half.
-Changes apply instantly and are saved in the browser. The opponent gets the same car in contrasting colours. The model has a chrome delete: decorative chrome strips, door handles and the boot-lock trim are removed, and the grille, lamp rings, window frames, mirrors and wipers are satin black. The maker's badges are off and the chrome front bumper is replaced by a simple race bumper in body colour (wrapping to the front of the arches) with a black mesh intake, two side ducts and a 7 mm splitter; white 640kFPV plates front and rear.
+Paint is solid only. Wheels are the standard 1/10 drift size and not adjustable: 1.9 in (52 mm) rims with 64 x 26 mm hard tyres. Changes apply instantly and are saved in the browser; the opponent gets the same car in contrasting colours.
 
 ## Real-world specification
 The sim follows a modern 1/10 RWD competition drift car:
 - Chassis: 257 mm wheelbase, 195 mm across the tyres (169 mm between tyre centres), 2WD rear-wheel drive with the motor rear-mid, black composite plastic with red anodised parts.
 - Steering: 70° front lock (real drift chassis run 65° to over 85°); front camber adjustable to -12° (default -9°), rear half that.
-- Wheels and tyres: 1.9 in (52 mm) wheels with 64 x 26 mm hard plastic drift tyres; TYRE SIZE 58-70 mm.
+- Wheels and tyres: 1.9 in (52 mm) wheels with 64 x 26 mm hard plastic drift tyres (fixed: the standard size).
 - Motors: 540 sensored brushless, 10.5T or 13.5T drift (default 13.5T drift-geared); 2S shorty LiPo; high-speed servo (0.06 s) with a drift gyro.
 - Bodies are fitted as RC bodies are, not scale models: each keeps its shape, stretched or shrunk lengthwise (and in height by the same factor) to the 257 mm wheelbase and widened to 196 mm so the wheels tuck under the arches. Sedan: 426 x 196 x 141 mm; van: 419 x 196 x 199 mm.
 - Physics in real units: 1.45 kg, wheelbase and track as above, 32 mm wheel radius; the car's collision footprint is the 196 mm wide body.
@@ -43,7 +41,6 @@ Car screen → BODY: **SEDAN** or **VAN**; the sedan also has BODY KIT **ORIGINA
 - WIDE BODY kit (sedan only): moulded over-fenders in the Pandem style, after the owner's reference photo. Each is lofted round its wheel: it starts flush on the body panel, eases out (tangent to the panel) to a slim lip just past the tyre and tucks back in underneath; it tapers back into the panel at both ends and stays below the shoulder line, so there is no hard edge. A few small rivets along the lips, slim side skirts, and 10 mm wheel spacers so the wheels fill the arches.
 - RIMS: modern, covered, MULTI-SPOKE (black, after the chassis photos) or original.
 - HEADLIGHTS (on by default): the lamps glow and a soft, warm spotlight and beam light the floor just ahead of the car, kept dim for now. The opponent, ghost and display cars carry no light.
-- TYRE SIZE: 52 to 66 mm outside diameter (58.6 mm stock); the rims grow with it and the car sits up or down on them by the change in radius.
 - The arches are opened just enough round the tyres whenever they reach further into the body than stock (slammed, bigger tyres, the wider track), allowing for camber, the spacers and full steering lock; on the low-poly van the body is first subdivided near the wheels so no big triangle cuts through a tyre. Checked by sampling every body part against every tyre across full lock for both bodies, both kits, the smallest and largest tyres, full slam and full camber both ways.
 - The shell sways on its posts: a springy extra lean on top of the body roll, driven by the sideways acceleration, with a little lag and overshoot. About 1.5° per g on the sedan and 8° per g on the tall van, so the van visibly rocks from one drift into the next.
 

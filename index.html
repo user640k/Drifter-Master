@@ -92,13 +92,13 @@ canvas#view { width: 100%; height: 100%; display: block; filter: contrast(1.12) 
 .speed .motor { color: var(--hot); margin-top: .2cqw; }
 .chip:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 #tele { position: absolute; left: 2cqw; bottom: 5.4cqw; width: 26.5cqw; height: 19.5cqw; }
-.ccols { display: flex; gap: 3.5cqw; align-items: flex-start; }
-.ccols > div:nth-child(2) { margin-top: 13cqw; }
+.ccols { display: flex; gap: 4cqw; align-items: flex-start; justify-content: center; margin-top: auto; }
+.ccols > div:nth-child(2) { margin-top: 0; }
 .ccap { font-family: var(--ui); font-size: 1.0cqw; letter-spacing: .18em; color: var(--hot); margin-bottom: .8cqw; font-weight: 500; }
-.crows { display: grid; grid-template-columns: 9.5cqw auto; gap: .5cqw 1.4cqw; align-items: center; justify-content: start; }
+.crows { display: grid; grid-template-columns: 8.6cqw auto; gap: .32cqw 1.2cqw; align-items: center; justify-content: start; }
 #csetup .sw { max-width: 22cqw; }
-#cnote { margin-top: 1cqw; max-width: 30cqw; font-size: 1.0cqw; min-height: 4.5em; }
-.crows .lbl { font-family: var(--display); font-size: 1.3cqw; letter-spacing: .04em; color: #8b95a3; }
+#cnote { margin-top: .7cqw; max-width: 30cqw; font-size: .95cqw; min-height: 3.2em; }
+.crows .lbl { font-family: var(--display); font-size: 1.12cqw; letter-spacing: .04em; color: #8b95a3; }
 .crows .lbl.sel { color: #fff; }
 .crows .lbl.sel::before { content: '\25B8  '; color: var(--hot); }
 .sw { display: flex; gap: .7cqw; align-items: center; flex-wrap: wrap; }
@@ -117,7 +117,15 @@ canvas#view { width: 100%; height: 100%; display: block; filter: contrast(1.12) 
 .sl input:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .gback { align-self: flex-start; font-family: var(--display); font-size: 1.62cqw; color: #fff; background: none; border: 0; padding: 0; cursor: pointer; }
 .gback:hover, .gback:focus-visible { color: var(--hot); outline: none; }
-.custom { background: linear-gradient(90deg, rgba(5,7,12,.93) 0%, rgba(5,7,12,.8) 46%, rgba(5,7,12,.25) 62%, rgba(5,7,12,0) 80%); padding-top: 4cqw; gap: 1cqw; }
+.garage.custom { background: linear-gradient(180deg, rgba(5,7,12,0) 0%, rgba(5,7,12,0) 36%, rgba(5,7,12,.86) 50%, rgba(5,7,12,.94) 100%); padding-top: 2.4cqw; padding-bottom: 2.4cqw; gap: .6cqw; }
+.custom .swb { width: 1.65cqw; height: 1.65cqw; }
+.custom .swb.off { font-size: 1.08cqw; width: auto; height: auto; }
+.custom .sl input { width: 18cqw; }
+.custom .crows .sw { max-width: 36cqw; }
+.custom .gback { position: absolute; left: 3cqw; top: 2.2cqw; }
+.custom .ghead { position: absolute; left: 3cqw; top: 5cqw; flex-direction: column; align-items: flex-start; gap: .3cqw; }
+.custom .ghead > span:first-child { font-size: 1.9cqw; }
+.custom .ghead .gsub { max-width: 16cqw; line-height: 1.5; }
 .garage { position: absolute; inset: 0; padding: 6cqw 5cqw 4cqw; background: linear-gradient(90deg, rgba(5,7,12,.94) 0%, rgba(5,7,12,.82) 45%, rgba(5,7,12,.2) 80%); display: flex; flex-direction: column; gap: 1.2cqw; pointer-events: auto; overflow: auto; }
 .ghead { font-weight: 700; display: flex; flex-direction: column; gap: .4cqw; font-family: var(--display); font-size: 3.20cqw; color: #fff; }
 .gsub { font-family: var(--ui); font-style: normal; font-size: 1.05cqw; letter-spacing: .14em; color: var(--hot); font-weight: 500; }
@@ -2088,7 +2096,7 @@ function damageRepair(st) {
   const u = sh.userData.paintMat && sh.userData.paintMat.userData.u; if (u) u.uHitN.value = 0;
   for (const h of st.homes) if (h.off) { h.obj.parent.remove(h.obj); h.parent.add(h.obj); h.obj.position.copy(h.pos); h.obj.quaternion.copy(h.quat); h.obj.scale.set(1, 1, 1); h.off = false; }
   for (const p of st.debris) if (!st.homes.find(h => h.obj === p.obj) && p.obj.userData.home) { p.obj.parent.remove(p.obj); st.mounts.children[1].add(p.obj); p.obj.position.copy(p.obj.userData.home); p.obj.rotation.set(0, p.obj.userData.home.x > 0 ? 0 : Math.PI, 0); p.obj.scale.set(1, 1, 1); }
-  if (st.shellParent && sh.parent !== st.shellParent) { sh.parent.remove(sh); st.shellParent.add(sh); } sh.scale.set(1, 1, 1);
+  if (st.shellParent && sh.parent !== st.shellParent) { sh.parent.remove(sh); st.shellParent.add(sh); } { const [fx, fy] = shellFit(sh.userData.kind); sh.scale.set(fx, fy, fy); } // keep the body fitted to the chassis
   st.debris = []; st.pop = null; sh.position.set(0, sh.userData.baseY || 0, 0); sh.rotation.set(0, 0, 0); st.dents = 0; st.hitI = 0; st.log = [];
   if (st.chassis) st.chassis.userData.bend.forEach(b => { b.camber = 0; b.toe = 0; });
 }
@@ -2106,6 +2114,8 @@ const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
 try { let st = JSON.parse(localStorage.getItem('cc-style9') || 'null');
   if (!st) { st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); if (typeof st.camber === 'number') st.camber = 0.5 - st.camber / 2; } // old slider: 0 (none) .. 1 (12° negative)
   for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+// solid paint only, and the standard 1/10 drift wheel: 1.9 in (52 mm) rims with 64 x 26 mm tyres
+Object.assign(CAR_STYLE, { scheme: 'solid', tyres: 'wide', tyreSize: 0.5 });
 // tyres follow the driving mode: hard drift tyres in DRIFT mode, rubber grip tyres in GRIP mode
 function carTyre(S) { let grip = false; try { grip = setup.car === 1; } catch (e) {} return grip ? 'grip' : 'drift'; }
 // the decal sheet for the car (none yet: the owner's own texture goes here, see PARTS.DECAL_SLOTS)
@@ -3039,10 +3049,10 @@ let camMode = 0;
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
 function updateCamera(dt, snap) {
   if (customOpen) {
-    // the car stands still in the studio, three-quarter front view, framed to the right of the options
+    // the car stands still in the studio, three-quarter front view, at the top in the middle; the options sit below
     const P = STUDIO.position;
     camera.position.set(P.x + 1.45, 0.62, P.z + 1.2); camera.lookAt(P.x, 0.05, P.z);
-    camera.fov = 20; camera.setViewOffset(1280, 720, -300, 110, 1280, 720); camera.updateProjectionMatrix(); // car stands top right, SETUP below it
+    camera.fov = 23; camera.setViewOffset(1280, 720, 0, 178, 1280, 720); camera.updateProjectionMatrix();
     tx.visible = false; return;
   }
   if (camera.view && camera.view.enabled) { camera.clearViewOffset();
@@ -3372,7 +3382,7 @@ function saveSetup() { try { localStorage.setItem('cc-setup5', JSON.stringify(se
 /* ---------------- customize: shell, paint, rims, decals, mounting ---------------- */
 const SWATCH = {
   rimColor: [['SILVER', '#c8ccd4'], ['GUNMETAL', '#4a4f57'], ['BLACK', '#18181b'], ['WHITE', '#f2f2ee'], ['GOLD', '#d4a23a'], ['BRONZE', '#8c5a28'], ['RED', '#c8202a'], ['BLUE', '#1f6bff']],
-  a: [['SIGNAL RED', '#d8261c'], ['MIDNIGHT', '#14224a'], ['PEARL WHITE', '#f2f0ea'], ['GUNMETAL', '#4a4f57'], ['ACID LIME', '#9ad21e'], ['SUNSET ORANGE', '#ff6a13'], ['ELECTRIC BLUE', '#1f6bff'], ['SATIN BLACK', '#17181b']],
+  a: [['SATIN BLACK', '#17181b'], ['PEARL WHITE', '#f2f0ea'], ['SILVER', '#c8ccd4'], ['GUNMETAL', '#4a4f57'], ['SIGNAL RED', '#d8261c'], ['SUNSET ORANGE', '#ff6a13'], ['SUN YELLOW', '#ffc81e'], ['ACID LIME', '#9ad21e'], ['TEAL', '#16a8b8'], ['ELECTRIC BLUE', '#1f6bff'], ['MIDNIGHT', '#14224a'], ['PURPLE', '#6a1e8c']],
   b: [['WHITE', '#f2f2ee'], ['SILVER', '#c8ccd4'], ['BLACK', '#141416'], ['GOLD', '#d4a23a'], ['TEAL', '#16a8b8'], ['PURPLE', '#6a1e8c']],
   c: [['BLACK', '#141416'], ['ORANGE', '#ff7a1a'], ['WHITE', '#f2f2ee'], ['RED', '#c8202a'], ['YELLOW', '#ffd21a'], ['CYAN', '#12c2d4']],
   glow: [['CYAN', '#00e5ff'], ['PURPLE', '#a24bff'], ['GREEN', '#39ff6a'], ['PINK', '#ff3fb4'], ['ORANGE', '#ff8a1f']],
@@ -3380,19 +3390,14 @@ const SWATCH = {
 const CROWS = [
   { key: 'shell', label: 'BODY', kind: 'choice', opts: [['SEDAN', 'nk2002'], ['VAN', 'zuk']] },
   { key: 'kit', label: 'BODY KIT', kind: 'choice', opts: [['ORIGINAL', 'stock'], ['WIDE BODY', 'wide']] },
-  { key: 'scheme', label: 'SCHEME', kind: 'choice', opts: PARTS.SCHEMES.map(x => [x.name, x.key]) },
-  { key: 'palette', label: 'COLOURS', kind: 'palette' },
-  { key: 'a', label: 'MAIN', kind: 'color' }, { key: 'b', label: 'SECOND', kind: 'color' }, { key: 'c', label: 'ACCENT', kind: 'color' },
-  { key: 'tyres', label: 'TYRES', kind: 'choice', opts: [['WIDE DRIFT', 'wide'], ['ORIGINAL', 'original']] },
+  { key: 'a', label: 'COLOUR', kind: 'color' },
   { key: 'rim', label: 'RIMS', kind: 'choice', opts: [['MODERN', 'modern'], ['COVERED', 'covered'], ['MULTI-SPOKE', 'spoke'], ['ORIGINAL', 'original']] },
-  { key: 'rimColor', label: 'RIM COLOUR', kind: 'rimcol' },
+  { key: 'glow', label: 'NEON', kind: 'glow' },
   { key: 'stickers', label: 'STICKERS', kind: 'choice', opts: [['ON', 1], ['OFF', 0]] },
-  { key: 'tyreSize', label: 'TYRE SIZE', kind: 'slider' },
+  { key: 'lights', label: 'HEADLIGHTS', kind: 'choice', opts: [['ON', 1], ['OFF', 0]] },
   { key: 'ride', label: 'RIDE HEIGHT', kind: 'slider' },
   { key: 'camber', label: 'CAMBER', kind: 'slider' },
-  { key: 'mount', label: 'MOUNT', kind: 'choice', opts: [['POSTS AND CLIPS', 'posts'], ['MAGNETS', 'magnets']] },
-  { key: 'glow', label: 'UNDERGLOW', kind: 'glow' },
-  { key: 'lights', label: 'HEADLIGHTS', kind: 'choice', opts: [['ON', 1], ['OFF', 0]] },
+  { key: 'mount', label: 'MOUNT', kind: 'choice', opts: [['POSTS', 'posts'], ['MAGNETS', 'magnets']] },
   { key: 'reset', label: 'RESET LOOK', kind: 'action' },
   ...Object.keys(SETUP_OPTS).map(k => ({ key: k, label: SETUP_OPTS[k].label, kind: 'setup', group: 'setup' })),
 ];
