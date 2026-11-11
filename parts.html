@@ -1066,7 +1066,7 @@ function damageRepair(st) {
   const u = sh.userData.paintMat && sh.userData.paintMat.userData.u; if (u) u.uHitN.value = 0;
   for (const h of st.homes) if (h.off) { h.obj.parent.remove(h.obj); h.parent.add(h.obj); h.obj.position.copy(h.pos); h.obj.quaternion.copy(h.quat); h.obj.scale.set(1, 1, 1); h.off = false; }
   for (const p of st.debris) if (!st.homes.find(h => h.obj === p.obj) && p.obj.userData.home) { p.obj.parent.remove(p.obj); st.mounts.children[1].add(p.obj); p.obj.position.copy(p.obj.userData.home); p.obj.rotation.set(0, p.obj.userData.home.x > 0 ? 0 : Math.PI, 0); p.obj.scale.set(1, 1, 1); }
-  if (st.shellParent && sh.parent !== st.shellParent) { sh.parent.remove(sh); st.shellParent.add(sh); } sh.scale.set(1, 1, 1);
+  if (st.shellParent && sh.parent !== st.shellParent) { sh.parent.remove(sh); st.shellParent.add(sh); } { const [fx, fy] = shellFit(sh.userData.kind); sh.scale.set(fx, fy, fy); } // keep the body fitted to the chassis
   st.debris = []; st.pop = null; sh.position.set(0, sh.userData.baseY || 0, 0); sh.rotation.set(0, 0, 0); st.dents = 0; st.hitI = 0; st.log = [];
   if (st.chassis) st.chassis.userData.bend.forEach(b => { b.camber = 0; b.toe = 0; });
 }

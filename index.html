@@ -62,32 +62,55 @@ canvas#view { width: 100%; height: 100%; display: block; filter: contrast(1.12) 
 .lights b.on { background: radial-gradient(circle at 40% 35%, #ff9b8f, var(--red) 55%, #800); box-shadow: 0 0 2cqw var(--red); }
 .lights.go b { background: radial-gradient(circle at 40% 35%, #b9ffb0, #2ee04a 55%, #0a6b1a); box-shadow: 0 0 2cqw #2ee04a; }
 .msg { font-weight: 700; font-family: var(--display); font-size: 4.20cqw; color: var(--hot); margin-top: 1cqw; }
-.overlay { position: absolute; inset: 0; pointer-events: auto; background: linear-gradient(90deg, rgba(5,7,12,.62) 0%, rgba(5,7,12,.28) 30%, rgba(5,7,12,0) 52%), linear-gradient(0deg, rgba(5,7,12,.45) 0%, rgba(5,7,12,0) 40%); }
-.mpanel { position: absolute; left: 5cqw; top: 5cqw; bottom: 5cqw; width: 30cqw; display: flex; flex-direction: column; gap: 1.2cqw; }
+.overlay { position: absolute; inset: 0; pointer-events: auto; --ink: #14161c; --kerb: #e10600; }
+/* menu: a light, slanted pit-board panel on the left with a red/white kerb along its edge, over a still shot of the track */
+.mkerb { position: absolute; left: 0; top: 0; bottom: 0; width: 33.4cqw; clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%);
+  background: repeating-linear-gradient(172deg, var(--kerb) 0 2.4cqw, #f4f4f2 2.4cqw 4.8cqw); box-shadow: none; }
+.mpanel { position: absolute; left: 0; top: 0; bottom: 0; width: 32cqw; box-sizing: border-box; padding: 3.6cqw 7.5cqw 3cqw 4.2cqw; display: flex; flex-direction: column; gap: 1cqw;
+  background: linear-gradient(180deg, #fafaf8, #eceef1); clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%); color: var(--ink); }
 .mlist { margin-top: auto !important; }
-.mtitle { font-weight: 400; font-family: var(--title, var(--display)); font-size: 2.1cqw; letter-spacing: .12em; color: #fff; line-height: 1; text-shadow: 0 .1cqw .6cqw rgba(0,0,0,.5); }
-.mkind { font-size: 0.95cqw; letter-spacing: .32em; color: var(--hot); font-weight: 500; margin-top: .6cqw; }
+.mhead { position: relative; padding-left: 1.1cqw; border-left: .55cqw solid var(--kerb); }
+.mtitle { font-weight: 700; font-family: var(--display); font-style: italic; font-size: 3.6cqw; letter-spacing: .02em; color: var(--ink); line-height: .92; text-transform: uppercase; }
+.mtitle em { color: var(--kerb); font-style: italic; display: block; }
+.mkind { font-size: .9cqw; letter-spacing: .34em; color: #5d636e; font-weight: 500; margin-top: .7cqw; }
 .mkind:empty { display: none; }
-.mlist { list-style: none; margin: 1cqw 0 0; padding: 0; display: flex; flex-direction: column; gap: .25cqw; }
-.mitem { display: flex; justify-content: space-between; align-items: center; gap: 1cqw; padding: .25cqw 0 .25cqw 1.2cqw; font-family: var(--display); font-weight: 500; font-size: 1.45cqw; letter-spacing: .1em; color: rgba(230,236,244,.55); cursor: pointer; border-left: .18cqw solid transparent; text-shadow: 0 .1cqw .4cqw rgba(0,0,0,.6); }
-
-.mitem.sel { color: #fff; border-left-color: var(--hot); }
+.mlist { list-style: none; margin: 1cqw 0 0; padding: 0; display: flex; flex-direction: column; gap: .2cqw; }
+.mitem { position: relative; z-index: 0; display: flex; justify-content: space-between; align-items: center; gap: 1cqw; padding: .42cqw .9cqw .42cqw 1.1cqw; font-family: var(--display); font-weight: 700; font-style: italic; font-size: 1.5cqw; letter-spacing: .06em; color: rgba(20,22,28,.62); cursor: pointer; }
+.mitem::before { content: ''; position: absolute; inset: 0 -.2cqw 0 -.2cqw; z-index: -1; transform: skewX(-14deg); background: transparent; transition: background .12s; }
+.mitem:hover::before { background: rgba(20,22,28,.06); }
+.mitem.sel { color: #fff; }
+.mitem.sel::before { background: var(--kerb); box-shadow: .35cqw .35cqw 0 rgba(20,22,28,.9); }
 .mitem:not(.sel) .marr { visibility: hidden; }
-.mval { display: flex; align-items: center; gap: .5cqw; font-family: var(--ui); font-weight: 500; font-size: 1.15cqw; letter-spacing: .1em; color: inherit; }
-.mitem.sel .mval { color: var(--hot); }
-.marr { font: inherit; font-size: 1.70cqw; line-height: 1; color: inherit; background: none; border: 0; padding: 0 .3cqw; cursor: pointer; opacity: .7; }
+.mval { display: flex; align-items: center; gap: .4cqw; font-family: var(--ui); font-weight: 500; font-style: normal; font-size: 1.1cqw; letter-spacing: .1em; color: #6a707b; }
+.mitem.sel .mval { color: #fff; }
+.marr { font: inherit; font-size: 1.6cqw; line-height: 1; color: inherit; background: none; border: 0; padding: 0 .3cqw; cursor: pointer; opacity: .8; }
 .marr:hover, .marr:focus-visible { opacity: 1; outline: none; }
-.mnote { font-size: 1.10cqw; line-height: 1.5; color: var(--dim); max-width: 32cqw; }
+.mnote { font-size: 1.05cqw; line-height: 1.5; color: #5d636e; max-width: 22cqw; }
+.mfoot { margin-top: 1.2cqw; font-size: .82cqw; letter-spacing: .22em; color: #8a909a; }
+/* the track card, bottom right of the main menu: what you are about to drive */
+.mcard { position: absolute; right: 2.6cqw; bottom: 2.6cqw; min-width: 24cqw; box-sizing: border-box; padding: 1.1cqw 2cqw 1.2cqw 3.2cqw; color: var(--ink);
+  background: rgba(250,250,248,.95); clip-path: polygon(2.2cqw 0, 100% 0, 100% 100%, 0 100%); }
+.mcard::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3cqw; clip-path: polygon(2.2cqw 0, 3cqw 0, .8cqw 100%, 0 100%); background: var(--kerb); }
+.mcard .k { font-size: .82cqw; letter-spacing: .3em; color: var(--kerb); font-weight: 700; }
+.mcard .n { font-family: var(--display); font-weight: 700; font-style: italic; font-size: 2.6cqw; line-height: 1.05; letter-spacing: .02em; }
+.mcard .v { font-size: .95cqw; color: #5d636e; letter-spacing: .08em; margin-top: .15cqw; }
+.mcard .chips { display: flex; gap: .5cqw; margin-top: .8cqw; flex-wrap: wrap; }
+.mcard .chips span { font-size: .85cqw; letter-spacing: .14em; font-weight: 700; padding: .25cqw .8cqw; background: var(--ink); color: #fff; transform: skewX(-12deg); }
+.mcard .chips span b { display: inline-block; transform: skewX(12deg); font-weight: 700; }
+.mcard .chips span.hot { background: var(--kerb); }
 .rcbars { display: grid; gap: .45cqw; margin-top: .6cqw; }
-.rcbars div { display: grid; grid-template-columns: 6cqw 1fr 4cqw; gap: .8cqw; align-items: center; font-size: 1.0cqw; color: #aab4c2; font-variant-numeric: tabular-nums; }
-.rcbars i { display: block; height: .5cqw; background: #2a2f3a; position: relative; }
-.rcbars i b { position: absolute; top: 0; bottom: 0; background: var(--hot); }
+.rcbars div { display: grid; grid-template-columns: 6cqw 1fr 4cqw; gap: .8cqw; align-items: center; font-size: 1.0cqw; color: #3a3f48; font-variant-numeric: tabular-nums; }
+.rcbars i { display: block; height: .5cqw; background: #cfd3d9; position: relative; }
+.rcbars i b { position: absolute; top: 0; bottom: 0; background: var(--kerb); }
 .mhint { margin-top: auto; font-size: 1.00cqw; letter-spacing: .12em; color: #6b7686; font-weight: 500; }
-.mcontrols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6cqw; font-size: 1.10cqw; color: var(--fg); }
-.mcol { display: flex; flex-direction: column; gap: .5cqw; }
-.mcol b { font-family: var(--display); font-weight: 500; letter-spacing: .1em; color: var(--hot); font-size: 1.20cqw; }
-.mback { grid-column: 1 / -1; color: var(--dim); font-size: 1.00cqw; letter-spacing: .1em; }
-.mcontrols kbd { font-family: var(--display); font-size: .95em; color: var(--hot); }
+.mcontrols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2cqw; font-size: .98cqw; color: var(--ink); margin-top: auto; }
+.mcol { display: flex; flex-direction: column; gap: .4cqw; }
+.mcol b { font-family: var(--display); font-weight: 700; letter-spacing: .1em; color: var(--kerb); font-size: 1.10cqw; }
+.mback { grid-column: 1 / -1; color: #6a707b; font-size: .95cqw; letter-spacing: .1em; }
+.mcontrols kbd { font-family: var(--display); font-size: .95em; color: var(--kerb); font-weight: 700; }
+/* on the main menu the photo grade is lifted: a bright, clean shot of the floor */
+.stage.mmain .grade { opacity: .25; }
+.stage.mmain canvas#view { filter: contrast(1.06) saturate(1.08) brightness(1.1); }
 .hud.dim > :not(.center) { opacity: 0 !important; }
 .speed .motor { color: var(--hot); margin-top: .2cqw; }
 .chip:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
@@ -171,8 +194,9 @@ canvas#view { width: 100%; height: 100%; display: block; filter: contrast(1.12) 
     </div>
   </div>
   <div class="overlay" id="overlay">
+    <div class="mkerb"></div>
     <div class="mpanel">
-      <div class="mhead"><div class="mtitle">DRIFT MASTER</div><div class="mkind" id="mkind">RC DRIFT SIM</div></div>
+      <div class="mhead"><div class="mtitle">DRIFT<em>MASTER</em></div><div class="mkind" id="mkind">RC DRIFT SIM</div></div>
       <ul class="mlist" id="mlist"></ul>
       <div class="mcontrols" id="mcontrols" hidden>
         <div class="mcol"><b>KEYBOARD</b>
@@ -188,7 +212,9 @@ canvas#view { width: 100%; height: 100%; display: block; filter: contrast(1.12) 
       <div class="mcontrols" id="rcal" hidden><div class="mcol"><b id="rcalT">RC TRANSMITTER</b><span id="rcalS"></span><div class="rcbars" id="rcalB"></div></div><div class="mback">Esc / Backspace to cancel</div></div>
       <div class="mnote" id="mnote"></div>
       <div class="mhint" id="mhint">↑↓ select · ←→ change · Enter / A confirm</div>
+      <div class="mfoot">1:10 RC DRIFT · ELECTRIC RWD</div>
     </div>
+    <div class="mcard" id="mcard"><div class="k">TRACK</div><div class="n" id="mcn"></div><div class="v" id="mcv"></div><div class="chips" id="mcc"></div></div>
   </div>
   <div class="garage custom" id="custom" hidden>
     <div class="ghead"><span>YOUR CAR</span><span class="gsub">LOOKS AND SETUP · CHANGES APPLY INSTANTLY · ESC / B TO CLOSE</span></div>
@@ -2109,7 +2135,7 @@ function damageRepair(st) {
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
 // the car as it loads: satin black, covered rims in black, slammed 10 mm, pink underglow
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 0.5, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 0.5, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, shellOn: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
 try { let st = JSON.parse(localStorage.getItem('cc-style9') || 'null');
   if (!st) { st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); if (typeof st.camber === 'number') st.camber = 0.5 - st.camber / 2; } // old slider: 0 (none) .. 1 (12° negative)
@@ -2202,6 +2228,8 @@ function buildCar(S = CAR_STYLE) {
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = 1; root.add(shadow);
   if (root.userData.beam) { const pl = root.userData.beam; pl.position.z = PARTS.SHELLS[kind].z1 * shellFit(kind)[1] + 0.33; root.add(pl); }
+  // shell off: the bare chassis on its posts (clips still in), like on the bench - no body, no lights on it, no body damage
+  if (S.shellOn === 0) { shell.visible = false; if (root.userData.beam) root.userData.beam.visible = false; }
   if (S.glowOn) {
     // underglow: LED strips tucked under both sills, a soft pool on the floor shaped to the car's footprint, and one
     // short-range light under the car that lights the chassis, the wheel wells and the inside of the shell
@@ -2309,7 +2337,7 @@ function carSteerBias() { const b = carObj.userData.dmg && carObj.userData.chass
 const _impRay = new THREE.Raycaster(); let impactCool = 0;
 // a hard hit on a wall, the track edge or the other car: find where it lands on the shell and damage it there
 function carImpact(vn, nx, nz, circle) {
-  if (vn < 1.2 || impactCool > 0 || !carObj.userData.shell) return; impactCool = 0.25;
+  if (vn < 1.2 || impactCool > 0 || !carObj.userData.shell || !carObj.userData.shell.visible) return; impactCool = 0.25;
   const st = carDamage(), shell = carObj.userData.shell; carObj.updateMatrixWorld(true);
   const cx = circle ? circle[0] : car.x, cz = circle ? circle[1] : car.z, y = (car.y || 0) + 0.05, n = new THREE.Vector3(nx, 0, nz);
   _impRay.set(new THREE.Vector3(cx - nx * 0.11 + nx * 0.4, y, cz - nz * 0.11 + nz * 0.4), n.clone().negate());
@@ -2354,12 +2382,16 @@ const SETUP_OPTS = {
   tire: { label: 'TIRES', opts: ['SOFT', 'MEDIUM', 'HARD'], mul: [1.12, 1, 0.88] },
   gyro: { label: 'GYRO GAIN', opts: ['OFF', '40%', '70%', '90%'], g: [0, 0.4, 0.7, 0.9] },
   spring: { label: 'SPRINGS', opts: ['SOFT', 'MEDIUM', 'HARD'], k: [0.65, 1, 1.5] },
-  oil: { label: 'SHOCK OIL', opts: ['300 CST', '400 CST', '550 CST'], c: [0.65, 1, 1.45] },
+  oil: { label: 'SHOCK OIL', opts: ['10WT', '15WT', '20WT', '25WT'], c: [0.6, 0.78, 1, 1.22] },
   arb: { label: 'ROLL BARS', opts: ['FRONT SOFT', 'BALANCED', 'FRONT STIFF'], f: [0.4, 0.5, 0.6] },
+  ack: { label: 'ACKERMANN', opts: ['PARALLEL', 'MILD', 'FULL'], k: [0, 0.5, 1] },
+  caster: { label: 'CASTER', opts: ['7°', '9°', '12°'], deg: [7, 9, 12] },
+  diff: { label: 'DIFF', opts: ['SPOOL', 'GEAR DIFF'] },
+  esc: { label: 'ESC TIMING', opts: ['BLINKY', 'BOOST', 'BOOST + TURBO'], v: [1, 1.12, 1.25], f: [1, 0.98, 0.95] },
   assist: { label: 'DRIVING ASSIST', opts: ['ON', 'OFF'] },
 };
 // preset for smooth, continuous drifting (picked by measuring slides on the drift loops): drift motor, hard tyres, 90% gyro
-const setup = { layout: 0, car: 0, motor: 3, tire: 2, gyro: 3, spring: 1, oil: 1, arb: 1, assist: 0 };
+const setup = { layout: 0, car: 0, motor: 3, tire: 2, gyro: 3, spring: 1, oil: 2, arb: 1, assist: 0, ack: 1, caster: 1, diff: 0, esc: 1 };
 try { const s = JSON.parse(localStorage.getItem('cc-setup5') || '{}'); for (const k in setup) if (Number.isInteger(s[k]) && s[k] >= 0 && s[k] < (k === 'layout' ? COURSES.length : SETUP_OPTS[k].opts.length)) setup[k] = s[k]; } catch (e) {}
 setup.car = 0; // drift only for now: grip mode is switched off (its code is kept)
 const VEH = {
@@ -2449,7 +2481,9 @@ function stepCar(dt, canDrive, walls = true) {
   } else car.revHold = 0;
   // motor torque falls as the wheels spin up; above the throttle's speed the ESC drags them back
   // (synchronous rectification), so the trigger effectively sets wheel speed
-  if (up) Fdrive = M.fStall * clamp(car.thr - car.w / M.vFree, -0.3, 1);
+  // ESC timing: boost/turbo raise the free speed (more rpm at the top) for a little less low-end torque
+  const E = O.esc, vFr = M.vFree * E.v[setup.esc ?? 0], fSt = M.fStall * E.f[setup.esc ?? 0];
+  if (up) Fdrive = fSt * clamp(car.thr - car.w / vFr, -0.3, 1);
   else if (dn && car.reversing) Fdrive = -M.fStall * 0.45 * brkIn * Math.max(0, 1 + car.w / 3.5);
   else if (!dn) Fbrake = VEH.dragBrake;
   car.braking = Fbrake > 1;
@@ -2463,8 +2497,16 @@ function stepCar(dt, canDrive, walls = true) {
   const latR = ((1 - fFront) * Kr * car.roll + m * car.ay * VEH.hrc * a / L) / VEH.tw;
   const FL = Math.max(0, Nf / 2 - latF), FR = Math.max(0, Nf / 2 + latF), RL = Math.max(0, Nr / 2 - latR), RR = Math.max(0, Nr / 2 + latR);
   const grip = car.air || car.flipA > 0.12 ? 0 : 1; // no tire forces in the air or once the car is tipping over
-  const Df = grip * (muAt(FL, mu0, Nref) * FL + muAt(FR, mu0, Nref) * FR);
+  // steering geometry: at big angles parallel steering keeps more front grip than Ackermann (the inside wheel isn't
+  // over-steered); more caster gains camber at lock, so the outside front tyre bites harder
+  const lockF = Math.min(1, Math.abs(car.steer) / 1.0), ackK = O.ack.k[setup.ack ?? 1], casDeg = O.caster.deg[setup.caster ?? 1];
+  const geoF = 1 - 0.1 * ackK * lockF + 0.045 * (casDeg - 9) / 3 * lockF;
+  const Df = grip * geoF * (muAt(FL, mu0, Nref) * FL + muAt(FR, mu0, Nref) * FR);
   const Dr = grip * (muAt(RL, mu0, Nref) * RL + muAt(RR, mu0, Nref) * RR);
+  // gear diff: drive is shared by the rear wheels, so it is capped by the lighter (inside) wheel plus a little locking;
+  // a spool (locked axle) drives both together
+  const gearDiff = setup.diff === 1 && drift;
+  if (gearDiff) { const Din = grip * muAt(Math.min(RL, RR), mu0, Nref) * Math.min(RL, RR), Dout = Dr - Din; Fdrive = Math.min(Fdrive, 2 * Din + 0.3 * Math.max(0, Dout - Din)); }
   car.loads = [FL, FR, RL, RR];
 
   // slip angles and slip ratios in each wheel's frame
@@ -2476,7 +2518,7 @@ function stepCar(dt, canDrive, walls = true) {
   // combined slip: magnitude from the tire curve, direction against the slip vector
   const tire = (kap, tn, D) => { const sg = Math.hypot(kap, tn); if (sg < 1e-6 || D < 1e-6) return [0, 0]; const F = D * tireCurve(sg, TC) / sg; return [-F * kap, -F * tn]; };
   const [Fxw_f, Fyw_f] = tire(kapF, tanF, Df);
-  const [Fxr, Fyr] = tire(kapR, tanR, Dr);
+  const [Fxr, Fyr] = tire(gearDiff ? kapR * 0.8 : kapR, tanR, Dr);
   const FxF = Fxw_f * cd - Fyw_f * sd, FyF = Fxw_f * sd + Fyw_f * cd;
   // driven-wheel speed: motor/brake torque against the tires' reaction (linearly implicit for stability)
   const mEq = VEH.mEq[C.tire];
@@ -2637,16 +2679,26 @@ const audio = (() => {
     panner.refDistance = 1.0; panner.rolloffFactor = 0.75; panner.maxDistance = 40; panner.connect(master);
     air = ctx.createBiquadFilter(); air.type = 'lowpass'; air.frequency.value = 9000; air.Q.value = 0.5; air.connect(panner);
     carIn = ctx.createGain(); carIn.gain.value = 1; carIn.connect(air);
-    // motor: a soft whine whose pitch follows motor speed - triangle fundamental, two sine harmonics, a quiet
-    // gear-mesh tone, and a slight wobble; through a lowpass that opens up as it revs
-    const mf = ctx.createBiquadFilter(); mf.type = 'lowpass'; mf.frequency.value = 1500; mf.Q.value = 0.6;
+    // motor: a sensored brushless motor and its drivetrain, built from what you actually hear on a 1:10 drift car:
+    //  - the commutation whine (a buzzy sawtooth and its harmonics), its pitch tied to the motor's electrical speed
+    //    (about 200 Hz pulling away up to ~2.4 kHz flat out), through a resonant band that rises with it
+    //  - the gear mesh: pinion against spur, a thinner tone a little above it with a slow beat (two meshes, slightly off)
+    //  - the drivetrain growl: belt, diff/spool and driveshafts, a low grainy hum that comes up under load
+    //  - the ESC drive-frequency squeal: a thin fixed tone you hear at low speed on part throttle, gone once it spins up
+    //  - boost and turbo timing: the whine keeps climbing past where blinky would stop, and turbo adds a hard rasp on top
+    const mf = ctx.createBiquadFilter(); mf.type = 'lowpass'; mf.frequency.value = 2000; mf.Q.value = 0.7;
     const mg = ctx.createGain(); mg.gain.value = 0; mf.connect(mg); mg.connect(carIn);
-    const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 6.5; lfoG.gain.value = 9; lfo.connect(lfoG); lfo.start();
-    const oscs = [['triangle', 1, 0.5], ['sine', 2, 0.24], ['sine', 3, 0.1], ['sine', 7, 0.03], ['square', 1, 0.0]].map(([type, mul, g]) => {
-      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = 100 * mul; og.gain.value = g;
-      lfoG.connect(o.detune); o.connect(og); og.connect(mf); o.start(); return { o, og, mul, g };
-    });
-    motor = { oscs, mf, mg };
+    const res = ctx.createBiquadFilter(); res.type = 'peaking'; res.frequency.value = 800; res.Q.value = 2.2; res.gain.value = 7; res.connect(mf);
+    const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 5.3; lfoG.gain.value = 4; lfo.connect(lfoG); lfo.start();
+    const voice = (type, g, dest) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = 200; og.gain.value = g; lfoG.connect(o.detune); o.connect(og); og.connect(dest); o.start(); return { o, og }; };
+    const whine = [voice('sawtooth', 0.22, res), voice('sine', 0.20, res), voice('sine', 0.06, res)];   // f, f, 2f
+    const meshA = voice('sine', 0, mf), meshB = voice('sine', 0, mf); meshB.o.detune.value = 9;          // gear mesh pair
+    const growlF = ctx.createBiquadFilter(); growlF.type = 'lowpass'; growlF.frequency.value = 260; growlF.connect(mg);
+    const growl = voice('sawtooth', 0, growlF);
+    const squeal = voice('sine', 0, mg); squeal.o.frequency.value = 2600;                                 // ESC drive tone
+    const raspF = ctx.createBiquadFilter(); raspF.type = 'bandpass'; raspF.frequency.value = 3200; raspF.Q.value = 1.2; raspF.connect(mg);
+    const rasp = voice('square', 0, raspF);
+    motor = { mf, mg, res, whine, meshA, meshB, growl, squeal, rasp, spool: 0 };
     // white noise for impact thumps
     const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     skid.buf = nb;
@@ -2664,19 +2716,38 @@ const audio = (() => {
   }
   const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
   // rpm: motor speed as a fraction of free speed (wheel surface speed / vFree)
-  function update(rpm, thr, slide, active, M) {
+  // rpm: motor speed as a fraction of free speed (wheel surface speed / vFree); esc: the ESC timing setting
+  function update(rpm, thr, slide, active, M, esc = 0) {
     if (!ctx || !motor) return;
-    const t = ctx.currentTime, q = Math.min(1.3, Math.abs(rpm)), bl = M.kind === 'brushless';
-    const on = active && thr > 0.02;
-    // motor whine: about 95 Hz at a crawl rising to roughly 900 Hz flat out, so every bit of extra speed is heard
-    const f = (bl ? 105 : 90) + q * (bl ? 700 : 560) * (0.9 + 0.1 * M.pitch);
-    for (const o of motor.oscs) { o.o.frequency.setTargetAtTime(f * o.mul, t, 0.04); if (o.mul === 1 && o.o.type === 'square') o.og.gain.setTargetAtTime(bl ? 0 : 0.035, t, 0.1); }
-    motor.mf.frequency.setTargetAtTime(900 + q * 2600 + thr * 600, t, 0.05);
-    motor.mg.gain.setTargetAtTime(on ? 0.05 + thr * 0.14 + q * 0.09 : 0, t, on ? 0.05 : 0.12); // silent off the throttle
+    const t = ctx.currentTime, bl = M.kind === 'brushless';
+    // spooling: the motor's own speed leads the car - it flares up the instant you squeeze (wheelspin) and winds down
+    // slower than it spins up when you lift, so the whine sweeps up and falls away instead of switching on and off
+    const qT = Math.min(1.35, Math.abs(rpm)), dtA = 1 / 60;
+    motor.spool += (qT + (active ? thr * 0.12 * (1 - qT) : 0) - motor.spool) * (1 - Math.exp(-dtA / (qT > motor.spool ? 0.05 : 0.22)));
+    const q = Math.max(0, motor.spool), on = active && thr > 0.02, alive = active && q > 0.015;
+    const f = (bl ? 190 : 150) + q * (bl ? 1900 : 1300) * (0.9 + 0.1 * M.pitch);
+    const W = motor.whine;
+    W[0].o.frequency.setTargetAtTime(f, t, 0.02); W[1].o.frequency.setTargetAtTime(f, t, 0.02); W[2].o.frequency.setTargetAtTime(f * 2, t, 0.02);
+    motor.res.frequency.setTargetAtTime(f * 1.05, t, 0.03);
+    motor.meshA.o.frequency.setTargetAtTime(f * 1.62, t, 0.02); motor.meshB.o.frequency.setTargetAtTime(f * 1.62, t, 0.02);
+    motor.growl.o.frequency.setTargetAtTime(28 + q * 140, t, 0.03);
+    const load = on ? thr : 0;
+    motor.meshA.og.gain.setTargetAtTime(alive ? 0.025 + load * 0.035 : 0, t, 0.05); motor.meshB.og.gain.setTargetAtTime(alive ? 0.02 + load * 0.025 : 0, t, 0.05);
+    motor.growl.og.gain.setTargetAtTime(alive ? (0.05 + load * 0.16) * Math.min(1, q * 3) : 0, t, 0.06);
+    motor.mf.frequency.setTargetAtTime(1400 + q * 3800 + load * 900, t, 0.04);
+    // on the throttle the whole motor is loud; off it you still hear it coast down, quieter and duller
+    motor.mg.gain.setTargetAtTime(on ? 0.05 + thr * 0.12 + q * 0.08 : alive ? 0.012 + q * 0.06 : 0, t, on ? 0.03 : 0.15);
+    W[0].og.gain.setTargetAtTime(on ? 0.16 + thr * 0.12 : 0.07, t, 0.05);
+    // ESC drive tone: low speed, part throttle (sensored start-up whistle)
+    motor.squeal.og.gain.setTargetAtTime(on ? clamp(0.06 * thr * (1 - q * 3.5), 0, 0.05) : 0, t, 0.05);
+    // boost/turbo: past ~85 % revs the timing advance kicks in - higher, harder; turbo adds rasp at full throttle
+    const top = clamp((q - 0.85) / 0.3, 0, 1) * (esc > 0 ? 1 : 0) * (on ? thr : 0);
+    motor.res.gain.setTargetAtTime(7 + top * 5, t, 0.05);
+    motor.rasp.o.frequency.setTargetAtTime(f * 0.5, t, 0.02); motor.rasp.og.gain.setTargetAtTime(esc === 2 ? top * 0.05 : 0, t, 0.05);
     if (!ready) return;
     const drifting = clamp(slide * 1.3, 0, 1);
     const rate = (0.72 + q * 0.7) * (bl ? 1.06 : 0.94) * (0.9 + 0.1 * M.pitch);
-    const level = on ? (0.3 + thr * 0.5 + q * 0.25) * 0.4 : 0;
+    const level = on ? (0.3 + thr * 0.5 + q * 0.25) * 0.3 : alive ? q * 0.07 : 0; // the recording sits under the synth whine
     const set = (k, gain, r) => { const L = layers[k]; if (!L) return; L.g.gain.setTargetAtTime(gain, t, 0.08); L.src.playbackRate.setTargetAtTime(r, t, 0.05); };
     set('cruise', level * (1 - drifting), rate);
     set('drift', level * drifting, rate * 0.98);
@@ -2893,7 +2964,15 @@ const raceLapsN = () => LAP_OPTS[lapIdx];
 const timed = () => raceMode === 1 && course.gates.length > 0;
 const ttKey = () => 'cc-tt1-' + course.name + '-' + raceLapsN() + '-' + (setup.car ? 'grip' : 'drift');
 const opp = { obj: null, path: null, s: 0, v: 0, laps: 0, prevS: 0, slip: 0, spin: 0, off: 0, doneT: null, idx: 0, pIdx: 0 };
-function oppStyle() { const P = PARTS.PALETTES[CAR_STYLE.a.toLowerCase() === PARTS.PALETTES[1].a ? 2 : 1]; return { ...CAR_STYLE, scheme: 'twotone', a: P.a, b: P.b, c: P.c, glowOn: 0, lights: 0, rims: (CAR_STYLE.rims + 2) % 5 }; } // same shell as yours, contrasting colours
+// the rival: a different car every race - either shell (sedan stock or wide, or the van), its own solid colour (never
+// yours), rims, rim colour and stickers. Picked once when the race is set up
+function oppStyle() {
+  const pick = A => A[Math.floor(Math.random() * A.length)];
+  const shell = Math.random() < 0.5 ? 'nk2002' : 'zuk', kit = shell === 'nk2002' && Math.random() < 0.5 ? 'wide' : 'stock';
+  const cols = SWATCH.a.filter(([, c]) => c.toLowerCase() !== CAR_STYLE.a.toLowerCase());
+  return { ...CAR_STYLE_DEFAULT, shell, kit, shellOn: 1, scheme: 'solid', a: pick(cols)[1], rim: pick(['modern', 'covered', 'spoke', 'original']),
+    rimColor: pick(SWATCH.rimColor)[1], stickers: Math.random() < 0.7 ? 1 : 0, glowOn: 0, lights: 0, ride: 0.06 + Math.random() * 0.25, camber: CAR_STYLE.camber };
+}
 function buildOppPath(c) {
   const curve = new THREE.CatmullRomCurve3(c.line.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal');
   const N = 600, P = curve.getSpacedPoints(N).slice(0, N), L = curve.getLength(), ds = L / N;
@@ -2997,7 +3076,7 @@ function raceHud() {
 }
 
 /* ---------------- cameras ---------------- */
-const CAMS = ['TRACKSIDE', 'FPV', 'DRIVER POV', 'DRIVER POV 2']; // the ceiling cam code below is kept but switched off
+const CAMS = ['TRACKSIDE', 'FPV', 'DRIVER POV', 'DRIVER POV 2', 'TOP DOWN'];
 // trackside: one good vantage point per map, high in a corner overlooking the whole track like a spectator on a
 // raised spot. It stays put (a little handheld sway), turns to stay locked on the car and zooms so the frame is about
 // 3.2 m wide at the car (never tighter than 14°, never wider than 60°)
@@ -3046,6 +3125,24 @@ function studioOn(on) {
   if (on) { scene.fog.near = 50; scene.fog.far = 120; } else { scene.fog.near = MAP.fog[0]; scene.fog.far = MAP.fog[1]; }
 }
 let camMode = 0;
+// the menu's track shot: bounds of the course's line (or its gates, or the whole floor), seen from the venue's photo
+// corner at about 38° down, pulled back until the whole thing fits
+const _mv = { key: null };
+function menuView() {
+  const key = setup.layout + ':' + MAP.key; if (_mv.key === key) return _mv; _mv.key = key;
+  let pts = course.line && course.line.length ? course.line : (course.gates || []).flatMap(g => [[g[0], g[1]], [g[2], g[3]]]);
+  if (pts.length < 3) pts = [[-MAP.hx * 0.75, -MAP.hz * 0.75], [MAP.hx * 0.75, MAP.hz * 0.75]];
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [x, z] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, R = Math.hypot(x1 - x0, z1 - z0) / 2 + 0.25, pc = MAP.photoCam;
+  let dx = pc ? pc.pos[0] - pc.look[0] : -1, dz = pc ? pc.pos[2] - pc.look[2] : -1; const dl = Math.hypot(dx, dz); dx /= dl; dz /= dl;
+  const fov = 46, el = 38 * Math.PI / 180, dist = Math.min(R / Math.tan(fov / 2 * Math.PI / 180) * 1.2, 9);
+  _mv.look = new THREE.Vector3(cx, 0, cz); _mv.fov = fov;
+  _mv.pos = new THREE.Vector3(cx + dx * dist * Math.cos(el), Math.min(MAP.ceil ? MAP.ceil - 0.4 : 4, dist * Math.sin(el)), cz + dz * dist * Math.cos(el));
+  const lim = (v, m) => clamp(v, -m + 0.2, m - 0.2); _mv.pos.x = lim(_mv.pos.x, MAP.hx); _mv.pos.z = lim(_mv.pos.z, MAP.hz);
+  // backed into the walls: widen the lens instead, so the whole layout still fits
+  _mv.fov = clamp(2 * Math.atan(R * 0.85 / _mv.pos.distanceTo(_mv.look)) * 180 / Math.PI, fov, 72);
+  return _mv;
+}
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
 function updateCamera(dt, snap) {
   if (customOpen) {
@@ -3059,10 +3156,10 @@ function updateCamera(dt, snap) {
   }
   if (race.state === 'menu') {
     // main menu: the venue's photo view, drifting very slightly; the car is not shown (it is on the car screen)
-    const t = performance.now() / 1000, pc = MAP.photoCam;
-    if (pc) { camera.position.set(pc.pos[0] + Math.sin(t * 0.13) * 0.25, pc.pos[1] + Math.sin(t * 0.21) * 0.05, pc.pos[2] + Math.cos(t * 0.11) * 0.15); camera.lookAt(pc.look[0], pc.look[1], pc.look[2]); camera.fov = pc.fov; }
-    else { camera.position.set(Math.sin(t * 0.06) * MAP.orbit[0], MAP.orbit[1], Math.cos(t * 0.06) * MAP.orbit[0]); camera.lookAt(0, 0.1, 0); camera.fov = 60; }
-    camera.updateProjectionMatrix();
+    // a still shot of the selected track: high in the corner, looking down across the whole layout, framed to the
+    // right of the menu panel (the frame is shifted so the track sits in the open part of the screen)
+    const v = menuView(); camera.position.copy(v.pos); camera.up.set(0, 1, 0); camera.lookAt(v.look); camera.fov = v.fov;
+    camera.setViewOffset(1280, 720, -250, -10, 1280, 720); camera.updateProjectionMatrix();
     tx.visible = false; return;
   }
   // during a drift the chase camera swings toward the direction of travel, so you see the car's angle
@@ -3083,8 +3180,14 @@ function updateCamera(dt, snap) {
     // FPV: eye and gaze fixed in the car's frame, so the view rolls, pitches and slides with the car
     const ud = carObj.userData, A = ud.adapt; carObj.updateMatrixWorld(true); // this frame's pose, not last frame's
     const EYE0 = (PARTS.SHELLS[ud.kind] && PARTS.SHELLS[ud.kind].eye) || FPV.eye, [EX, EY] = shellFit(ud.kind), EYE = [EYE0[0] * EX, EYE0[1] * EY, EYE0[2] * EY];
-    camPos.copy(A.localToWorld(new THREE.Vector3(EYE[0], EYE[1] + ud.shellY, EYE[2])));
-    camLook.copy(A.localToWorld(new THREE.Vector3(EYE[0], EYE[1] + ud.shellY - 0.045, EYE[2] + 1))); // a few degrees down: bonnet and track
+    if (ud.shell && ud.shell.visible && ud.shell.parent === A) { // in the cab: the camera moves with the shell (roll, jacking, its sway on the posts)
+      ud.shell.updateMatrixWorld(true);
+      camPos.copy(ud.shell.localToWorld(new THREE.Vector3(EYE0[0], EYE0[1], EYE0[2])));
+      camLook.copy(ud.shell.localToWorld(new THREE.Vector3(EYE0[0], EYE0[1] - 0.045, EYE0[2] + 1)));
+    } else {
+      camPos.copy(A.localToWorld(new THREE.Vector3(EYE[0], EYE[1] + ud.shellY, EYE[2])));
+      camLook.copy(A.localToWorld(new THREE.Vector3(EYE[0], EYE[1] + ud.shellY - 0.045, EYE[2] + 1)));
+    } // a few degrees down: bonnet and track
     // vibration: the tyres (slightly out of round: once per turn, plus the tread) and the motor (a buzz that rises with
     // revs and throttle), plus a decaying shake after every knock. Bumps in the floor come through the suspension, since
     // the camera rides on the sprung body
@@ -3104,16 +3207,19 @@ function updateCamera(dt, snap) {
     camLook.lerp(ahead, snap ? 1 : 1 - Math.exp(-dt * 5));
     camera.fov = POV.fov;
   } else {
-    camPos.set(0, MAP.ceilCam, 0.01);
-    camLook.lerp(target, snap ? 1 : 1 - Math.exp(-dt * 8));
-    camera.fov = 70;
+    // top down: straight above the car, a fixed north-up frame (the track does not spin), following with a soft lag
+    // and leading a little in the direction of travel
+    const aim = new THREE.Vector3(car.x + car.vx * 0.18, 0, car.z + car.vz * 0.18);
+    if (snap) camLook.copy(aim); else camLook.lerp(aim, 1 - Math.exp(-dt * 5));
+    camPos.set(camLook.x, 2.6 + (car.y || 0), camLook.z + 0.001);
+    camera.fov = 50;
   }
-  tx.visible = camMode === 2 || camMode === 3;
-  if (tx.visible) { tx.userData.wheel.rotation.x = input.steer * 0.55; tx.userData.trigger.position.z = -input.thr * 0.012 + input.brk * 0.012; }
+  tx.visible = false; // the transmitter model in the driver views is off until a better one is made
   camera.near = camMode === 1 ? 0.004 : 0.02; // FPV sits a couple of cm behind the glass
   { const g = carObj.userData.shell && carObj.userData.shell.userData.mats.glass; if (g) g.opacity = camMode === 1 ? 0.12 : 0.82; } // the camera sits against the glass: nearly clear from inside
   if (carObj.userData.mounts) carObj.userData.mounts.visible = camMode !== 1; // body posts and clips would stand right in the FPV view
-  if (camMode === 1) { camera.up.copy(new THREE.Vector3(0, 1, 0).applyQuaternion(carObj.userData.adapt.getWorldQuaternion(new THREE.Quaternion()))); } else camera.up.set(0, 1, 0);
+  if (camMode === 1) { const ud = carObj.userData, F = ud.shell && ud.shell.visible ? ud.shell : ud.adapt; camera.up.copy(new THREE.Vector3(0, 1, 0).applyQuaternion(F.getWorldQuaternion(new THREE.Quaternion()))); }
+  else if (camMode === 4) camera.up.set(0, 0, 1); else camera.up.set(0, 1, 0);
   camera.position.copy(camPos); camera.lookAt(camLook); camera.updateProjectionMatrix();
 }
 
@@ -3188,6 +3294,14 @@ function renderMenu() {
   $('mhint').textContent = menu.sub || menu.kind === 'pause' ? '↑↓ select · ←→ change · Enter confirm · Esc back' : '↑↓ select · ←→ change · Enter confirm';
   $('rcal').hidden = !rc.on; if (rc.on) { $('mlist').hidden = true; $('mnote').hidden = true; $('mcontrols').hidden = true; return; }
   $('mcontrols').hidden = !menu.controls; $('mlist').hidden = menu.controls; $('mnote').hidden = true; $('mhint').hidden = true; // minimal: no track note or key hints
+  // main menu: lift the grade and show the track card
+  const main = menu.kind === 'main'; document.querySelector('.stage').classList.toggle('mmain', main); $('mcard').hidden = !main || menu.controls;
+  if (main) {
+    $('mcn').textContent = c.name; { const s = c.note.split(/[:.]/)[0]; $('mcv').textContent = s.length > 58 ? s.slice(0, s.lastIndexOf(' ', 56)) + '…' : s; }
+    const free = !course.gates.length, chips = [[free ? 'FREE DRIVE' : MODES[raceMode], 1]]; if (!free && raceMode > 0) chips.push([raceLapsN() + ' LAPS', 0]); if (!free && raceMode === 2) chips.push(['VS ' + OPP_LEVELS[oppPick], 0]);
+    chips.push([(CAR_STYLE.shell === 'zuk' ? 'VAN' : CAR_STYLE.kit === 'wide' ? 'SEDAN WIDE' : 'SEDAN') + (CAR_STYLE.shellOn === 0 ? ' · SHELL OFF' : ''), 0]);
+    const cc = $('mcc'); cc.innerHTML = ''; for (const [t, hot] of chips) { const s = document.createElement('span'); if (hot) s.className = 'hot'; const b = document.createElement('b'); b.textContent = t; s.appendChild(b); cc.appendChild(s); }
+  }
 }
 function openMenu(kind) {
   menu.open = true; menu.kind = kind; menu.sel = 0; menu.controls = false; menu.sub = null;
@@ -3196,7 +3310,7 @@ function openMenu(kind) {
   $('overlay').hidden = false; $('hud').classList.add('dim'); renderMenu();
 }
 function closeMenu() {
-  menu.open = false; $('overlay').hidden = true; $('hud').classList.remove('dim');
+  menu.open = false; $('overlay').hidden = true; $('hud').classList.remove('dim'); document.querySelector('.stage').classList.remove('mmain');
   race.paused = false; audio.suspend(false); $('msg').textContent = '';
 }
 function menuNav(dy, dx, ok, back) {
@@ -3344,7 +3458,11 @@ const NOTES = {
   motor: ['540 sensored brushless, 10.5 turns, drift-geared: more punch and top end than the 13.5T, still smooth with boost and timing on the ESC.', 'Spec-class sensored brushless. About 53 km/h, still traction-limited off the line.', 'Open-class brushless. About 80 km/h. Far more power than the tires can put down; feather the throttle.', 'Drift-geared 13.5T brushless. Tops out near 35 km/h with smooth, controllable wheelspin.'],
   tire: ['Soft carpet rubber. Most grip, best on short tracks.', 'Medium compound. A balanced starting point.', 'Hard compound (default). Less grip, slides earlier and more progressively: easiest to hold a long drift.'],
   spring: ['Soft springs. More roll and slower weight transfer; forgiving.', 'Medium springs. Kit standard.', 'Hard springs. Little roll, sharp response, less forgiving over the limit.'],
-  oil: ['Thin shock oil. The body moves fast and can bounce after direction changes.', 'Kit standard shock oil.', 'Thick shock oil. Slow, damped body movement; the car settles before it rotates.'],
+  oil: ['10wt: very thin. The body moves fast and can bounce after direction changes.', '15wt: thin. Quick weight transfer, a lively car.', '20wt (default): the usual drift oil. Quick weight transfer that settles.', '25wt: thicker. Slower body movement; the car settles before it rotates.'],
+  ack: ['Parallel steering: both front wheels turn the same. Most front grip at full lock, holds deep angles.', 'Mild Ackermann (default): the inside wheel turns a little more. Balanced.', 'Full Ackermann: the inside wheel turns much more. Sharper turn-in at low angles, less bite at full lock.'],
+  caster: ['7° caster: lighter steering, less camber gain at lock, the body barely lifts when you steer.', '9° caster (default): the usual setting.', '12° caster: more camber gain at full lock (more front bite in a drift) and more weight jacking: the body rolls as you steer.'],
+  diff: ['Spool (default): locked rear axle. Instant, predictable breakaway; the car rotates as soon as the rear lets go.', 'Gear diff: the rear wheels can turn at different speeds. Smoother corner exit and more forgiving breakaway, but less drive when the inside wheel unloads.'],
+  esc: ['Blinky: no timing on the ESC. Smooth, linear and the gentlest top end.', 'Boost (default): timing that rises with rpm. More top-end wheel speed, more whine.', 'Boost + turbo: extra timing at full throttle. Highest wheel speed and the hardest pull at the top; less low-end torque.'],
   arb: ['Softer front roll bar. More front grip: turns in harder, rear can step out.', 'Equal roll stiffness front and rear.', 'Stiffer front roll bar. More load transfer at the front: steadier, but pushes wide (understeer).'],
   assist: ['Grip car: limits steering to what the tires can use, plus traction control and ABS. Drift car: the throttle key gives 45% power so the rear spins up gently.', 'No help: full lock at any speed, wheels can spin and lock. Like a real transmitter; best with a gamepad.'],
 };
@@ -3389,6 +3507,7 @@ const SWATCH = {
 };
 const CROWS = [
   { key: 'shell', label: 'BODY', kind: 'choice', opts: [['SEDAN', 'nk2002'], ['VAN', 'zuk']] },
+  { key: 'shellOn', label: 'SHELL', kind: 'choice', opts: [['ON', 1], ['OFF', 0]] },
   { key: 'kit', label: 'BODY KIT', kind: 'choice', opts: [['ORIGINAL', 'stock'], ['WIDE BODY', 'wide']] },
   { key: 'a', label: 'COLOUR', kind: 'color' },
   { key: 'rim', label: 'RIMS', kind: 'choice', opts: [['MODERN', 'modern'], ['COVERED', 'covered'], ['MULTI-SPOKE', 'spoke'], ['ORIGINAL', 'original']] },
@@ -3547,7 +3666,10 @@ function frame(now) {
   }
   const ud = carObj.userData;
   // body sits on its springs: roll, pitch, and a little heave from total compression
-  ud.body.rotation.x = car.roll; ud.body.rotation.z = car.pitch;
+  // caster jacking: with caster, steering lifts the chassis on one side and drops it on the other, rolling the body
+  // against the way it rolls in the turn (about 0.8° at full lock with 12° caster; you see it from the cab in FPV)
+  const jack = -(SETUP_OPTS.caster.deg[setup.caster ?? 1] * Math.PI / 180) * Math.sin(car.steer) * 0.08;
+  ud.body.rotation.x = car.roll + jack; ud.body.rotation.z = car.pitch;
   // the shell sways on its posts: a springy extra lean on top of the body roll, more the taller the shell (lag and a
   // little overshoot, as a tall body rocks on its posts when the car flicks from one drift into the next)
   if (ud.swayK && !(ud.dmg && ud.dmg.pop) && dt > 0) {
@@ -3561,13 +3683,16 @@ function frame(now) {
   }
   ud.body.position.y = ud.body.userData.baseY - Math.abs(car.roll) * 0.02 + (car.heave || 0);
   for (const w of ud.wheels) { if (w.baseY === undefined) w.baseY = w.pivot.position.y; const wh = car.wh || [0, 0, 0, 0]; w.pivot.position.y = w.baseY + (w.front ? (w.s > 0 ? wh[0] : wh[1]) : (w.s > 0 ? wh[2] : wh[3])); } // each wheel on the floor under it
-  for (const w of ud.wheels) { w.m.rotation.z = -car.spin; if (w.front) w.pivot.rotation.y = car.steer; }
+  // Ackermann: the inside front wheel turns further than the outside one (at full lock with FULL: about 70° inside, 48° outside)
+  { const ak = SETUP_OPTS.ack.k[setup.ack ?? 1] * 0.2;
+    for (const w of ud.wheels) { w.m.rotation.z = -car.spin; if (w.front) { const inside = (car.steer > 0) === (w.s > 0); w.pivot.rotation.y = inside ? car.steer : car.steer * (1 - ak * 1.6 * Math.min(1, Math.abs(car.steer))); } } }
+  // (the outside wheel turns less; the inside one never past the lock the arches are cut for)
   ud.lampM.color.setHex(car.braking && canDrive ? 0xff6a50 : (car.reversing ? 0xffe8d8 : 0xb81a12));
   if (ud.update) ud.update(car.steer, car.roll);
   if (ud.dmg) damageStep(ud.dmg, dt); if (impactCool > 0) impactCool -= dt;
   ghostStep(dt); idleStep(dt, canDrive);
   updateCamera(dt, false);
-  audio.update(car.wheelSurf / MOTORS[setup.motor].vFree, car.thr, car.slide, race.state !== 'menu', MOTORS[setup.motor]);
+  audio.update(car.wheelSurf / MOTORS[setup.motor].vFree, car.thr, car.slide, race.state !== 'menu', MOTORS[setup.motor], setup.esc ?? 0);
   audio.setPose(car.x, car.y + 0.05, car.z, camera);
   if (telemetryOn) drawTelemetry();
   updateMood(performance.now() / 1000);
