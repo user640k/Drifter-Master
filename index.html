@@ -1378,7 +1378,7 @@ function buildWheel(type, set = 0) {
 PARTS.CHASSIS = {
   drift: { name: 'DRIFT', note: 'Electric RWD, rear-mid motor; wheelbase, track and wheel size taken from the shell', tyre: 'drift', wb: 0.25, wheelX: 0.068, wR: 0.0291, plateY: 0.005, armIn: 0.03, armY: 0.02, towerY: 0.06, shockR: 0.0062, travel: 0.006 },
 };
-PARTS.CHASSIS.driftLong = { ...PARTS.CHASSIS.drift, name: 'DRIFT LONG', note: 'The drift chassis on its long setting: 270 mm wheelbase (longer plate and links), for the Żuk', wb: 0.27 };
+PARTS.CHASSIS.driftLong = { ...PARTS.CHASSIS.drift, name: 'DRIFT LONG', note: 'The drift chassis on its long setting: 270 mm wheelbase (longer plate and links), for the van', wb: 0.27 };
 PARTS.carbonTex = () => {
   const t = tex(64, 64, (g, w, h) => { g.fillStyle = '#16171a'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 8) for (let x = 0; x < w; x += 8) { const a = ((x + y) / 8) % 2; g.fillStyle = a ? '#26282d' : '#1c1d21'; g.fillRect(x, y, 8, 8); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x + (a ? 1 : 0), y + (a ? 0 : 1), a ? 6 : 8, a ? 8 : 6); } });
   t.repeat.set(220, 220); return t;
@@ -1389,7 +1389,7 @@ PARTS.mats = () => {
   PARTS._m = {
     carbon: ph(0xffffff, 60, 0.12, { map: PARTS.carbonTex(), specular: 0x666666 }),
     alu: ph(0x8e949e, 90, 0.45), blueAlu: ph(0x2858c8, 100, 0.35), purpleAlu: ph(0x6a3cc8, 100, 0.35), goldAlu: ph(0xd4a23a, 100, 0.4), redAlu: ph(0xc8202a, 100, 0.3),
-    nylon: ph(0x1d1d20, 18, 0, { specular: 0x333333 }), steel: ph(0xc8ccd2, 120, 0.7), darkSteel: ph(0x50545c, 80, 0.4),
+    nylon: ph(0x1d1d20, 18, 0, { specular: 0x333333 }), chassisBlack: ph(0x151517, 45, 0.06, { specular: 0x55555c }), springBlack: ph(0x26272b, 70, 0.2), labelW: ph(0xeeeeea, 20, 0), steel: ph(0xc8ccd2, 120, 0.7), darkSteel: ph(0x50545c, 80, 0.4),
     spring: ph(0x3a7aff, 80, 0.3), springRed: ph(0xe0302a, 80, 0.3), gear: ph(0xe8e4d8, 30, 0, { specular: 0x444444 }), brass: ph(0xc8a050, 90, 0.4),
     can: ph(0x9aa2ac, 110, 0.55), lipo: ph(0x222428, 40, 0.05), label: ph(0xffb21e, 30, 0), esc: ph(0x18191c, 30, 0), fan: ph(0x303238, 20, 0),
     wireR: ph(0xc81818, 40, 0), wireB: ph(0x161616, 40, 0), wireW: ph(0xd8d8d8, 40, 0), antenna: ph(0x101010, 30, 0),
@@ -1420,15 +1420,15 @@ function plateGeo(pts, t, holes = []) {
 const roundOutline = (x0, z0, x1, z1, r, n = 6) => { const p = [], c = (cx, cz, a0) => { for (let i = 0; i <= n; i++) { const a = a0 + i / n * Math.PI / 2; p.push([cx + r * Math.cos(a), cz + r * Math.sin(a)]); } }; c(x1 - r, z0 + r, -Math.PI / 2); c(x1 - r, z1 - r, 0); c(x0 + r, z1 - r, Math.PI / 2); c(x0 + r, z0 + r, Math.PI); return p; };
 
 // a coil-over shock from the tower mount (top) down to the arm mount; update(top, bottom) re-aims and squeezes the spring
-function buildShock(m, bodyM, springM, r, L0) {
+function buildShock(m, bodyM, springM, r, L0, capM = bodyM) { // capM: cap, preload collar and spring cup (red on the drift chassis)
   const g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
   const bodyL = L0 * 0.55;
   pCyl(r * 0.7, r * 0.7, 0.004, m.steel, null, 0, -0.002, 0, inner, 10);                     // top eyelet
-  pCyl(r * 1.15, r * 1.15, 0.004, bodyM, null, 0, -0.006, 0, inner, 20);                    // threaded cap
+  pCyl(r * 1.15, r * 1.15, 0.004, capM, null, 0, -0.006, 0, inner, 20);                    // threaded cap
   pCyl(r, r, bodyL, bodyM, null, 0, -0.006 - bodyL / 2, 0, inner, 20);                       // body
-  pCyl(r * 1.25, r * 1.25, 0.002, bodyM, null, 0, -0.006 - bodyL * 0.35, 0, inner, 20);      // preload collar
+  pCyl(r * 1.25, r * 1.25, 0.002, capM, null, 0, -0.006 - bodyL * 0.35, 0, inner, 20);      // preload collar
   const shaft = pCyl(r * 0.28, r * 0.28, 1, m.steel, null, 0, 0, 0, inner, 10);
-  const cup = pCyl(r * 1.3, r * 1.1, 0.0022, bodyM, null, 0, 0, 0, inner, 20);
+  const cup = pCyl(r * 1.3, r * 1.1, 0.0022, capM, null, 0, 0, 0, inner, 20);
   const eye = pCyl(r * 0.55, r * 0.55, 0.005, m.nylon, null, 0, 0, 0, inner, 10);
   const turns = 9, hp = []; for (let i = 0; i <= turns * 16; i++) { const a = i / 16 * Math.PI * 2; hp.push(new THREE.Vector3(Math.cos(a) * r * 1.3, -i / (turns * 16), Math.sin(a) * r * 1.3)); }
   const spring = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hp), turns * 16, r * 0.16, 6), springM); inner.add(spring);
@@ -1458,12 +1458,12 @@ function buildCorner(C, m, s, front, k) {
   // upright / knuckle (front ones steer about a kingpin)
   const knuckle = new THREE.Group(); g.add(knuckle);
   const kx = C.wheelX - 0.012;
-  pBox(0.006, wR * 0.95, 0.012, front ? m.blueAlu : m.nylon, X(0.0), 0, 0, knuckle);
+  pBox(0.006, wR * 0.95, 0.012, front && !C.rmx ? m.blueAlu : m.nylon, X(0.0), 0, 0, knuckle);
   pCyl(0.004, 0.004, 0.012, m.steel, 'x', X(0.007), 0.002, 0, knuckle, 12);                           // axle stub
-  if (front) { const sa = pBox(0.004, 0.004, 0.016, m.blueAlu, X(-0.002), -0.004, -0.009, knuckle); }   // steering arm, behind the axle
+  if (front) { const sa = pBox(0.004, 0.004, 0.016, C.rmx ? m.redAlu : m.blueAlu, X(-0.002), -0.004, -0.009, knuckle); }   // steering arm, behind the axle
   // camber link (upper) and the shock
   const camber = buildLink(m); g.add(camber);
-  const shock = buildShock(m, m.purpleAlu, m.spring, C.shockR, C.towerY - C.armY); g.add(shock);
+  const shock = C.rmx ? buildShock(m, m.chassisBlack, m.springBlack, C.shockR, C.towerY - C.armY, m.redAlu) : buildShock(m, m.purpleAlu, m.spring, C.shockR, C.towerY - C.armY); g.add(shock);
   let tie = null; if (front) { tie = buildLink(m, 0.0011); g.add(tie); }
   // driveshaft (rear on the drift car, all four on the 4WD)
   let ds = null; if (!front) { ds = new THREE.Group(); const rod = pRod(0.0018, m.darkSteel, ds), cup1 = new THREE.Mesh(new THREE.SphereGeometry(0.0034, 10, 8), m.steel), cup2 = cup1.clone(); ds.add(cup1, cup2); ds.userData.update = (a, b) => { setRod(rod, a, b); cup1.position.copy(a); cup2.position.copy(b); }; g.add(ds); }
@@ -1486,10 +1486,10 @@ function buildCorner(C, m, s, front, k) {
 
 function buildChassis(kind, rimSet = 0, tyre) {
   const C = tyre ? { ...PARTS.CHASSIS[kind], tyre } : PARTS.CHASSIS[kind], m = PARTS.mats(), root = new THREE.Group(), wb = C.wb, fz = wb / 2, rz = -wb / 2;
-  const spec = PARTS.TYRES[C.tyre], wR = spec.od / 2, drift = kind === 'drift';
+  const spec = PARTS.TYRES[C.tyre], wR = spec.od / 2, drift = kind.startsWith('drift'), ACC = drift ? m.redAlu : m.blueAlu; // drift chassis: black plastic with red anodised parts
   const parts = []; const tag = (name, obj, focus) => { obj.name = name; parts.push({ name, obj, focus }); return obj; };
   // main plate
-  const plateM = drift ? m.carbon : m.alu, plateT = drift ? 0.0025 : 0.003;
+  const plateM = drift ? m.chassisBlack : m.alu, plateT = drift ? 0.0025 : 0.003;
   const outline = drift ? [[-0.05, -0.17], [0.05, -0.17], [0.05, 0.08], [0.036, 0.17], [-0.036, 0.17], [-0.05, 0.08]] : roundOutline(-0.052, -0.17, 0.052, 0.17, 0.02);
   const holes = []; for (let zz = -0.12; zz <= 0.13; zz += 0.05) for (const xx of [-0.03, 0.03]) holes.push([xx, zz, 0.004]);
   const plate = new THREE.Mesh(plateGeo(outline, plateT, holes), plateM); plate.position.y = C.plateY; root.add(plate); tag('Main plate', plate, [0, 0.01, 0]);
@@ -1506,12 +1506,12 @@ function buildChassis(kind, rimSet = 0, tyre) {
     const win = new THREE.Path([[-0.016, yb + 0.007], [0.016, yb + 0.007], [0.034, C.towerY - 0.003], [-0.034, C.towerY - 0.003]].map(([x, y]) => new THREE.Vector2(x, y))); sh.holes.push(win);
     for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const h = new THREE.Path(); h.absarc(sx * (0.038 + i * 0.006), C.towerY + 0.007, 0.0013, 0, Math.PI * 2, true); sh.holes.push(h); }
     const tg = new THREE.ExtrudeGeometry(sh, { depth: 0.003, bevelEnabled: false }); tg.translate(0, 0, -0.0015);
-    const tower = new THREE.Mesh(tg, drift ? m.carbon : m.alu); tower.position.z = z; root.add(tower); tag(nm, tower, [0, C.towerY - 0.01, z]);
+    const tower = new THREE.Mesh(tg, drift ? m.chassisBlack : m.alu); tower.position.z = z; root.add(tower); tag(nm, tower, [0, C.towerY - 0.01, z]);
   }
   // corners and wheels
   const corners = [], wheels = [];
   for (const front of [true, false]) for (const s of [1, -1]) {
-    const k = { pos: new THREE.Vector3(), steer: 0, roll: 0 }, cg = buildCorner(C, m, s, front, k); root.add(cg);
+    const k = { pos: new THREE.Vector3(), steer: 0, roll: 0 }, cg = buildCorner(drift ? { ...C, rmx: true } : C, m, s, front, k); root.add(cg);
     const w = buildWheel(C.tyre, rimSet); if (s < 0) w.rotation.y = Math.PI; if (C.wR) w.scale.setScalar(2 * C.wR / PARTS.TYRES[C.tyre].od); root.add(w);
     corners.push({ g: cg, k, w, s, front }); wheels.push(w);
   }
@@ -1519,40 +1519,51 @@ function buildChassis(kind, rimSet = 0, tyre) {
   tag('Shocks: oil-filled coil-overs', corners[2].g, [C.wheelX - 0.035, (C.towerY + C.armY) / 2, rz]);
   tag('Wheels', corners[0].w, [C.wheelX, wR, fz]);
   if (drift) {
-    // upper deck on posts
-    const deck = new THREE.Mesh(plateGeo([[-0.022, -0.05], [0.022, -0.05], [0.026, 0.11], [-0.026, 0.11]], 0.002), m.carbon); deck.position.y = 0.04; root.add(deck);
-    for (const [x, z] of [[-0.018, -0.04], [0.018, -0.04], [-0.02, 0.1], [0.02, 0.1], [0, 0.03]]) pCyl(0.0025, 0.0025, 0.04 - C.plateY, m.blueAlu, null, x, (0.04 + C.plateY) / 2, z, root, 8);
-    tag('Upper deck', deck, [0, 0.042, 0.03]);
+    // after a modern 1/10 RWD drift chassis (RMX-style): black plastic, red anodised accents. Upper deck: a twin-rail spine
+    // from the front tower back over the gearbox, on red posts
+    for (const sx of [-1, 1]) { pBox(0.006, 0.007, fz - rz - 0.03, m.chassisBlack, sx * 0.011, 0.045, (fz + rz) / 2 + 0.008, root); }
+    for (const z of [rz + 0.03, 0.0, fz - 0.03]) pBox(0.028, 0.004, 0.008, m.chassisBlack, 0, 0.045, z, root);
+    for (const [x, z] of [[-0.011, rz + 0.03], [0.011, rz + 0.03], [-0.011, fz - 0.03], [0.011, fz - 0.03], [0, 0.0]]) pCyl(0.0022, 0.0022, 0.045 - C.plateY, ACC, null, x, (0.045 + C.plateY) / 2, z, root, 8);
+    tag('Upper deck: twin-rail spine', root.children[root.children.length - 8], [0, 0.046, 0]);
+    // front: long body-mount bar on top and a low bumper plate ahead of the bulkhead
+    const fb = new THREE.Group(); root.add(fb);
+    pBox(0.07, 0.004, 0.012, m.chassisBlack, 0, 0.052, fz + 0.03, fb); for (const sx of [-1, 1]) { pBox(0.006, 0.004, 0.036, m.chassisBlack, sx * 0.022, 0.05, fz + 0.012, fb); pCyl(0.0028, 0.0028, 0.004, ACC, null, sx * 0.03, 0.055, fz + 0.03, fb, 12); }
+    const bp = new THREE.Mesh(plateGeo([[-0.04, fz + 0.01], [0.04, fz + 0.01], [0.032, fz + 0.045], [-0.032, fz + 0.045]], 0.003), m.chassisBlack); bp.position.y = C.plateY + 0.006; fb.add(bp);
+    tag('Front bumper and body-mount bar', fb, [0, 0.03, fz + 0.03]);
     // motor: 540 can, lengthways in the rear-middle, shaft pointing back to the gearbox
     const mot = new THREE.Group(); mot.position.set(0, 0.026, -0.058); root.add(mot);
-    pCyl(0.018, 0.018, 0.04, m.can, 'z', 0, 0, 0.004, mot, 28);
-    pCyl(0.0185, 0.0185, 0.012, m.blueAlu, 'z', 0, 0, 0.03, mot, 28); // end bell
-    for (let i = 0; i < 6; i++) pCyl(0.0195, 0.0195, 0.0012, m.blueAlu, 'z', 0, 0, -0.012 + i * 0.005, mot, 28); // heatsink fins
-    pCyl(0.0182, 0.0182, 0.014, m.label, 'z', 0, 0, 0.006, mot, 28); // label band round the can
+    pCyl(0.018, 0.018, 0.04, m.chassisBlack, 'z', 0, 0, 0.004, mot, 28);
+    pCyl(0.0185, 0.0185, 0.012, ACC, 'z', 0, 0, 0.03, mot, 28); // end bell
+    for (let i = 0; i < 6; i++) pCyl(0.0195, 0.0195, 0.0012, m.chassisBlack, 'z', 0, 0, -0.012 + i * 0.005, mot, 28); // heatsink fins
+    pCyl(0.0182, 0.0182, 0.014, m.labelW, 'z', 0, 0, 0.006, mot, 28); // label band round the can
     pCyl(0.0016, 0.0016, 0.012, m.steel, 'z', 0, 0, -0.022, mot, 8); // shaft
     tag('Motor: 540 brushless, rear-mid', mot, [0, 0.03, -0.06]);
-    // pinion and spur on a layshaft beside the motor, then a shaft into the rear gearbox
+    // pinion and a red spur on a layshaft beside the motor, half covered by a black guard, then a shaft into the gearbox
     const pin = new THREE.Mesh(gearGeo(0.0055, 14, 0.005, 0.0016), m.steel); pin.position.set(0, 0.026, -0.082); root.add(pin);
-    const spur = new THREE.Mesh(gearGeo(0.017, 64, 0.004, 0.002), m.gear); spur.position.set(0, 0.026 + 0.0225, -0.084); root.add(spur);
+    const spur = new THREE.Mesh(gearGeo(0.017, 64, 0.004, 0.002), m.redAlu); spur.position.set(0, 0.026 + 0.0225, -0.084); root.add(spur);
+    const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.0195, 0.0195, 0.007, 24, 1, false, 0, Math.PI), m.chassisBlack); guard.rotation.x = Math.PI / 2; guard.rotation.z = Math.PI / 2; guard.position.set(0, 0.0485, -0.0865); root.add(guard);
     const lay = pCyl(0.002, 0.002, 0.03, m.steel, 'z', 0, 0.0485, -0.097, root, 8);
-    pBox(0.044, 0.05, 0.003, m.blueAlu, 0, 0.034, -0.0775, root); // motor mount plate
-    tag('Pinion and spur gear (visible transmission)', spur, [0, 0.04, -0.085]);
-    // ESC with fan, wires to the motor
-    const esc = new THREE.Group(); esc.position.set(0.032, 0.0185, 0.0); root.add(esc);
-    pBox(0.03, 0.017, 0.036, m.esc, 0, 0, 0, esc); pBox(0.028, 0.004, 0.03, m.alu, 0, 0.0105, 0, esc); pCyl(0.011, 0.011, 0.004, m.fan, null, 0, 0.0145, 0, esc, 20);
-    pTube([[0.026, 0.02, -0.012], [0.02, 0.03, -0.03], [0.008, 0.032, -0.045]], 0.0014, m.wireR, root); pTube([[0.03, 0.02, -0.012], [0.024, 0.026, -0.032], [0.01, 0.028, -0.046]], 0.0014, m.wireB, root);
-    tag('ESC with cooling fan', esc, [0.032, 0.025, 0]);
-    // shorty LiPo on the left
+    pBox(0.044, 0.05, 0.003, ACC, 0, 0.034, -0.0775, root); // motor mount plate
+    tag('Pinion and red spur gear with guard', spur, [0, 0.04, -0.085]);
+    // ESC with its cooling fan at the tail, behind the rear gearbox; power wires forward to the battery with a red plug
+    const esc = new THREE.Group(); esc.position.set(0, 0.019, rz - 0.032); root.add(esc);
+    pBox(0.032, 0.02, 0.03, m.esc, 0, 0, 0, esc); pBox(0.03, 0.003, 0.028, m.chassisBlack, 0, 0.0115, 0, esc); pCyl(0.0115, 0.0115, 0.003, m.fan, null, 0, 0.0135, 0, esc, 24);
+    for (let i = 0; i < 4; i++) pBox(0.022, 0.0008, 0.0012, m.chassisBlack, 0, 0.0152, -0.009 + i * 0.006, esc); // fan grille
+    pTube([[0.01, 0.033, rz - 0.02], [0.03, 0.045, rz + 0.02], [0.034, 0.035, -0.03], [-0.006, 0.042, 0.02]], 0.0016, m.wireR, root);
+    pTube([[-0.01, 0.033, rz - 0.02], [-0.026, 0.05, rz + 0.03], [0.03, 0.04, -0.02], [-0.008, 0.04, 0.024]], 0.0016, m.wireB, root);
+    pBox(0.009, 0.006, 0.014, m.redAlu, -0.006, 0.042, 0.03, root); // T-plug
+    pTube([[-0.012, 0.028, rz - 0.018], [-0.02, 0.02, rz + 0.01], [-0.01, 0.018, -0.07]], 0.0011, m.wireB, root); // motor leads
+    tag('ESC with cooling fan (at the tail)', esc, [0, 0.03, rz - 0.032]);
+    // shorty LiPo in a black hard case on the left
     const bat = new THREE.Group(); bat.position.set(-0.03, C.plateY + plateT + 0.0125, 0.0); root.add(bat);
-    pBox(0.047, 0.025, 0.096, m.lipo, 0, 0, 0, bat); pBox(0.048, 0.008, 0.06, m.label, 0, 0.002, 0, bat);
-    pTube([[-0.012, 0.02, 0.048], [-0.004, 0.03, 0.055], [0.022, 0.03, 0.02]], 0.0014, m.wireR, root);
+    pBox(0.047, 0.025, 0.096, m.lipo, 0, 0, 0, bat); pBox(0.03, 0.0006, 0.04, m.labelW, 0, 0.0128, 0.012, bat);
     tag('Battery: 2S shorty LiPo', bat, [-0.03, 0.03, 0]);
-    // receiver with antenna tube, gyro, steering servo with horn and drag link
+    // receiver, and the gyro on the spine with its white label; steering servo low at the front
     const rx = pBox(0.022, 0.012, 0.03, m.esc, 0.024, C.plateY + plateT + 0.006, 0.07, root); pRod(0.0009, m.antenna, root).position.set(0.03, 0.075, -0.09); root.children[root.children.length - 1].scale.y = 0.06; // antenna tube stays inside the cabin, behind the seats (out of the FPV view)
-    pBox(0.018, 0.012, 0.018, m.redAlu, -0.018, 0.047, 0.07, root);
-    tag('Receiver and antenna', rx, [0.024, 0.02, 0.07]); tag('Gyro', root.children[root.children.length - 1], [-0.018, 0.05, 0.07]);
+    const gy = new THREE.Group(); gy.position.set(0, 0.0545, 0.045); root.add(gy); pBox(0.024, 0.011, 0.02, m.esc, 0, 0, 0, gy); pBox(0.02, 0.0006, 0.012, m.labelW, 0, 0.0058, 0.001, gy); pBox(0.006, 0.002, 0.004, m.redAlu, 0.006, 0.0062, -0.006, gy);
+    tag('Receiver and antenna', rx, [0.024, 0.02, 0.07]); tag('Gyro', gy, [0, 0.055, 0.045]);
     const servo = pBox(0.02, 0.038, 0.04, m.nylon, 0, C.plateY + plateT + 0.019, 0.098, root);
-    pBox(0.004, 0.004, 0.02, m.alu, 0.012, 0.03, 0.105, root);
+    pBox(0.004, 0.004, 0.02, ACC, 0.012, 0.03, 0.105, root);
     tag('Steering servo', servo, [0, 0.03, 0.1]);
   }
   // steering rack / bellcrank bar at the front
@@ -1581,12 +1592,12 @@ PARTS.SHELLS = {
   // the owner's model of a 1970s two-door saloon (a BMW 2002 tii), used as-is: only scaled uniformly to true 1/10 of
   // the real car (250 mm wheelbase) and turned into the game's frame by tools/car_from_usdz.py. The chassis, wheels,
   // posts, decals, damage and physics all fit to it. width / top are its outline, for aiming hits in the lab.
-  nk2002: { name: '2002 TII', note: "The owner's model, true 1/10 scale: 421 × 176 × 137 mm, 250 mm wheelbase", chassis: 'drift', model: true,
+  nk2002: { name: 'SEDAN', note: "The owner's sedan model, true 1/10 scale: 421 × 176 × 137 mm, 250 mm wheelbase", chassis: 'drift', model: true,
     z0: -0.2225, z1: 0.1985, width: [[-0.2225, 0.0881], [0.1985, 0.0881]], top: [[-0.2225, 0.137], [0.1985, 0.137]], sway: 1.5 },
   // the owner's model of a 1970s Polish Żuk van (tools/zuk_from_blend.py), true 1/10 (270 mm wheelbase), emptied into an
   // RC shell: no wheels, floor, arch liners or running gear; the long chassis and the game's wheels go underneath. It
   // keeps the model's texture (rust and all); paint schemes recolour its blue paint. Tall and boxy: it sways on its posts.
-  zuk: { name: 'ŻUK VAN', note: "The owner's model, true 1/10 scale: 440 × 175 × 209 mm, 270 mm wheelbase", chassis: 'driftLong', model: true,
+  zuk: { name: 'VAN', note: "The owner's van model, true 1/10 scale: 440 × 175 × 209 mm, 270 mm wheelbase", chassis: 'driftLong', model: true,
     z0: -0.2459, z1: 0.1943, width: [[-0.2459, 0.0875], [0.1943, 0.0875]], top: [[-0.2459, 0.209], [0.1943, 0.209]], sway: 8,
     eye: [0, 0.158, 0.105] },
 };
@@ -1675,15 +1686,17 @@ function raceBumper(mt) {
 // slammed: below stock height the hubs sit higher in the shell, so the arches are opened just enough round the space
 // each tyre sweeps (camber and, at the front, full steering lock), 1.5 mm clear. The rest of the shell stays as it is
 const _archTabs = {};
-function archTable(T, cam, steer) { // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
-  const key = [T.od, T.w, cam.toFixed(4), steer].join('|'); if (_archTabs[key]) return _archTabs[key];
-  const R = T.od / 2, hw = T.w / 2 + 0.0015, NX = 121, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
+function archTable(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
+  const key = [T.od, T.w, cam.toFixed(4), steer, off].join('|'); if (_archTabs[key]) return _archTabs[key];
+  const R = T.od / 2, hw = T.w / 2 + 0.0015, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
   const steps = steer ? 47 : 1;
   for (let k = 0; k < steps; k++) { const st = steer ? -steer + 2 * steer * k / (steps - 1) : 0, ss = Math.sin(st), cs = Math.cos(st);
-    const NW = Math.ceil(T.w / 0.0004); for (let ia = 0; ia <= NW; ia++) { const a = -hw + 2 * hw * ia / NW, rr = (ia === 0 || ia === NW) ? R - 0.0015 : R;
+    // the tyre is tilted by its camber about its own centre; a spacer puts that centre off out from the pivot, where camber
+    // lifts or drops it by off·sin(camber): both are allowed for
+    const NW = Math.ceil(T.w / 0.0004); for (const cy of off ? [1, -1] : [0]) for (let ia = 0; ia <= NW; ia++) { const a = -hw + 2 * hw * ia / NW, rr = (ia === 0 || ia === NW) ? R - 0.0015 : R;
       for (let ip = 0; ip < 120; ip++) { const ph = ip / 120 * Math.PI * 2, y0 = rr * Math.sin(ph), z0 = rr * Math.cos(ph);
-        const x1 = a * cc - y0 * sc, y1 = a * sc + y0 * cc, x2 = x1 * cs + z0 * ss, z2 = -x1 * ss + z0 * cs;
-        const xi = Math.round(x2 / 0.0005) + 60, ai = Math.round(Math.atan2(y1, z2) * 180 / Math.PI / 4) + 45; if (xi < 0 || xi >= NX) continue;
+        const x1 = off * cc + a * cc - y0 * sc, y1 = cy * off * Math.abs(sc) + a * sc + y0 * cc, x2 = x1 * cs + z0 * ss, z2 = -x1 * ss + z0 * cs;
+        const xi = Math.round(x2 / 0.0005) + 80, ai = Math.round(Math.atan2(y1, z2) * 180 / Math.PI / 4) + 45; if (xi < 0 || xi >= NX) continue;
         const r = Math.hypot(y1, z2), o = xi * NA + ai; if (r > tab[o]) tab[o] = r; } } }
   return _archTabs[key] = tab;
 }
@@ -1719,8 +1732,8 @@ function archFlare(geo, F) {
   for (let i = 0; i < pa.count; i++) {
     const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), front = z > 0, H = F.hubs[(front ? 'F' : 'R') + (x > 0 ? 'R' : 'L')], tab = front ? F.tF : F.tR;
     const dy = y - H[1], dz = z - H[2], d = Math.hypot(dy, dz); if (d > 0.05 || d < 1e-4 || dy < -0.006) continue;
-    const dx = (x - H[0]) * Math.sign(H[0]), xi = Math.round(dx / 0.0005) + 60, ai = Math.round(Math.atan2(dy, dz) * 180 / Math.PI / 4) + 45;
-    let need = 0; for (let a = xi - 3; a <= xi + 3; a++) if (a >= 0 && a < 121) for (let b = ai - 1; b <= ai + 1; b++) if (b >= 0 && b < 91) need = Math.max(need, tab[a * 91 + b]);
+    const dx = (x - H[0]) * Math.sign(H[0]), xi = Math.round(dx / 0.0005) + 80, ai = Math.round(Math.atan2(dy, dz) * 180 / Math.PI / 4) + 45;
+    let need = 0; for (let a = xi - 3; a <= xi + 3; a++) if (a >= 0 && a < 161) for (let b = ai - 1; b <= ai + 1; b++) if (b >= 0 && b < 91) need = Math.max(need, tab[a * 91 + b]);
     if (!need) continue; need += m; if (d >= need + s) continue;
     const nd = d <= need - s ? need : need + (d - need + s) * (d - need + s) / (4 * s);
     pa.setY(i, H[1] + dy * nd / d); pa.setZ(i, H[2] + dz * nd / d);
@@ -1741,7 +1754,7 @@ function buildZukShell(flare) {
     if (p.name === 'body') { mesh.geometry.clearGroups(); mesh.geometry.addGroup(0, mesh.geometry.index.count, 0); body = mesh; }
     place(mesh);
   }
-  if (flare && flare.drop > 0) {
+  if (flare) {
     const C = Object.values(flare.hubs);
     root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) { refineNear(o.geometry, C, 0.06, 0.004); archFlare(o.geometry, flare); } });
     body.geometry.clearGroups(); body.geometry.addGroup(0, body.geometry.index.count, 0);
@@ -1751,7 +1764,7 @@ function buildZukShell(flare) {
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.05), new THREE.MeshLambertMaterial({ color: 0x141416, side: THREE.DoubleSide }));
     dash.position.set(0, 0.128, 0.13); dash.rotation.x = -0.9; root.add(dash);
   }
-  tag('Body: the owner’s Żuk, true 1/10', body, [0, 0.12, 0]);
+  tag('Body: the owner’s van, true 1/10', body, [0, 0.12, 0]);
   for (const b of brkGroups) if (b.g) tag(b.name, b.g, new THREE.Box3().setFromObject(b.g).getCenter(new THREE.Vector3()).toArray());
   const brk = brkGroups.filter(b => b.g).map(b => [b.name, b.g, b.tough]);
   root.userData = { kind, parts, mats: { ...mt, glass, trim: mt.black, amber: mt.tail }, S, brk };
@@ -1771,9 +1784,9 @@ function buildShell(kind, paint, flare) {
     if (PARTS.RACE_DELETE.test(p.name)) continue;
     const mesh = new THREE.Mesh(p.geo.clone(), p.role === 'paint' ? [mt.paint] : roleMat[p.role] || mt.black); mesh.name = p.name; mesh.userData.dent = true;
     if (/^rear_hood_CP_Black/.test(p.name)) { // the model's inner wheel-well lining: left out where the wheels sweep when they steer (RC shells are open underneath)
-      const pa = mesh.geometry.attributes.position, ix = mesh.geometry.index.array, keep = [], hubs = Object.values(BODY_ASSET.hubs).map(q => [q[0], q[1] + (flare ? flare.drop : 0), q[2]]), c = new THREE.Vector3(), v = new THREE.Vector3();
-      for (let t = 0; t < ix.length; t += 3) { c.set(0, 0, 0); for (let k = 0; k < 3; k++) c.add(v.fromBufferAttribute(pa, ix[t + k])); c.multiplyScalar(1 / 3);
-        if (hubs.every(h => Math.hypot(c.x - h[0], c.y - h[1], c.z - h[2]) > 0.036)) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
+      const pa = mesh.geometry.attributes.position, ix = mesh.geometry.index.array, keep = [], hubs = flare ? Object.values(flare.hubs) : Object.values(BODY_ASSET.hubs), cutR = flare ? Math.hypot(flare.R, flare.hw) + 0.005 : 0.036, c = new THREE.Vector3(), v = new THREE.Vector3();
+      for (let t = 0; t < ix.length; t += 3) { c.set(0, 0, 0); const pts = []; for (let k = 0; k < 3; k++) { v.fromBufferAttribute(pa, ix[t + k]); pts.push(v.clone()); c.add(v); } c.multiplyScalar(1 / 3); pts.push(c);
+        if (hubs.every(h => pts.every(q => Math.hypot(q.x - h[0], q.y - h[1], q.z - h[2]) > cutR))) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
       mesh.geometry.setIndex(keep);
     }
     if (p.role === 'paint') { mesh.geometry.clearGroups(); mesh.geometry.addGroup(0, mesh.geometry.index.count, 0); body = body || mesh; }
@@ -1784,14 +1797,14 @@ function buildShell(kind, paint, flare) {
     const rp = new THREE.Mesh(new THREE.PlaneGeometry(0.0405, 0.0095), new THREE.MeshPhongMaterial({ map: plateTex(), shininess: 60, specular: 0x333333, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
     rp.name = 'back_buffer_plate'; rp.position.set(0, 0.0602, -0.2168); rp.rotation.y = Math.PI; place(rp);
   }
-  if (flare && flare.drop > 0) root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) archFlare(o.geometry, flare); });
+  if (flare) root.traverse(o => { if (o.isMesh && o.geometry.attributes.position) archFlare(o.geometry, flare); });
   root.remove(body); root.children.unshift(body); body.parent = root; // the paint shell is always children[0]
   { // a dark dashboard under the windshield: from the glass base down and back into the cabin
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.06), new THREE.MeshLambertMaterial({ color: 0x141416, side: THREE.DoubleSide }));
     dash.position.set(0, 0.072, 0.062); dash.rotation.x = -0.65; root.add(dash);
     const top = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.03), dash.material); top.position.set(0, 0.086, 0.074); top.rotation.x = -Math.PI / 2 + 0.15; root.add(top);
   }
-  tag('Body: the owner’s model, true 1/10', body, [0, 0.07, 0]);
+  tag('Body: the owner’s sedan, true 1/10', body, [0, 0.07, 0]);
   for (const b of brkGroups) if (b.g) tag(b.name, b.g, new THREE.Box3().setFromObject(b.g).getCenter(new THREE.Vector3()).toArray());
   const brk = brkGroups.filter(b => b.g).map(b => [b.name, b.g, b.tough]);
   root.userData = { kind, parts, mats: { ...mt, trim: mt.black, amber: mt.tail }, S, brk };
@@ -1947,7 +1960,7 @@ function buildMounts(shell, type) {
     if (type === 'posts') {
       const top = sy + 0.014, post = pCyl(0.003, 0.003, top - by, m.nylon, null, x, (top + by) / 2, pz, posts, 14);
       for (let h = by + 0.008; h < top - 0.002; h += 0.003) { const hole = pCyl(0.00085, 0.00085, 0.0062, holeM, 'z', x, h, pz, posts, 6); hole.rotation.y = 0; }
-      pCyl(0.0055, 0.0055, 0.003, m.blueAlu, null, x, by + 0.0015, pz, posts, 16); // post mount
+      pCyl(0.0055, 0.0055, 0.003, m.redAlu, null, x, by + 0.0015, pz, posts, 16); // post mount
       const w = pCyl(0.0058, 0.0058, 0.0012, washerM, null, x, sy + 0.0007, pz, onShell, 18); // rubber body washer on the shell
       const clip = new THREE.Mesh(clipGeo, m.steel); clip.position.set(x, sy + 0.0045, pz); clip.rotation.y = s > 0 ? 0 : Math.PI; clip.userData.home = clip.position.clone(); clip.userData.out = new THREE.Vector3(s * 0.016, 0, 0); clips.add(clip);
       tag('Body posts with height holes', post, [x, (top + by) / 2, pz]); tag('R-clips', clip, [x, sy + 0.005, pz]); tag('Rubber body washers', w, [x, sy, pz]);
@@ -1959,8 +1972,8 @@ function buildMounts(shell, type) {
     }
   }
   // rear post mount bar behind the gearbox
-  const rz = PARTS.MOUNT_POINTS[kind][1][1], rby = PARTS.MOUNT_POINTS[kind][1][2], bar = pBox(0.07, 0.004, 0.008, m.blueAlu, 0, rby - 0.002, rz, posts);
-  const leg = pBox(0.006, rby - 0.012, 0.006, m.blueAlu, 0, (rby + 0.012) / 2 - 0.002, rz + 0.008, posts);
+  const rz = PARTS.MOUNT_POINTS[kind][1][1], rby = PARTS.MOUNT_POINTS[kind][1][2], bar = pBox(0.07, 0.004, 0.008, m.chassisBlack || m.nylon, 0, rby - 0.002, rz, posts);
+  const leg = pBox(0.006, rby - 0.012, 0.006, m.chassisBlack || m.nylon, 0, (rby + 0.012) / 2 - 0.002, rz + 0.008, posts);
   tag('Rear mount bar', bar, [0, rby, rz]);
   root.userData = {
     parts, type,
@@ -2098,7 +2111,7 @@ function damageRepair(st) {
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
 // the car as it loads: satin black, covered rims in black, slammed 10 mm, pink underglow
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 6.6 / 14, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
 try { let st = JSON.parse(localStorage.getItem('cc-style9') || 'null');
   if (!st) { st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); if (typeof st.camber === 'number') st.camber = 0.5 - st.camber / 2; } // old slider: 0 (none) .. 1 (12° negative)
@@ -2115,16 +2128,59 @@ function carRide(S) { const r = rideMM(S.ride) / 1000, ch = Math.max(r, -0.003);
 // static camber: the slider runs from 12° negative (tops in) on the left, through 0 in the middle, to 12° positive (tops
 // out) on the right at the front; the rear gets half that. Returned as degrees of NEGATIVE camber (positive = tops in)
 const camberDeg = (S, front) => (0.5 - clamp(S.camber ?? 0.125, 0, 1)) * 2 * (front ? 12 : 6);
+// WIDE BODY kit (sedan): over-fenders in the Pandem style, moulded rather than boxy. Each is lofted round its wheel: it
+// starts flush on the body panel well outside the arch and eases out (tangent to the panel) to a slim lip just past the
+// tyre, then tucks back in underneath; towards both ends it tapers back into the panel, so there is no hard edge. A few
+// small rivets along the lip, and slim side skirts joining front and rear, over 10 mm wheel spacers
+function addWideKit(shell, hubs, TY, sp = 0) {
+  const mat = shell.userData.mats.paint, g = new THREE.Group(); g.name = 'wide_kit'; shell.add(g);
+  const rivM = new THREE.MeshPhongMaterial({ color: 0x3a3b40, specular: 0xaaaaaa, shininess: 90 }), rivG = new THREE.SphereGeometry(0.0006, 6, 4), R = TY.od / 2;
+  const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }, BELT = 0.077; // keep the flares below the sedan's shoulder line
+  let zF = -1, zR = 1, xOutMax = 0;
+  for (const [key, [hx, hy, hz]] of Object.entries(hubs)) {
+    const s = Math.sign(hx), front = key[0] === 'F', r1 = R + (front ? 0.008 : 0.0045), xOut = Math.abs(hx) + sp + TY.w / 2 + 0.0015; xOutMax = Math.max(xOutMax, xOut);
+    const N = 32, K = 7, a0 = -0.12, a1 = Math.PI + 0.12, ring = [], A = [], XB = [], R2 = [];
+    for (let i = 0; i <= N; i++) { const a = a0 + (a1 - a0) * i / N, sa = Math.sin(a), r2 = Math.max(r1 + 0.004, Math.min(r1 + 0.013, sa > 0.05 ? (BELT - hy) / sa : 1)); A.push(a); R2.push(r2);
+      XB.push(clamp(shellSideX(shell, s, hz + (r2 + 0.003) * Math.cos(a), hy + (r2 + 0.003) * sa), xOut - 0.02, xOut - 0.002)); }
+    for (let pass = 0; pass < 3; pass++) for (let i = 1; i < N; i++) XB[i] = (XB[i - 1] + 2 * XB[i] + XB[i + 1]) / 4; // smooth the panel line
+    for (let i = 0; i <= N; i++) { const u = i / N, a = A[i], ca = Math.cos(a), sa = Math.sin(a), f = sm(0, 0.2, u) * sm(0, 0.2, 1 - u), xb = XB[i], r2 = R2[i];
+      const P = (r, x) => [s * x, hy + r * sa, hz + r * ca], row = [];
+      for (let k = 0; k < K; k++) { const t = k / (K - 1); row.push(P(r2 - (r2 - r1) * t, xb - 0.0006 + (xOut - xb) * f * (1 - Math.cos(t * Math.PI / 2)))); }
+      row.push(P(r1 + 0.0015, xb - 0.0015 + (xOut - xb) * f * 0.4)); ring.push(row);
+      if (i % 6 === 3 && f > 0.9) { const rv = new THREE.Mesh(rivG, rivM); rv.position.set(...P(r1 + 0.0035, xb + (xOut - xb) * f * 0.75 + 0.0003)); g.add(rv); } }
+    const M = K + 1, pos = ring.flat(2), idx = [];
+    for (let i = 0; i < N; i++) for (let k = 0; k < K; k++) { const a = i * M + k, b = a + 1, c = a + M, d = c + 1; idx.push(a, b, c, b, d, c); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+    const fm = new THREE.Mesh(geo, mat); fm.name = 'wide_fender_' + key; fm.userData.dent = true; g.add(fm);
+    if (front) zF = Math.max(zF, hz - r1 - 0.006); else zR = Math.min(zR, hz + r1 + 0.006);
+  }
+  if (zF > zR) for (const s of [-1, 1]) { // slim side skirts between the fenders
+    const zc = (zF + zR) / 2, xb = shellSideX(shell, s, zc, 0.028), w = Math.max(0.003, xOutMax - 0.006 - xb);
+    const sk = new THREE.Mesh(new THREE.BoxGeometry(w, 0.007, zF - zR), mat); sk.position.set(s * (xb + w / 2 - 0.0006), 0.0225, zc); sk.name = 'wide_skirt'; sk.userData.dent = true; g.add(sk);
+  }
+  return g;
+}
 function buildCar(S = CAR_STYLE) {
   const kind = PARTS.SHELLS[S.shell] ? S.shell : 'nk2002', tyre = carTyre(S), ride = carRide(S);
   const root = new THREE.Group(), model = new THREE.Group(); model.rotation.y = -Math.PI / 2; root.add(model);
   const body = new THREE.Group(); body.userData.baseY = 0; model.add(body);
   const adapt = new THREE.Group(); adapt.rotation.y = Math.PI / 2; body.add(adapt);
   const chassis = buildChassis(PARTS.SHELLS[kind].chassis, Math.max(0, Math.min(4, S.rims | 0)), tyre); adapt.add(chassis);
-  const TY = CAR_TYRES[S.tyres] || CAR_TYRES.wide, drop = Math.max(0, -ride.shell), H = (BODY_ASSETS[kind] || BODY_ASSET).hubs, rad = Math.PI / 180;
-  const flare = drop > 0 ? { drop, hubs: Object.fromEntries(Object.entries(H).map(([k, q]) => [k, [Math.sign(q[0]) * PARTS.CHASSIS[PARTS.SHELLS[kind].chassis].wheelX, TY.od / 2 + drop, q[2]]])), tF: archTable(TY, camberDeg(S, true) * rad, 1.15), tR: archTable(TY, camberDeg(S, false) * rad, 0) } : null;
+  const TY = tyreSpec(S), drop = Math.max(0, -ride.shell), H = (BODY_ASSETS[kind] || BODY_ASSET).hubs, rad = Math.PI / 180, wide = S.kit === 'wide' && kind !== 'zuk', sp = wide ? KIT_SPACER : 0;
+  const dR = (TY.od - TY.base) / 2; model.position.y = dR; // bigger or smaller tyres lift or lower the whole car
+  // the arches open round the tyres whenever they reach further into the body than stock: slammed, bigger tyres, wider track
+  const flare = drop > 0 || dR > 0.0003 || wide ? { drop, R: TY.od / 2, hw: TY.w / 2 + sp, sp, hubs: Object.fromEntries(Object.entries(H).map(([k, q]) => [k, [Math.sign(q[0]) * PARTS.CHASSIS[PARTS.SHELLS[kind].chassis].wheelX, TY.base / 2 + drop, q[2]]])), tF: archTable(TY, camberDeg(S, true) * rad, 1.15, sp), tR: archTable(TY, camberDeg(S, false) * rad, 0, sp) } : null;
   const shell = buildShell(kind, undefined, flare); adapt.add(shell);
   applyLivery(shell, { scheme: S.scheme, a: S.a, b: S.b, c: S.c, decalSheet: CAR_DECAL_SHEET }); if (S.stickers) addStickerKit(shell);
+  if (wide) addWideKit(shell, flare.hubs, TY, sp);
+  if (S.lights) { // headlights: a soft warm spot from the front lamps onto the floor ahead (kept dim for now), lenses lit
+    const SH = PARTS.SHELLS[kind], hl = new THREE.SpotLight(0xffeccc, 0.8, 2.6, 0.5, 0.65, 1.6); hl.position.set(0, kind === 'zuk' ? 0.07 : 0.058, SH.z1 - 0.012);
+    hl.target.position.set(0, 0, SH.z1 + 1.1); shell.add(hl, hl.target); shell.userData.headlight = hl;
+    if (shell.userData.mats.lens) { shell.userData.mats.lens.emissive.setHex(0xb0a890); }
+    if (!T.beam) T.beam = canvasTex(64, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const u = (x - 31.5) / 32, v = y / h, spread = 0.35 + 0.65 * v, a = Math.max(0, 1 - (u / spread) ** 2) * Math.pow(1 - v, 1.4) * Math.min(1, v * 8); im.data.set([255, 255, 255, Math.round(255 * a)], (y * w + x) * 4); } g.putImageData(im, 0, 0); }); // soft beam: brightest just ahead of the car, widening and fading forward
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.75), new THREE.MeshBasicMaterial({ map: T.beam, color: 0xffe6c0, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    pool.rotation.x = -Math.PI / 2; pool.position.set(0.0, 0.0035, 0); pool.renderOrder = 2; root.userData.beam = pool; // placed ahead of the car below (root space: the car faces +z)
+  }
   const mounts = buildMounts(shell, S.mount === 'magnets' ? 'magnets' : 'posts'); adapt.add(mounts);
   chassis.position.y = ride.chassis; shell.position.y = ride.shell; shell.userData.baseY = ride.shell; mounts.position.y = ride.shell;
   // wheels move out of the chassis into steer / camber / spin groups in model space
@@ -2132,7 +2188,7 @@ function buildCar(S = CAR_STYLE) {
   chassis.userData.corners.forEach(c => {
     chassis.remove(c.w); const p = c.k.pos;
     const pivot = new THREE.Group(); pivot.position.set(p.z, p.y, -p.x); model.add(pivot);
-    const camber = new THREE.Group(); pivot.add(camber); const m = new THREE.Group(); camber.add(m);
+    const camber = new THREE.Group(); pivot.add(camber); const m = new THREE.Group(); camber.add(m); m.position.z = -c.s * sp; // spacers push the wheel out
     // the shell's own wheel for this corner, turned from the car frame (x right, z forward) into model space
     const mw = carWheel(S, (c.front ? 'F' : 'R') + (c.s > 0 ? 'R' : 'L'), shell.userData.mats);
     for (const [grp, parent] of [[mw.spin, m], [mw.fixed, camber]]) { grp.rotation.y = Math.PI / 2; parent.add(grp); }
@@ -2140,6 +2196,7 @@ function buildCar(S = CAR_STYLE) {
   });
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.5), new THREE.MeshBasicMaterial({ map: T.blob, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.004; shadow.renderOrder = 1; root.add(shadow);
+  if (root.userData.beam) { const pl = root.userData.beam; pl.position.z = PARTS.SHELLS[kind].z1 + 0.33; root.add(pl); }
   if (S.glowOn) {
     // underglow: LED strips tucked under both sills, a soft pool on the floor shaped to the car's footprint, and one
     // short-range light under the car that lights the chassis, the wheel wells and the inside of the shell
@@ -2220,11 +2277,16 @@ function addStickerKit(shell) {
 // wheels: TYRES wide drift (30 mm on a 46 mm rim, as on the video's cars) or the model's original size; RIMS modern,
 // covered or the model's own. Built in the model's frame at the hub, outer face outward
 const CAR_TYRES = { wide: { od: 0.0586, w: 0.030, rimD: 0.046 }, original: { od: 0.0582, w: 0.022, rimD: 0.034 } };
-const CAR_RIMS = { modern: ['twin5', 'gunmetal'], covered: ['aero', 'white'] };
+const CAR_RIMS = { modern: ['twin5', 'gunmetal'], covered: ['aero', 'white'], spoke: ['fan14', 'black'] };
+// TYRE SIZE: the drift tyre's outside diameter, 52-66 mm (58.6 stock); rims grow with it, the width stays. The car sits
+// up (or down) on them by the change in radius, so the shell keeps its place over the hubs
+const TYRE_MM = v => 52 + clamp(v ?? 6.6 / 14, 0, 1) * 14;
+function tyreSpec(S) { const B = CAR_TYRES[S.tyres] || CAR_TYRES.wide, k = TYRE_MM(S.tyreSize) / 58.6; return { od: B.od * k, w: B.w, rimD: B.rimD * k, base: B.od }; }
+const KIT_SPACER = 0.01; // the wide body kit runs 10 mm spacers each side
 function carWheel(S, key, mt) {
   if (S.rimColor && S.rim === 'original') mt.rim.color.set(S.rimColor);
   if (S.tyres === 'original' && S.rim === 'original') { const mw = buildModelWheel(key, mt); if (S.stickers) { const st = tyreStickers(CAR_TYRES.original); st.rotation.y = key[1] === 'R' ? 0 : Math.PI; mw.spin.add(st); } return mw; }
-  const T = CAR_TYRES[S.tyres] || CAR_TYRES.wide, spin = new THREE.Group(), out = key[1] === 'R' ? 0 : Math.PI;
+  const T = tyreSpec(S), spin = new THREE.Group(), out = key[1] === 'R' ? 0 : Math.PI;
   const ty = buildTyre('drift', T); ty.rotation.y = out; spin.add(ty);
   if (S.rim === 'original') { // the model's own rim, scaled to the wider tyre's bead
     for (const p of modelGeometries()) if (p.wheel === key && p.role === 'rim') { const r = new THREE.Mesh(p.geo, mt.rim); r.scale.set(T.w / 0.022, T.rimD / 0.032, T.rimD / 0.032); spin.add(r); }
@@ -2665,7 +2727,7 @@ function ghostLoad() { ghost.best = null; try { const g = JSON.parse(localStorag
 function ghostSave() { if (ghost.rec.length < 12) return; ghost.best = ghost.rec; try { localStorage.setItem(ghostKey(), JSON.stringify(ghost.rec)); } catch (e) {} }
 function ghostBuild() {
   if (ghost.obj) return;
-  ghost.obj = buildCar({ ...CAR_STYLE, scheme: 'solid', a: '#cfe4ff', b: '#cfe4ff', c: '#cfe4ff', glowOn: 0, stickers: 0 });
+  ghost.obj = buildCar({ ...CAR_STYLE, scheme: 'solid', a: '#cfe4ff', b: '#cfe4ff', c: '#cfe4ff', glowOn: 0, stickers: 0, lights: 0 });
   ghost.obj.traverse(o => { if (o.material) { const ms = (Array.isArray(o.material) ? o.material : [o.material]).map(mt => { const c = mt.clone(); c.transparent = true; c.opacity = 0.32; c.depthWrite = false; if (c.emissive) c.emissive.setHex(0x203048); return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; } });
   if (ghost.obj.userData.shadow) ghost.obj.userData.shadow.visible = false;
   ghost.obj.visible = false; scene.add(ghost.obj);
@@ -2812,7 +2874,7 @@ const OPP_LEVELS = ['OFF', 'EASY', 'MEDIUM', 'HARD'], OPP_PACE = [0, 0.8, 0.9, 1
 let oppLevel = 0;
 try { const v = parseInt(localStorage.getItem('cc-opp'), 10); if (v >= 0 && v < OPP_LEVELS.length) oppLevel = v; } catch (e) {}
 const opp = { obj: null, path: null, s: 0, v: 0, laps: 0, prevS: 0, slip: 0, spin: 0, off: 0, doneT: null, idx: 0, pIdx: 0 };
-function oppStyle() { const P = PARTS.PALETTES[CAR_STYLE.a.toLowerCase() === PARTS.PALETTES[1].a ? 2 : 1]; return { ...CAR_STYLE, scheme: 'twotone', a: P.a, b: P.b, c: P.c, glowOn: 0, rims: (CAR_STYLE.rims + 2) % 5 }; } // same shell as yours, contrasting colours
+function oppStyle() { const P = PARTS.PALETTES[CAR_STYLE.a.toLowerCase() === PARTS.PALETTES[1].a ? 2 : 1]; return { ...CAR_STYLE, scheme: 'twotone', a: P.a, b: P.b, c: P.c, glowOn: 0, lights: 0, rims: (CAR_STYLE.rims + 2) % 5 }; } // same shell as yours, contrasting colours
 function buildOppPath(c) {
   const curve = new THREE.CatmullRomCurve3(c.line.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'centripetal');
   const N = 600, P = curve.getSpacedPoints(N).slice(0, N), L = curve.getLength(), ds = L / N;
@@ -3303,27 +3365,32 @@ const SWATCH = {
   glow: [['CYAN', '#00e5ff'], ['PURPLE', '#a24bff'], ['GREEN', '#39ff6a'], ['PINK', '#ff3fb4'], ['ORANGE', '#ff8a1f']],
 };
 const CROWS = [
-  { key: 'shell', label: 'BODY', kind: 'choice', opts: [['2002 TII', 'nk2002'], ['ŻUK VAN', 'zuk']] },
+  { key: 'shell', label: 'BODY', kind: 'choice', opts: [['SEDAN', 'nk2002'], ['VAN', 'zuk']] },
+  { key: 'kit', label: 'BODY KIT', kind: 'choice', opts: [['ORIGINAL', 'stock'], ['WIDE BODY', 'wide']] },
   { key: 'scheme', label: 'SCHEME', kind: 'choice', opts: PARTS.SCHEMES.map(x => [x.name, x.key]) },
   { key: 'palette', label: 'COLOURS', kind: 'palette' },
   { key: 'a', label: 'MAIN', kind: 'color' }, { key: 'b', label: 'SECOND', kind: 'color' }, { key: 'c', label: 'ACCENT', kind: 'color' },
   { key: 'tyres', label: 'TYRES', kind: 'choice', opts: [['WIDE DRIFT', 'wide'], ['ORIGINAL', 'original']] },
-  { key: 'rim', label: 'RIMS', kind: 'choice', opts: [['MODERN', 'modern'], ['COVERED', 'covered'], ['ORIGINAL', 'original']] },
+  { key: 'rim', label: 'RIMS', kind: 'choice', opts: [['MODERN', 'modern'], ['COVERED', 'covered'], ['MULTI-SPOKE', 'spoke'], ['ORIGINAL', 'original']] },
   { key: 'rimColor', label: 'RIM COLOUR', kind: 'rimcol' },
   { key: 'stickers', label: 'STICKERS', kind: 'choice', opts: [['ON', 1], ['OFF', 0]] },
+  { key: 'tyreSize', label: 'TYRE SIZE', kind: 'slider' },
   { key: 'ride', label: 'RIDE HEIGHT', kind: 'slider' },
   { key: 'camber', label: 'CAMBER', kind: 'slider' },
   { key: 'mount', label: 'MOUNT', kind: 'choice', opts: [['POSTS AND CLIPS', 'posts'], ['MAGNETS', 'magnets']] },
   { key: 'glow', label: 'UNDERGLOW', kind: 'glow' },
+  { key: 'lights', label: 'HEADLIGHTS', kind: 'choice', opts: [['ON', 1], ['OFF', 0]] },
   { key: 'reset', label: 'RESET LOOK', kind: 'action' },
   ...Object.keys(SETUP_OPTS).map(k => ({ key: k, label: SETUP_OPTS[k].label, kind: 'setup', group: 'setup' })),
 ];
 let customOpen = false, customRow = 0, rebuildTimer = 0;
 function queueRebuild() { if (rebuildTimer) return; rebuildTimer = setTimeout(() => { rebuildTimer = 0; rebuildCar(); }, 90); }
 function setStyle(k, v) { CAR_STYLE[k] = v; queueRebuild(); }
+const rowHidden = r => r.key === 'kit' && CAR_STYLE.shell === 'zuk'; // the wide body kit is for the sedan only
 function renderCustom() {
   const rows = $('crows'); rows.innerHTML = ''; $('csetup').innerHTML = '';
   CROWS.forEach((r, ri) => {
+    if (rowHidden(r)) return;
     const lab = document.createElement('span'); lab.className = 'lbl' + (ri === customRow ? ' sel' : ''); lab.textContent = r.label;
     const ctl = document.createElement('div');
     if (r.kind === 'setup') {
@@ -3350,7 +3417,7 @@ function renderCustom() {
         pk.addEventListener('input', () => { customRow = ri; setStyle(r.key, pk.value); }); pk.addEventListener('change', () => renderCustom()); ctl.appendChild(pk); }
     } else if (r.kind === 'slider') {
       ctl.className = 'sl'; const inp = document.createElement('input'); inp.type = 'range'; inp.min = 0; inp.max = 100; inp.step = 5; inp.id = 'sl-' + r.key; inp.value = Math.round(CAR_STYLE[r.key] * 100); inp.setAttribute('aria-label', r.label.toLowerCase());
-      const slLabel = (k, v) => { if (k === 'ride') { const mm = rideMM(v); return (mm > 0 ? '+' : '') + mm.toFixed(0) + ' MM'; } if (k === 'camber') { const f = (0.5 - v) * 24, sg = x => Math.abs(x) < 0.05 ? '0' : (x > 0 ? '-' : '+') + Math.abs(x).toFixed(1); return f === 0 || Math.abs(f) < 0.05 ? '0° NEUTRAL' : sg(f) + '° / ' + sg(f / 2) + '°'; } return String(Math.round(v * 100)).padStart(3, ' '); };
+      const slLabel = (k, v) => { if (k === 'tyreSize') return TYRE_MM(v).toFixed(1) + ' MM'; if (k === 'ride') { const mm = rideMM(v); return (mm > 0 ? '+' : '') + mm.toFixed(0) + ' MM'; } if (k === 'camber') { const f = (0.5 - v) * 24, sg = x => Math.abs(x) < 0.05 ? '0' : (x > 0 ? '-' : '+') + Math.abs(x).toFixed(1); return f === 0 || Math.abs(f) < 0.05 ? '0° NEUTRAL' : sg(f) + '° / ' + sg(f / 2) + '°'; } return String(Math.round(v * 100)).padStart(3, ' '); };
       const out = document.createElement('span'); out.textContent = slLabel(r.key, CAR_STYLE[r.key]);
       inp.addEventListener('input', () => { customRow = ri; setStyle(r.key, inp.value / 100); out.textContent = slLabel(r.key, inp.value / 100); });
       ctl.append(inp, out);
@@ -3363,7 +3430,7 @@ function renderCustom() {
   });
 }
 function customNav(dy, dx, ok) {
-  if (dy) { customRow = (customRow + dy + CROWS.length) % CROWS.length; renderCustom(); }
+  if (dy) { do customRow = (customRow + dy + CROWS.length) % CROWS.length; while (rowHidden(CROWS[customRow])); renderCustom(); }
   const r = CROWS[customRow];
   if ((dx || ok) && r.kind === 'setup') { const n = SETUP_OPTS[r.key].opts.length, i = (setup[r.key] + (dx || 1) + n) % n; setOpt(r.key, i); $('cnote').textContent = NOTES[r.key][i]; renderCustom(); }
   else if (dx && r.kind === 'palette') { const L = PARTS.PALETTES, i = L.findIndex(P => P.a === CAR_STYLE.a && P.b === CAR_STYLE.b && P.c === CAR_STYLE.c), P = L[(i + dx + L.length) % L.length]; Object.assign(CAR_STYLE, { a: P.a, b: P.b, c: P.c }); queueRebuild(); renderCustom(); }
