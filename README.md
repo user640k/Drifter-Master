@@ -99,7 +99,7 @@ Four cameras (C / Y):
 - FPV: a little camera inside the car just behind the windshield (driver's side), looking over the bonnet past the body posts. It rides on the sprung body, so it rolls, pitches and slides with the car and follows ramps and landings; it also feels the floor bumps through the suspension, vibrates from the tyres (slightly out of round: once per wheel turn plus the tread) and the motor (a buzz that rises with revs and throttle), and shakes after every knock (landings, wall and car hits, cones). A dark dashboard panel inside the shell hides the chassis, and the tinted windshield is nearly clear from inside.
 - DRIVER POV and DRIVER POV 2: two drivers' spots per venue, eyes at standing height with a natural 55° view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs.
 
-The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
+The title uses Michroma and the HUD and menus Saira Semi Condensed (both SIL Open Font License, embedded in the page; licence in tools/vendor). The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz. The car is sized like the 1/10 RWD drift cars in the reference video: about 452 mm long and 203 mm wide over the body, 257 mm wheelbase, 64 mm wheels, 1.45 kg; hard plastic tires on polished tiles or epoxy grip at about 0.5, which is what lets them slide like that.
