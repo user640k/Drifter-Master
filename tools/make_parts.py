@@ -19,6 +19,7 @@ def line(prefix):
 code = '\n'.join([
     line('const clamp = '), line('function rng(seed)'),
     between('function tex(', 'const IMG = '),
+    line('const BODY_ASSET = '),  # the owner's car model (tools/car_from_usdz.py)
     between('/* ======== PARTS:', '/* ======== END PARTS ======== */', True),
 ])
 out = (root / 'tools' / 'parts_template.html').read_text().replace('/*__PARTS_CODE__*/', code)

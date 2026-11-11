@@ -144,7 +144,7 @@ const rimL = new THREE.DirectionalLight(0xbfd4ff, 0.45); rimL.position.set(-2, 1
 const fillL = new THREE.PointLight(0xffffff, 0.3, 3); fillL.position.set(0.6, 0.2, -0.6); scene.add(fillL);
 const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
 
-const sel = { speed: 5, mount: 'posts', lifted: false, shell: 'eighties', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
+const sel = { speed: 5, mount: 'posts', lifted: false, shell: 'nk2002', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
 try { const s = JSON.parse(localStorage.getItem('dm-parts-sel2') || 'null'); if (s) for (const k of ['type', 'set', 'build', 'rim', 'shell', 'mount']) if (s[k] !== undefined) sel[k] = s[k]; } catch (e) {}
 if (!PARTS.SHELLS[sel.shell]) sel.shell = Object.keys(PARTS.SHELLS)[0]; if (!PARTS.CHASSIS[sel.build]) sel.build = 'drift'; if (!PARTS.TYRES[sel.type]) sel.type = 'drift'; sel.rim = Math.min(4, sel.rim | 0);
 const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify({ type: sel.type, set: sel.set, build: sel.build, rim: sel.rim, shell: sel.shell, mount: sel.mount })); } catch (e) {} };

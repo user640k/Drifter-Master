@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game with an original 1/10 car built part by part (see Parts Lab below): a boxy late-'80s two-door saloon shell on bolt-on flares (modelled on the owner's RC body, without maker's badges) over an electric RWD drift chassis, with paint schemes, ride height, body mounting and damage, on two venues: a cozy home track (a white-walled room with an LED-lit track board in it) and an indoor RC arena after a reference photo (raised epoxy track, curbed C island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
+Browser RC drift game. The car is the owner's own model of a 1970s two-door saloon (a BMW 2002 tii, supplied as a USDZ), used as-is at true 1/10 scale on an electric RWD drift chassis fitted to it, with paint schemes, ride height, body mounting and damage, on two venues: a cozy home track (a white-walled room with an LED-lit track board in it) and an indoor RC arena after a reference photo (raised epoxy track, curbed C island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -17,9 +17,17 @@ Any controller the browser sees with the standard layout (Xbox, PlayStation, mos
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
 ## Customize
-Menu → CAR → CUSTOMIZE: SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (seven palettes, gunmetal first) and MAIN / SECOND / ACCENT colours (swatches or any colour), RIMS (five sets; the default is the deep-dish mesh with a polished lip and gold centre nut, like the reference car), RIDE HEIGHT (-10 to +10 mm: the chassis comes down 3 mm before the plate would touch the floor, below that the shell drops on its posts and tucks over the wheels; the arms follow so the wheels stay put), MOUNT (posts and R-clips, or magnets) and UNDERGLOW. Tyres follow the mode: hard drift tyres in DRIFT, rubber grip tyres in GRIP. Looks only. Saved in the browser. The opponent gets the same car in contrasting colours.
+Menu → CAR → CUSTOMIZE: SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (palettes, the model's own orange first) and MAIN / SECOND / ACCENT colours (swatches or any colour), RIDE HEIGHT (-10 to +10 mm, 0 = as modelled: the chassis comes down 3 mm before the plate would touch the floor, below that the shell drops on its posts over the wheels; the arms follow so the wheels stay put), MOUNT (posts and R-clips, or magnets) and UNDERGLOW. The wheels are the model's own. Looks only. Saved in the browser. The opponent gets the same car in contrasting colours.
 
-Decals: none for now. The decal tool stays (decals laid onto the body surface, denting and tearing with it): PARTS.DECAL_SLOTS lists the places on the shell (doors, sills, rear quarters, front fenders, bonnet, roof, boot, windscreen banner) and a decal sheet image maps rectangles of itself onto those slots.
+Decals: none for now. The decal tool stays (decals laid onto the body surface by casting rays at it, denting and tearing with it): PARTS.DECAL_SLOTS lists places on the shell (doors, sills, rear quarters, front fenders, bonnet, roof, boot, windscreen banner) and a decal sheet image maps rectangles of itself onto those slots.
+
+## The car model
+The shell is the owner's model (`BMW_2002ti.usdz`, not in the repo), converted by
+
+    pip install usd-core fast-simplification numpy
+    python3 tools/car_from_usdz.py <unzipped>/scene.usdc <textures dir>
+
+The shape is never changed: the model is only scaled uniformly to true 1/10 of the real car (its wheelbase becomes 250 mm; the body is 421 x 176 x 137 mm) and turned into the game's frame. Dense trim parts (window seals and chrome strips made of thousands of tiny pieces) are reduced by quadric simplification and 0.6 mm vertex clustering; the body, glass and wheels keep every triangle (85k triangles in all, about 1.2 MB embedded as BODY_ASSET). Colours come from the model's materials. Everything else fits the shell: the chassis takes its 250 mm wheelbase and 136 mm track and carries the model's own wheels (58 mm tyres, discs and calipers) on its suspension; the physics uses the same wheelbase, track and wheel radius; the collision circles cover its narrower body; the body posts come up through its bonnet and boot lid; decals and damage work on its surface. Breakable: mirrors (each), wipers, front and rear bumpers.
 
 ## Damage
 Hard hits on walls, the track edge or the opponent (over about 4 km/h into the obstacle) damage the car with the Parts Lab damage model: dents, scuffed paint and torn decals where it hit, mirrors, wing, lip, light pod, scoop, spoiler or mudflaps breaking off and lying on the track, the shell knocked off its magnets or out of its clips, and bent suspension. A bent corner pulls the car to one side. Restart or reset (R) repairs everything.
@@ -91,7 +99,7 @@ Stage 1, tyres and rims: three tyre types at real 1/10 sizes (DRIFT hard plastic
 - OFF-ROAD: nitro 4WD. Aluminium plate, .15 engine with finned head, carburettor and glow plug, flywheel and clutch bell, tuned pipe, fuel tank, radio box, 52T spur and a disc brake with caliper on the centre shaft, shafts to front and rear diffs, longer gold shocks.
 Both have lower A-arms, uprights, turnbuckle camber links, coil-over shocks on cut-out towers, driveshafts and steering links.
 
-Stage 3, shells (`parts.html#shell`). Now one shell, the '80S COUPÉ: a boxy late-'80s two-door saloon after the owner's RC body (no maker's badges): 432 mm long, 204 mm over bolt-on box flares, upright glasshouse, twin round lamps each side with smoked lenses (red halo on the left outer one), split centre grille, body-colour bumpers with a black strip and red plate, valance with fog lamps, an oil cooler with two braided lines up into the grille, brass rivets round the arches, sills, fender tops and valance, black mirrors and wipers, amber side markers, wide tail lamps and a black ducktail. The chassis was widened (178 mm track) so the wheels sit flush with the flares. The earlier drift coupé and rally hatch (and the off-road nitro chassis and tyres) are in git history. Shells are lofted from cross-sections (a smooth roof / bonnet line, beltline, plan width and glasshouse inset at each station, mirrored), with the rocker line rising over the real wheel positions to form the arches and the windows as a separate tinted surface:
+Stage 3, shells (`parts.html#shell`): now the owner's 2002 model (see The car model). The lofted shells built earlier (drift coupé, rally hatch, '80s coupé) and the off-road nitro chassis are in git history.
 - DRIFT COUPÉ (440 x 200 x 122 mm): low 1990s-style coupé, flared arches, projector headlights, front lip, tail bars, mirrors, wing on stands.
 - RALLY HATCH (418 x 224 x 148 mm): tall rally hatchback with boxed flares, round headlights, a four-lamp pod, roof scoop, hatch spoiler and mudflaps.
 The lab shows each shell over its chassis (or alone, or see-through) with the suspension still working underneath.
@@ -117,5 +125,3 @@ The game runs as-is in the browser. To make the upload:
 
 This writes `dist/drift-master-itch.zip` (a full HTML document plus a bundled copy of three.js r128, MIT licence included), which runs without internet access. On itch.io: create a new project, Kind = HTML, upload the zip, tick "This file will be played in the browser", and set the viewport to 1280 x 760.
 
-## Car model
-The car is original: every part (tyres, rims, chassis, shells, paint, decals, mounts) is built in code in the PARTS section of `index.html` and shown in `parts.html` (see Parts Lab). The earlier I.A.S RACER body from a supplied 3D model, its viewer and its conversion scripts are in git history.
