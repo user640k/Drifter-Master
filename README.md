@@ -16,10 +16,11 @@ Arrows/WASD drive (hold Down at a stop to reverse), C camera, G car setup, T tel
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry Menu/Options pause menu. Barrier hits rumble.
 
-## Customize
-Menu → CAR → CUSTOMIZE: SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (palettes, the model's own orange first) and MAIN / SECOND / ACCENT colours (swatches or any colour), RIDE HEIGHT (-15 to +10 mm, default -10: slammed like the cars in the drift video; the chassis comes down 3 mm before the plate would touch the floor, below that the shell drops on its posts and the tyres tuck up inside the arches; the arms follow so the wheels stay put), CAMBER (front 0-12°, rear half that; default 9° / 4.5° negative, which is also what lets the tyres tuck under the arch lips), MOUNT (posts and R-clips, or magnets) and UNDERGLOW. The wheels are the model's own. Looks only. Saved in the browser. The opponent gets the same car in contrasting colours.
-
-Decals: none for now. The decal tool stays (decals laid onto the body surface by casting rays at it, denting and tearing with it): PARTS.DECAL_SLOTS lists places on the shell (doors, sills, rear quarters, front fenders, bonnet, roof, boot, windscreen banner) and a decal sheet image maps rectangles of itself onto those slots.
+## Car screen
+Menu → CAR (or G while driving) opens one screen with every car option visible at once; the car stands still in a studio on the right (the main menu behind shows only the venue).
+- LOOKS: SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (palettes) and MAIN / SECOND / ACCENT colours, TYRES (WIDE DRIFT: 30 mm hard drift tyres on 46 mm rims, as on the video's cars; or ORIGINAL), RIMS (MODERN deep-concave twin five-spoke, COVERED solid aero disc, or the model's ORIGINAL, scaled to the tyre), RIDE HEIGHT, CAMBER, MOUNT (posts and R-clips, or magnets), UNDERGLOW, RESET LOOK.
+- SETUP: MOTOR, TIRES (compound), GYRO GAIN, SPRINGS, SHOCK OIL, ROLL BARS, DRIVING ASSIST, with a note on what each choice does.
+Changes apply instantly and are saved in the browser. The opponent gets the same car in contrasting colours. The model has a chrome delete: decorative chrome strips, door handles and the boot-lock trim are removed, and the bumpers, grille, lamp rings, window frames, mirrors and wipers are satin black.
 
 ## The car model
 The shell is the owner's model (`BMW_2002ti.usdz`, not in the repo), converted by
@@ -33,7 +34,7 @@ The shape is never changed: the model is only scaled uniformly to true 1/10 of t
 Hard hits on walls, the track edge or the opponent (over about 4 km/h into the obstacle) damage the car with the Parts Lab damage model: dents, scuffed paint and torn decals where it hit, mirrors, wing, lip, light pod, scoop, spoiler or mudflaps breaking off and lying on the track, the shell knocked off its magnets or out of its clips, and bent suspension. A bent corner pulls the car to one side. Restart or reset (R) repairs everything.
 
 ## Menu
-DRIVE, TRACK, OPPONENT (none, easy, medium, hard), CAR (opens the customize screen) and OPTIONS › (CAMERA, GHOST, VOLUME, CAR SETUP, CONTROLS). Arrows / mouse / gamepad; Esc / B goes back. Behind the menu your car turns slowly on the start line of the selected track. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+DRIVE, TRACK, OPPONENT (none, easy, medium, hard), CAR (the car screen) and OPTIONS › (CAMERA, GHOST, VOLUME, CONTROLS). Arrows / mouse / gamepad; Esc / B goes back. Behind the menu is the selected venue, without the car. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
 Drift only for now: grip mode is switched off (its code is kept).
 

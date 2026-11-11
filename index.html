@@ -80,8 +80,13 @@ canvas#view { width: 100%; height: 100%; display: block; }
 .speed .motor { color: var(--hot); margin-top: .2cqw; }
 .chip:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 #tele { position: absolute; left: 2cqw; bottom: 5.4cqw; width: 26.5cqw; height: 19.5cqw; }
-.crows { display: grid; grid-template-columns: 14cqw auto; gap: .55cqw 2cqw; align-items: center; justify-content: start; }
-.crows .lbl { font-family: var(--display); font-size: 1.46cqw; letter-spacing: .04em; color: #8b95a3; }
+.ccols { display: flex; gap: 3.5cqw; align-items: flex-start; }
+.ccols > div:nth-child(2) { margin-top: 13cqw; }
+.ccap { font-family: var(--ui); font-size: 1.0cqw; letter-spacing: .18em; color: var(--hot); margin-bottom: .8cqw; font-weight: 500; }
+.crows { display: grid; grid-template-columns: 9.5cqw auto; gap: .5cqw 1.4cqw; align-items: center; justify-content: start; }
+#csetup .sw { max-width: 22cqw; }
+#cnote { margin-top: 1cqw; max-width: 30cqw; font-size: 1.0cqw; min-height: 4.5em; }
+.crows .lbl { font-family: var(--display); font-size: 1.3cqw; letter-spacing: .04em; color: #8b95a3; }
 .crows .lbl.sel { color: #fff; }
 .crows .lbl.sel::before { content: '\25B8  '; color: var(--hot); }
 .sw { display: flex; gap: .7cqw; align-items: center; flex-wrap: wrap; }
@@ -91,7 +96,7 @@ canvas#view { width: 100%; height: 100%; display: block; }
 .swb.off { background: none; color: #8b95a3; width: auto; font-family: var(--display); font-size: 1.23cqw; border: 0; border-bottom: .2cqw solid transparent; }
 .swb.off[aria-pressed="true"] { color: var(--hot); border-bottom-color: var(--hot); }
 .swb.pal { width: 3.6cqw; }
-.crows .sw { display: flex; flex-wrap: wrap; gap: .4cqw .9cqw; max-width: 40cqw; }
+.crows .sw { display: flex; flex-wrap: wrap; gap: .35cqw .8cqw; max-width: 30cqw; }
 .pick { width: 2.6cqw; height: 2.2cqw; padding: 0; border: 0; background: none; cursor: pointer; }
 .sl { display: flex; align-items: center; gap: 1cqw; font-family: var(--display); font-size: 1.23cqw; color: #fff; }
 .sl input { -webkit-appearance: none; appearance: none; width: 22cqw; height: .3cqw; background: #6b7686; outline: none; cursor: pointer; }
@@ -100,7 +105,7 @@ canvas#view { width: 100%; height: 100%; display: block; }
 .sl input:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .gback { align-self: flex-start; font-family: var(--display); font-size: 1.62cqw; color: #fff; background: none; border: 0; padding: 0; cursor: pointer; }
 .gback:hover, .gback:focus-visible { color: var(--hot); outline: none; }
-.custom { background: linear-gradient(90deg, rgba(5,7,12,.92) 0%, rgba(5,7,12,.7) 42%, rgba(5,7,12,0) 62%); }
+.custom { background: linear-gradient(90deg, rgba(5,7,12,.93) 0%, rgba(5,7,12,.8) 46%, rgba(5,7,12,.25) 62%, rgba(5,7,12,0) 80%); padding-top: 4cqw; gap: 1cqw; }
 .garage { position: absolute; inset: 0; padding: 6cqw 5cqw 4cqw; background: linear-gradient(90deg, rgba(5,7,12,.94) 0%, rgba(5,7,12,.82) 45%, rgba(5,7,12,.2) 80%); display: flex; flex-direction: column; gap: 1.2cqw; pointer-events: auto; overflow: auto; }
 .ghead { font-weight: 700; display: flex; flex-direction: column; gap: .4cqw; font-family: var(--display); font-size: 3.20cqw; color: #fff; }
 .gsub { font-family: var(--ui); font-style: normal; font-size: 1.05cqw; letter-spacing: .14em; color: var(--hot); font-weight: 500; }
@@ -162,8 +167,8 @@ canvas#view { width: 100%; height: 100%; display: block; }
     </div>
   </div>
   <div class="garage custom" id="custom" hidden>
-    <div class="ghead"><span>YOUR CAR</span><span class="gsub">PAINT, RIMS, RIDE HEIGHT, MOUNT · ESC / B TO CLOSE</span></div>
-    <div class="crows" id="crows"></div>
+    <div class="ghead"><span>YOUR CAR</span><span class="gsub">LOOKS AND SETUP · CHANGES APPLY INSTANTLY · ESC / B TO CLOSE</span></div>
+    <div class="ccols"><div><div class="ccap">LOOKS</div><div class="crows" id="crows"></div></div><div><div class="ccap">SETUP</div><div class="crows" id="csetup"></div><div class="gnote" id="cnote"></div></div></div>
     <button id="cclose" class="gback" type="button">‹ BACK</button>
   </div>
   <div class="garage" id="garage" hidden>
@@ -1089,6 +1094,9 @@ function partHoles(n, rc, rh, off = 0) { return partSpokes(n, off).map(a => { co
 PARTS.RIMS = {
   // deep-dish cross-laced mesh with a wide polished lip and a gold centre nut, like the reference car's wheels
   rs15: { name: 'MESH DEEP', dish: 0.0095, faceK: 0.84, centre: 'gold', holes: R => [...partWindows(partSpokes(15), 0.0007, 0.0078, R * 0.54), ...partWindows(partSpokes(15, Math.PI / 15), 0.0007, R * 0.57, R * 0.93)] },
+  // modern: deep-concave twin five-spoke; covered: a solid aero disc you cannot see through
+  twin5: { name: 'TWIN 5', dish: 0.008, holes: R => partWindows(partSpokes(5, Math.PI / 2).flatMap(a => [a - 0.12, a + 0.12]), 0.0012, 0.0075, R * 0.9) },
+  aero: { name: 'AERO COVER', dish: 0.0015, holes: R => [] },
   star5: { name: 'STAR 5', dish: 0.004, holes: R => partWindows(partSpokes(5, Math.PI / 2), 0.0032, 0.0085, R * 0.86) },
   mesh10: { name: 'MESH 10', dish: 0.005, holes: R => [...partWindows(partSpokes(10), 0.001, 0.0085, R * 0.56), ...partWindows(partSpokes(10, Math.PI / 10), 0.001, R * 0.6, R * 0.88)] },
   split6: { name: 'SPLIT 6', dish: 0.006, holes: R => partWindows(partSpokes(6).flatMap(a => [a - 0.11, a + 0.11]), 0.0013, 0.009, R * 0.87) },
@@ -1143,11 +1151,11 @@ function tyreTexture(type, v0, v1) {
     for (const x of [w * 0.25, w * 0.75]) g.fillText(label, x, sy);
   });
 }
-function buildTyre(type) {
-  const spec = PARTS.TYRES[type], key = 'tyre-' + type;
+function buildTyre(type, sized) { // sized: { od, w, rimD } to build this tyre type at another size
+  const spec = sized ? { ...PARTS.TYRES[type], ...sized } : PARTS.TYRES[type], key = 'tyre-' + type + (sized ? JSON.stringify(sized) : '');
   if (PARTS._cache[key]) return PARTS._cache[key]();
   const knobH = type === 'offroad' ? 0.0032 : 0, R = spec.od / 2 - knobH, ri = spec.rimD / 2 - 0.0012, rc = type === 'offroad' ? 0.004 : 0.0028;
-  const prof = tyreProfile(R, ri, spec.w, rc, type === 'drift' ? [-0.0055, 0, 0.0055] : []);
+  const prof = tyreProfile(R, ri, spec.w, rc, type === 'drift' ? [-0.0055, 0, 0.0055].map(g => g * spec.w / 0.026) : []);
   const geo = new THREE.LatheGeometry(prof.P.map(([r, x]) => new THREE.Vector2(r, x)), 64); geo.rotateZ(-Math.PI / 2);
   const map = tyreTexture(type, prof.v0, prof.v1);
   const mat = type === 'drift'
@@ -1449,6 +1457,7 @@ PARTS.shellMats = (paint = PARTS.MODEL_PAINT) => {
     lens: new THREE.MeshPhongMaterial({ color: col('CP_White'), emissive: 0x3a3e46, specular: 0xffffff, shininess: 160, envMap: PARTS.envTex, reflectivity: 0.4, side: THREE.DoubleSide }),
     tail: new THREE.MeshPhongMaterial({ color: 0xffffff, map: redTex, emissive: 0x200000, specular: 0xffffff, shininess: 120, side: THREE.DoubleSide }),
     emblem: new THREE.MeshPhongMaterial({ color: 0xffffff, map: redTex, specular: 0xffffff, shininess: 140, side: THREE.DoubleSide }),
+    satin: new THREE.MeshPhongMaterial({ color: 0x18181b, specular: 0x3a3a3e, shininess: 40, side: THREE.DoubleSide }),
     badge: new THREE.MeshPhongMaterial({ color: 0xe8eaee, specular: 0xffffff, shininess: 140, envMap: PARTS.envTex, reflectivity: 0.6, side: THREE.DoubleSide }),
     rim: new THREE.MeshPhongMaterial({ color: col('jant'), specular: 0xffffff, shininess: 130, envMap: PARTS.envTex, reflectivity: 0.45, side: THREE.DoubleSide }),
     tire: new THREE.MeshLambertMaterial({ color: 0x1a1a1c, side: THREE.DoubleSide }),
@@ -1456,6 +1465,9 @@ PARTS.shellMats = (paint = PARTS.MODEL_PAINT) => {
     caliper: new THREE.MeshPhongMaterial({ color: 0x202022, shininess: 20, side: THREE.DoubleSide }),
   };
 };
+// chrome delete: these purely decorative chrome parts are left off; other chrome (bumpers, window frames, grille,
+// lamp rings, mirrors, wipers) is satin black
+PARTS.CHROME_DELETE = /^(body_chromium|bottom_choromium_CP|door_handle|back_lock_002)/;
 // which named parts break off together (toughness in m/s)
 PARTS.MODEL_BREAKABLE = [
   ['Left mirror', /^mirror_L$/, 2.5], ['Right mirror', /^mirror_R$/, 2.5], ['Wipers', /^wipers/, 3],
@@ -1464,11 +1476,12 @@ PARTS.MODEL_BREAKABLE = [
 function buildShell(kind, paint) {
   const S = PARTS.SHELLS[kind], mt = PARTS.shellMats(paint), root = new THREE.Group();
   const parts = [], tag = (name, obj, focus) => { if (!parts.find(p => p.name === name)) parts.push({ name, obj, focus }); return obj; };
-  const roleMat = { paint: mt.paint, chrome: mt.chrome, black: mt.black, glass: mt.glass, lens: mt.lens, redlight: mt.tail, emblem: mt.emblem, badge: mt.badge };
+  const roleMat = { paint: mt.paint, chrome: mt.satin, black: mt.black, glass: mt.glass, lens: mt.lens, redlight: mt.tail, emblem: mt.emblem, badge: mt.badge };
   const brkGroups = PARTS.MODEL_BREAKABLE.map(([name, re, tough]) => ({ name, re, tough, g: null }));
   let body = null;
   for (const p of modelGeometries()) {
     if (p.wheel) continue; // the wheels go on the chassis
+    if (PARTS.CHROME_DELETE.test(p.name)) continue;     // chrome delete: decorative trim removed, the rest satin black
     const mesh = new THREE.Mesh(p.geo.clone(), p.role === 'paint' ? [mt.paint] : roleMat[p.role] || mt.black); mesh.name = p.name; mesh.userData.dent = true;
     if (p.role === 'paint') { mesh.geometry.clearGroups(); mesh.geometry.addGroup(0, mesh.geometry.index.count, 0); body = body || mesh; }
     const b = brkGroups.find(b => b.re.test(p.name));
@@ -1781,9 +1794,9 @@ function damageRepair(st) {
    roll and pitch), .wheels [{ pivot: steer, m: spin }], .lampM (brake lights) and .shadow. model's x points forward,
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', rims: 0, scheme: 'solid', a: PARTS.MODEL_PAINT, b: '#f2f2ee', c: '#141416', ride: 0.2, camber: 0.75, mount: 'posts', glow: '#00e5ff', glowOn: 0 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', tyres: 'wide', rim: 'modern', rims: 0, scheme: 'solid', a: PARTS.MODEL_PAINT, b: '#f2f2ee', c: '#141416', ride: 0.2, camber: 0.75, mount: 'posts', glow: '#00e5ff', glowOn: 0 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
-try { const st = JSON.parse(localStorage.getItem('cc-style5') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+try { const st = JSON.parse(localStorage.getItem('cc-style6') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
 // tyres follow the driving mode: hard drift tyres in DRIFT mode, rubber grip tyres in GRIP mode
 function carTyre(S) { let grip = false; try { grip = setup.car === 1; } catch (e) {} return grip ? 'grip' : 'drift'; }
 // the decal sheet for the car (none yet: the owner's own texture goes here, see PARTS.DECAL_SLOTS)
@@ -1812,7 +1825,7 @@ function buildCar(S = CAR_STYLE) {
     const pivot = new THREE.Group(); pivot.position.set(p.z, p.y, -p.x); model.add(pivot);
     const camber = new THREE.Group(); pivot.add(camber); const m = new THREE.Group(); camber.add(m);
     // the shell's own wheel for this corner, turned from the car frame (x right, z forward) into model space
-    const mw = buildModelWheel((c.front ? 'F' : 'R') + (c.s > 0 ? 'R' : 'L'), shell.userData.mats);
+    const mw = carWheel(S, (c.front ? 'F' : 'R') + (c.s > 0 ? 'R' : 'L'), shell.userData.mats);
     for (const [grp, parent] of [[mw.spin, m], [mw.fixed, camber]]) { grp.rotation.y = Math.PI / 2; parent.add(grp); }
     wheels.push({ pivot, m, camber, front: c.front, s: c.s, corner: c });
   });
@@ -1840,6 +1853,19 @@ function buildCar(S = CAR_STYLE) {
   root.userData.update(0, 0);
   return root;
 }
+// wheels: TYRES wide drift (30 mm on a 46 mm rim, as on the video's cars) or the model's original size; RIMS modern,
+// covered or the model's own. Built in the model's frame at the hub, outer face outward
+const CAR_TYRES = { wide: { od: 0.0586, w: 0.030, rimD: 0.046 }, original: { od: 0.0582, w: 0.022, rimD: 0.034 } };
+const CAR_RIMS = { modern: ['twin5', 'gunmetal'], covered: ['aero', 'white'] };
+function carWheel(S, key, mt) {
+  if (S.tyres === 'original' && S.rim === 'original') return buildModelWheel(key, mt);
+  const T = CAR_TYRES[S.tyres] || CAR_TYRES.wide, spin = new THREE.Group(), out = key[1] === 'R' ? 0 : Math.PI;
+  const ty = buildTyre('drift', T); ty.rotation.y = out; spin.add(ty);
+  if (S.rim === 'original') { // the model's own rim, scaled to the wider tyre's bead
+    for (const p of modelGeometries()) if (p.wheel === key && p.role === 'rim') { const r = new THREE.Mesh(p.geo, mt.rim); r.scale.set(T.w / 0.022, T.rimD / 0.032, T.rimD / 0.032); spin.add(r); }
+  } else { const [d, f] = CAR_RIMS[S.rim] || CAR_RIMS.modern, r = buildRim(d, f, T.w, T.rimD); r.rotation.y = out; spin.add(r); }
+  return { spin, fixed: new THREE.Group() };
+}
 let carObj = buildCar(); scene.add(carObj);
 // the damage on the player's car (built on demand, cleared on reset)
 function carDamage() { const ud = carObj.userData; return ud.dmg || (ud.dmg = damageInit(ud.shell, ud.chassis, ud.mounts)); }
@@ -1860,7 +1886,7 @@ function carImpact(vn, nx, nz, circle) {
   const big = out.find(t => /broke off|knocked off|torn off|bent|clip popped/i.test(t)); if (big) flash(big.toUpperCase(), 1.6);
 }
 // rebuild the car with a new look (customize screen) or new tyres (mode change)
-function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style5', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
+function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style6', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
 
 /* ---------------- driving model: 1/10 electric on-road (RWD drift or 4WD grip) ----------------
    SI units (m, kg, s, N). Body frame: x forward, y left, yaw rate r positive turning left.
@@ -2319,7 +2345,7 @@ function resetRun() {
   loadBest(); ghostLapStart(); idleT = 0; if (ghost.obj) ghost.obj.visible = false; setHudLabels(); driftReset(); updateCamera(0, true);
 }
 function startRace() {
-  closeMenu();
+  closeMenu(); carObj.visible = true;
   audio.init();
   resetRun();
   race.state = 'race'; race.paused = false;
@@ -2550,25 +2576,39 @@ const tx = new THREE.Group();
   tx.visible = false; camera.add(tx); scene.add(camera);
 }
 let camAng = 0, menuSpin = 0;
+// the car screen's studio, well away from the venues: a dark turntable floor, a soft graded backdrop and its own
+// key and rim lights (switched on only while the car screen is open)
+const STUDIO = new THREE.Group(); STUDIO.position.set(400, 0, 400); STUDIO.visible = false; scene.add(STUDIO);
+{
+  const back = new THREE.Mesh(new THREE.SphereGeometry(6, 32, 16), new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, map: canvasTex(4, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#05070b'); gr.addColorStop(0.48, '#1b2029'); gr.addColorStop(0.52, '#20252f'); gr.addColorStop(1, '#0a0c10'); g.fillStyle = gr; g.fillRect(0, 0, w, h); }) }));
+  STUDIO.add(back);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(0.2, 64), new THREE.MeshPhongMaterial({ color: 0x2a2e36, specular: 0x333844, shininess: 40 })); floor.rotation.x = -Math.PI / 2; STUDIO.add(floor);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.205, 64), new THREE.MeshBasicMaterial({ color: 0xffb21e, fog: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.001; STUDIO.add(ring);
+  const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(1.2, 2, 1.5); key.target = floor; STUDIO.add(key);
+  const rim = new THREE.DirectionalLight(0xbfd4ff, 0.5); rim.position.set(-1.5, 1.2, -1.5); rim.target = floor; STUDIO.add(rim);
+}
+function studioOn(on) {
+  STUDIO.visible = on; MAP.group.visible = !on;
+  if (on) { scene.fog.near = 50; scene.fog.far = 120; } else { scene.fog.near = MAP.fog[0]; scene.fog.far = MAP.fog[1]; }
+}
 let camMode = 0;
 const camPos = new THREE.Vector3(0, 1, -3), camLook = new THREE.Vector3();
 function updateCamera(dt, snap) {
   if (customOpen) {
-    // slow orbit round the car, framed to the right of the options list
-    orbitT += (dt || 0.016) * 0.3;
-    const a = car.h + 0.9 + orbitT, d = 0.95;
-    camera.position.set(car.x + Math.sin(a) * d, 0.3, car.z + Math.cos(a) * d);
-    camera.lookAt(car.x, 0.06, car.z); camera.fov = 40; camera.setViewOffset(1280, 720, -300, 0, 1280, 720); camera.updateProjectionMatrix(); tx.visible = false; return;
+    // the car stands still in the studio, three-quarter front view, framed to the right of the options
+    const P = STUDIO.position;
+    camera.position.set(P.x + 1.45, 0.62, P.z + 1.2); camera.lookAt(P.x, 0.05, P.z);
+    camera.fov = 20; camera.setViewOffset(1280, 720, -300, 110, 1280, 720); camera.updateProjectionMatrix(); // car stands top right, SETUP below it
+    tx.visible = false; return;
   }
   if (camera.view && camera.view.enabled) { camera.clearViewOffset();
   }
   if (race.state === 'menu') {
-    // menu: the car on a slow turntable at the start line, seen from just off the car toward the middle of the venue,
-    // framed in the right half of the screen (the menu list sits on the left)
-    const t = performance.now() / 1000, cx = car.x, cz = car.z, dx = -cx, dz = -cz, dl = Math.hypot(dx, dz) || 1;
-    const px = clamp(cx - dx / dl * 1.0, -MAP.hx + 0.08, MAP.hx - 0.08), pz = clamp(cz - dz / dl * 1.0, -MAP.hz + 0.08, MAP.hz - 0.08);
-    camera.position.set(px, 0.3 + Math.sin(t * 0.3) * 0.01, pz); camera.lookAt(cx, 0.045, cz);
-    camera.fov = 34; camera.setViewOffset(1280, 720, -230, 0, 1280, 720); camera.updateProjectionMatrix();
+    // main menu: the venue's photo view, drifting very slightly; the car is not shown (it is on the car screen)
+    const t = performance.now() / 1000, pc = MAP.photoCam;
+    if (pc) { camera.position.set(pc.pos[0] + Math.sin(t * 0.13) * 0.25, pc.pos[1] + Math.sin(t * 0.21) * 0.05, pc.pos[2] + Math.cos(t * 0.11) * 0.15); camera.lookAt(pc.look[0], pc.look[1], pc.look[2]); camera.fov = pc.fov; }
+    else { camera.position.set(Math.sin(t * 0.06) * MAP.orbit[0], MAP.orbit[1], Math.cos(t * 0.06) * MAP.orbit[0]); camera.lookAt(0, 0.1, 0); camera.fov = 60; }
+    camera.updateProjectionMatrix();
     tx.visible = false; return;
   }
   // during a drift the chase camera swings toward the direction of travel, so you see the car's angle
@@ -2649,7 +2689,6 @@ function menuItems() {
     opt('CAMERA', CAMS[camMode], () => actCamera()),
     opt('GHOST', ghostOn ? 'ON' : 'OFF', () => { ghostOn = !ghostOn; try { localStorage.setItem('cc-ghost', ghostOn ? '1' : '0'); } catch (e) {} }),
     opt('VOLUME', volLabel(), d => setVol((muted ? volume : volume + d))),
-    act('CAR SETUP', () => toggleGarage(true)),
     act('CONTROLS', () => { menu.controls = true; renderMenu(); }),
     back,
   ];
@@ -2847,21 +2886,27 @@ const CROWS = [
   { key: 'scheme', label: 'SCHEME', kind: 'choice', opts: PARTS.SCHEMES.map(x => [x.name, x.key]) },
   { key: 'palette', label: 'COLOURS', kind: 'palette' },
   { key: 'a', label: 'MAIN', kind: 'color' }, { key: 'b', label: 'SECOND', kind: 'color' }, { key: 'c', label: 'ACCENT', kind: 'color' },
+  { key: 'tyres', label: 'TYRES', kind: 'choice', opts: [['WIDE DRIFT', 'wide'], ['ORIGINAL', 'original']] },
+  { key: 'rim', label: 'RIMS', kind: 'choice', opts: [['MODERN', 'modern'], ['COVERED', 'covered'], ['ORIGINAL', 'original']] },
   { key: 'ride', label: 'RIDE HEIGHT', kind: 'slider' },
   { key: 'camber', label: 'CAMBER', kind: 'slider' },
   { key: 'mount', label: 'MOUNT', kind: 'choice', opts: [['POSTS AND CLIPS', 'posts'], ['MAGNETS', 'magnets']] },
   { key: 'glow', label: 'UNDERGLOW', kind: 'glow' },
   { key: 'reset', label: 'RESET LOOK', kind: 'action' },
+  ...Object.keys(SETUP_OPTS).map(k => ({ key: k, label: SETUP_OPTS[k].label, kind: 'setup', group: 'setup' })),
 ];
 let customOpen = false, customRow = 0, rebuildTimer = 0;
 function queueRebuild() { if (rebuildTimer) return; rebuildTimer = setTimeout(() => { rebuildTimer = 0; rebuildCar(); }, 90); }
 function setStyle(k, v) { CAR_STYLE[k] = v; queueRebuild(); }
 function renderCustom() {
-  const rows = $('crows'); rows.innerHTML = '';
+  const rows = $('crows'); rows.innerHTML = ''; $('csetup').innerHTML = '';
   CROWS.forEach((r, ri) => {
     const lab = document.createElement('span'); lab.className = 'lbl' + (ri === customRow ? ' sel' : ''); lab.textContent = r.label;
     const ctl = document.createElement('div');
-    if (r.kind === 'palette') {
+    if (r.kind === 'setup') {
+      ctl.className = 'sw'; SETUP_OPTS[r.key].opts.forEach((name, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'swb off'; b.textContent = name; b.setAttribute('aria-pressed', String(setup[r.key] === i));
+        b.addEventListener('click', () => { customRow = ri; setOpt(r.key, i); $('cnote').textContent = NOTES[r.key][i]; renderCustom(); }); b.addEventListener('mouseenter', () => { $('cnote').textContent = NOTES[r.key][i]; }); ctl.appendChild(b); });
+    } else if (r.kind === 'palette') {
       ctl.className = 'sw';
       PARTS.PALETTES.forEach(P => { const b = document.createElement('button'); b.type = 'button'; b.className = 'swb pal'; b.title = P.name; b.setAttribute('aria-label', 'colours ' + P.name.toLowerCase()); b.style.background = `linear-gradient(90deg, ${P.a} 0 50%, ${P.b} 50% 80%, ${P.c} 80%)`; b.setAttribute('aria-pressed', String(CAR_STYLE.a === P.a && CAR_STYLE.b === P.b && CAR_STYLE.c === P.c)); b.addEventListener('click', () => { customRow = ri; Object.assign(CAR_STYLE, { a: P.a, b: P.b, c: P.c }); queueRebuild(); renderCustom(); }); ctl.appendChild(b); });
     } else if (r.kind === 'rims') {
@@ -2887,13 +2932,14 @@ function renderCustom() {
     } else if (r.kind === 'toggle') {
       ctl.className = 'sw'; for (const [t, v] of [['ON', 1], ['OFF', 0]]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'swb off'; b.textContent = t; b.setAttribute('aria-pressed', String(CAR_STYLE[r.key] === v)); b.addEventListener('click', () => { customRow = ri; setStyle(r.key, v); renderCustom(); }); ctl.appendChild(b); }
     } else { ctl.className = 'sw'; const b = document.createElement('button'); b.type = 'button'; b.className = 'swb off'; b.textContent = 'RESET TO DEFAULT'; b.addEventListener('click', () => { Object.assign(CAR_STYLE, CAR_STYLE_DEFAULT); rebuildCar(); renderCustom(); }); ctl.appendChild(b); }
-    rows.append(lab, ctl);
+    (r.group === 'setup' ? $('csetup') : rows).append(lab, ctl);
   });
 }
 function customNav(dy, dx, ok) {
   if (dy) { customRow = (customRow + dy + CROWS.length) % CROWS.length; renderCustom(); }
   const r = CROWS[customRow];
-  if (dx && r.kind === 'palette') { const L = PARTS.PALETTES, i = L.findIndex(P => P.a === CAR_STYLE.a && P.b === CAR_STYLE.b && P.c === CAR_STYLE.c), P = L[(i + dx + L.length) % L.length]; Object.assign(CAR_STYLE, { a: P.a, b: P.b, c: P.c }); queueRebuild(); renderCustom(); }
+  if ((dx || ok) && r.kind === 'setup') { const n = SETUP_OPTS[r.key].opts.length, i = (setup[r.key] + (dx || 1) + n) % n; setOpt(r.key, i); $('cnote').textContent = NOTES[r.key][i]; renderCustom(); }
+  else if (dx && r.kind === 'palette') { const L = PARTS.PALETTES, i = L.findIndex(P => P.a === CAR_STYLE.a && P.b === CAR_STYLE.b && P.c === CAR_STYLE.c), P = L[(i + dx + L.length) % L.length]; Object.assign(CAR_STYLE, { a: P.a, b: P.b, c: P.c }); queueRebuild(); renderCustom(); }
   else if ((dx || ok) && r.kind === 'rims') { setStyle('rims', (CAR_STYLE.rims + (dx || 1) + 5) % 5); renderCustom(); }
   else if (dx && r.kind === 'slider') { setStyle(r.key, clamp(Math.round((CAR_STYLE[r.key] + dx * 0.05) * 20) / 20, 0, 1)); renderCustom(); }
   else if (dx && (r.kind === 'color' || r.kind === 'glow')) {
@@ -2905,13 +2951,15 @@ function customNav(dy, dx, ok) {
   else if (ok && r.kind === 'action') { Object.assign(CAR_STYLE, CAR_STYLE_DEFAULT); rebuildCar(); renderCustom(); }
 }
 function toggleCustom(open = !customOpen) {
-  customOpen = open; $('custom').hidden = !open; $('overlay').hidden = open || !menu.open;
+  customOpen = open; $('custom').hidden = !open; $('overlay').hidden = open || !menu.open; studioOn(open);
+  if (!open) { carObj.visible = race.state !== 'menu'; carObj.position.set(car.x, car.y || 0, car.z); carObj.rotation.y = car.h; }
   $('hud').classList.toggle('dim', open || menu.open);
   if (open) { customRow = 0; renderCustom(); orbitT = 0; } else if (menu.open) renderMenu();
 }
 $('cclose').addEventListener('click', () => toggleCustom(false));
 let orbitT = 0;
-function toggleGarage(open = !garageOpen) {
+function toggleGarage(open = !customOpen) { toggleCustom(open); } // car setup now lives on the car screen
+function toggleGarageOld(open = !garageOpen) {
   garageOpen = open; $('garage').hidden = !open; $('hud').classList.toggle('dim', open || menu.open);
   if (open) { buildGarage(); $('gnote').textContent = 'Pick a part to see what it changes.'; audio.suspend(true); }
   else { audio.suspend(race.paused); document.activeElement && document.activeElement.blur(); }
@@ -2959,7 +3007,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
   pollInput(dt);
-  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (race.state === 'menu') { menuSpin += dt * 0.45; carObj.position.set(car.x, car.y || 0, car.z); carObj.rotation.y = car.h + menuSpin; } updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
+  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (customOpen) { carObj.visible = true; carObj.position.set(STUDIO.position.x, 0, STUDIO.position.z); carObj.rotation.y = 0.35; } else if (race.state === 'menu') carObj.visible = false; updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
   clock += dt;
   acc += dt;
   if (race.state === 'race' && race.count > 0) {
