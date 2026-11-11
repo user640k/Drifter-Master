@@ -65,6 +65,8 @@ Every lap is recorded. Your best lap on each track (per drift / grip mode) is sa
 Once a run is under way, if the car sits still with no input for 15 s the track resets to the start (a RESET IN countdown shows for the last 5 s).
 
 ## Racing an opponent
+Contact between the cars is a real two-car impact: equal masses, a little bounce (restitution 0.25), and spin from off-centre hits. Ram it from behind and it is shoved forward and turned; T-bone it and it is pushed sideways (about 28 cm at 3 m/s) and yawed; let it hit you and your car is knocked and spun. The opponent then recovers to its racing line. Hard contact damages your car like a wall hit.
+
 Menu → OPPONENT: EASY / MEDIUM / HARD. A computer car (blue, or red if yours is blue) lines up beside you, a 3-2-1 count starts the race, and the first to finish 3 laps wins; POS shows your place. The opponent follows a racing line for each course, braking and accelerating to a speed set by the corner radius and the difficulty; in drift mode it drifts the corners with countersteer. It is solid: you can bump it, and it loses a little speed when you do.
 
 ## Rollover (grip mode)
@@ -77,7 +79,12 @@ A drift counts once the car slides past 12 deg at over 0.7 m/s. Points flow in a
 The motor is a synthesised whine (triangle fundamental, sine harmonics, a quiet gear-mesh tone, a little wobble) that follows motor speed from about 95 Hz at a crawl to roughly 900 Hz flat out, so you hear every bit of extra revs; it is silent off the throttle. Under it, softened (lowpassed) loops cut from a recording of a real RC drift car add tire and drive-train texture, cross-faded by slide. Everything the car makes is placed at the car and heard from the camera: further away it gets quieter, duller and panned to its side (chase cam close, driver's stand and ceiling cam far).
 
 ## Camera
-Four cameras (C / Y). TRACKSIDE (default), after a spectator's video of a club event: the camera never cuts. It walks along a rail round the outside of the track at standing height (up to 2.8 m/s) toward the point nearest the car, stepping back along it to stay at least 2.2 m away so it never looks straight down, pans to follow the car with a slight handheld lag, aiming a little ahead of it, and zooms so the frame is about 2.6 m wide at the car. Then CHASE, DRIVER POV and DRIVER POV 2 - two drivers' spots per venue (home: at the front by the rug and at the side by the foil wall; arena: on the stand and at the front edge of the track), eyes at standing height with a natural 55 deg view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs.
+Four cameras (C / Y):
+- TRACKSIDE (default): one good vantage point per venue, high in a corner overlooking the whole track (arena: front-left corner at 3.1 m; home: front-left corner of the room). It stays put, turns to stay locked on the car, and zooms so the frame is about 3.2 m wide at the car (8-60°).
+- FPV: a little camera inside the car just behind the windshield (driver's side), looking over the bonnet past the body posts. It rides on the sprung body, so it rolls, pitches and slides with the car and follows ramps and landings; on top it buzzes with the road (more with speed and on rougher surfaces: `ROUGH` per venue, or `MAP.rough`) and shakes after every knock (landings, wall and car hits, cones). A dark dashboard panel inside the shell hides the chassis, and the tinted windshield is nearly clear from inside.
+- DRIVER POV and DRIVER POV 2: two drivers' spots per venue, eyes at standing height with a natural 55° view, head following the car, pistol-grip transmitter in hand whose wheel and trigger follow your inputs.
+
+The HUD and menus use Saira Semi Condensed (SIL Open Font License), embedded in the page. The HUD is plain text: lap, time, last, best, gate count, race position, drift score and top drift top left, the live drift counter top centre, speed and drift angle bottom right.
 
 ## Driving model
 Real 1/10 numbers (SI units), stepped at 720 Hz. The car is sized like the 1/10 RWD drift cars in the reference video: about 452 mm long and 203 mm wide over the body, 257 mm wheelbase, 64 mm wheels, 1.45 kg; hard plastic tires on polished tiles or epoxy grip at about 0.5, which is what lets them slide like that.
