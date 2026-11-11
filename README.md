@@ -1,6 +1,6 @@
 # Drift Master
 
-Browser RC drift game: a 1/10 RWD drift car, the I.A.S RACER (body from a supplied, free-to-use 3D model, simplified to about 72k triangles; each wheel straightened onto its true spin axis so it doesn't wobble), on two venues: a cozy home track (a white-walled room with an LED-lit track board in it) and an indoor RC arena after a reference photo (raised epoxy track, curbed C island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
+Browser RC drift game with an original 1/10 car built part by part (see Parts Lab below): a drift coupé or a rally hatch on its own chassis, with paint schemes, decals, body mounting and damage, on two venues: a cozy home track (a white-walled room with an LED-lit track board in it) and an indoor RC arena after a reference photo (raised epoxy track, curbed C island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run
 Open `index.html` in a browser (it loads Three.js r128 from cdnjs). Or serve the folder:
@@ -17,7 +17,10 @@ Any controller the browser sees with the standard layout (Xbox, PlayStation, mos
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry D-pad down drift/grip, Menu/Options pause menu. Barrier hits rumble.
 
 ## Customize
-Menu → CAR → CUSTOMIZE: paint, accent and wheel colours (swatches or any colour) and underglow colour or off. Colours only for now; the body shape is fixed. Saved in the browser.
+Menu → CAR → CUSTOMIZE: SHELL (drift coupé or rally hatch), SCHEME (solid, two-tone, twin stripes, side sweep, fade, contrast roof), COLOURS (six palettes) and MAIN / SECOND / ACCENT colours (swatches or any colour), RIMS (the five sets for the current tyre), race NUMBER, DECALS (numbers, sponsors, windscreen banner, mud on the rally hatch), MOUNT (posts and R-clips, or magnets) and UNDERGLOW. Tyres follow the shell and the mode: the coupé runs hard drift tyres in DRIFT mode and rubber grip tyres in GRIP mode; the rally hatch always runs off-road tyres. Looks only: the handling model is the same. Saved in the browser. The opponent gets the same shell in contrasting colours.
+
+## Damage
+Hard hits on walls, the track edge or the opponent (over about 4 km/h into the obstacle) damage the car with the Parts Lab damage model: dents, scuffed paint and torn decals where it hit, mirrors, wing, lip, light pod, scoop, spoiler or mudflaps breaking off and lying on the track, the shell knocked off its magnets or out of its clips, and bent suspension. A bent corner pulls the car to one side. Restart or reset (R) repairs everything.
 
 ## Menu
 Short and driven with arrows / mouse / gamepad: DRIVE, TRACK, OPPONENT (none, easy, medium, hard), GHOST (on / off), CAR › and OPTIONS ›. CAR holds MODE (drift / grip), CUSTOMIZE and CAR SETUP; OPTIONS holds CAMERA, VOLUME and CONTROLS. Esc / B goes back out of a submenu. Under the list one line names the venue and the track. Behind it the selected venue is shown from its photo viewpoint. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
@@ -103,12 +106,7 @@ Stage 6, damage (`parts.html#damage`): click the shell (or pick a spot) to hit i
 - Chassis: a hit within 6 cm of a wheel above 4.5 m/s bends that corner, shown as camber and toe on the wheel (to feed into the handling when the new car goes into the game).
 REPAIR puts everything back.
 
-The new car is not driven in the game yet; wiring it in (replacing the current car, with the shell choice, paint, mounting and damage) is the next step.
-
-## Car viewer
-`viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:
-
-    python3 tools/make_viewer.py
+The game's car is built from these parts (customize screen); damage is live in the game.
 
 ## Publishing on itch.io
 The game runs as-is in the browser. To make the upload:
@@ -118,4 +116,4 @@ The game runs as-is in the browser. To make the upload:
 This writes `dist/drift-master-itch.zip` (a full HTML document plus a bundled copy of three.js r128, MIT licence included), which runs without internet access. On itch.io: create a new project, Kind = HTML, upload the zip, tick "This file will be played in the browser", and set the viewport to 1280 x 760.
 
 ## Car model
-The body comes from a 3D car model supplied with the project as free to use (OBJ + textures, not in the repo because of size). `tools/car_parse_obj.py` and `tools/car_build_asset.py` group its 130 parts by role (paint, glass, trim, lights, four wheel assemblies split into spinning parts and calipers), simplify it from about 280k to 72k triangles, scale it to 1/10.2 (257 mm wheelbase) and pack it as quantised base64 arrays embedded in `index.html`. The tail-light texture is used; the number-plate texture (brand name) and the tire-sidewall texture (tire brand logo) are left out.
+The car is original: every part (tyres, rims, chassis, shells, paint, decals, mounts) is built in code in the PARTS section of `index.html` and shown in `parts.html` (see Parts Lab). The earlier I.A.S RACER body from a supplied 3D model, its viewer and its conversion scripts are in git history.
