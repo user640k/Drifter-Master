@@ -95,7 +95,15 @@ Stage 4, paint (`parts.html#paint`): six schemes worked out per pixel from the s
 
 Stage 5, mounting (`parts.html#mount`): POSTS AND R-CLIPS (four 6 mm nylon posts, fronts on the shock tower and rears on a mount bar behind the gearbox, with height holes every 3 mm, rubber washers on the shell and 1 mm wire R-clips through the hole just above it) or hidden MAGNETS (10 x 3 mm neodymium discs on holders at the same points, steel discs glued inside the shell). LIFT SHELL slides the clips out and lifts the shell off.
 
-Next: damage.
+Stage 6, damage (`parts.html#damage`): click the shell (or pick a spot) to hit it at 1-12 m/s.
+- Dents: the body and its decals push in around the hit, (1 - d/r)^2 falloff, depth and size growing with speed, total push capped at 16 mm.
+- Paint scuffs and torn decals around the last eight hits, worked out per pixel.
+- Breakable parts (mirrors, wing, front lip, light pod, roof scoop, hatch spoiler, mudflaps) each have a toughness; a hit on or near one beats it and the part flies off and settles on the floor.
+- The shell: on magnets it is knocked off above 6 m/s and lands beside the car; on posts a clip pops out above 8.5 m/s (shell sits crooked), and it tears off above 11 m/s.
+- Chassis: a hit within 6 cm of a wheel above 4.5 m/s bends that corner, shown as camber and toe on the wheel (to feed into the handling when the new car goes into the game).
+REPAIR puts everything back.
+
+The new car is not driven in the game yet; wiring it in (replacing the current car, with the shell choice, paint, mounting and damage) is the next step.
 
 ## Car viewer
 `viewer.html` is a rotatable studio view of the car (default look) with numbered parts, for reviewing the shell. It is generated from the car code in `index.html`:

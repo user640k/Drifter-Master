@@ -54,6 +54,11 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .steps li.done .n::after { content: " ✓"; }
 .col { display: flex; flex-direction: column; gap: 12px; }
 .grp { display: contents; }
+.pick input[type=range] { flex: 1 1 120px; accent-color: var(--hot); }
+.pick output { min-width: 9em; color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; }
+.log { font-size: 12px; line-height: 1.45; color: var(--dim); }
+.log li { padding: 2px 0; border-bottom: 1px solid var(--line); }
+.log li:first-child { color: var(--fg); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips button { flex: 1 1 auto; }
 .sw { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -2px; }
@@ -80,7 +85,7 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   <div class="hint">Drag: rotate · Scroll / pinch: zoom · Double-click: reset</div>
 </div>
 <aside>
-  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button><button type="button" id="sShell">3 · SHELLS</button><button type="button" id="sPaint">4 · PAINT</button><button type="button" id="sMount">5 · MOUNTING</button></div></div>
+  <div class="card"><h2>STAGE</h2><div class="row"><button type="button" id="sWheels">1 · WHEELS</button><button type="button" id="sChassis">2 · CHASSIS</button><button type="button" id="sShell">3 · SHELLS</button><button type="button" id="sPaint">4 · PAINT</button><button type="button" id="sMount">5 · MOUNTING</button><button type="button" id="sDamage">6 · DAMAGE</button></div></div>
   <div id="pWheels" class="col">
     <div class="card"><h2>TYRE</h2><div class="row" id="tyres"></div><p id="tnote"></p></div>
     <div class="card"><h2>RIMS</h2><ol id="rims"></ol></div>
@@ -104,6 +109,12 @@ dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
     <div class="card"><h2>SHELL</h2><div class="chips" id="mshells"></div></div>
     <div class="card"><h2>MOUNT</h2><div class="chips" id="mtypes"></div><p id="mnote"></p><div class="row"><button type="button" id="vLift" aria-pressed="false">LIFT SHELL</button><button type="button" id="vGlass2" aria-pressed="false">SEE-THROUGH</button></div></div>
     <div class="card"><h2>PARTS</h2><ol id="mlist"></ol></div>
+  </div>
+  <div id="pDamage" class="col">
+    <div class="card"><h2>SHELL</h2><div class="chips" id="dshells"></div><div class="chips" id="dmounts"></div></div>
+    <div class="card"><h2>IMPACT</h2><div class="pick"><label for="spd">SPEED</label><input type="range" id="spd" min="1" max="12" step="0.5"><output id="spdOut" for="spd"></output></div>
+      <p>Click anywhere on the shell to hit it there, or hit a spot on the right-hand side:</p><div class="chips" id="spots"></div><div class="row"><button type="button" id="repair">REPAIR</button></div></div>
+    <div class="card"><h2>DAMAGE LOG</h2><ol class="log" id="dlog"></ol></div>
   </div>
   <div class="card"><h2>SPEC</h2><dl id="spec"></dl></div>
   <div class="card"><h2>BUILD ORDER</h2><ol class="steps" id="steps">
@@ -146,7 +157,7 @@ function grain(g, w, h, rgb, amp, seed) {
 
 /* ======== PARTS: an original 1/10 car, built from scratch (work in progress; the game still drives the old car) ========
    Units are metres. A wheel is built with its axle along local x and its outer face towards +x.
-   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. Stage 4: paint schemes, colours, decals. Stage 5: shell mounting. */
+   Stage 1: tyres and rims, three tyre types at real 1/10 sizes with five rims each. Stage 2: two chassis. Stage 3: two shells. Stage 4: paint schemes, colours, decals. Stage 5: shell mounting. Stage 6: damage. */
 const PARTS = {};
 PARTS.TYRES = {
   // hard plastic drift tyre: smooth, slightly glossy, three shallow grooves (1/10 drift: 26 mm wide, 64 mm tall)
@@ -543,6 +554,7 @@ function buildChassis(kind, rimSet = 0) {
         c.g.userData.update(bumps[i], c.front ? steer : 0, 0);
         c.w.position.copy(c.k.pos); c.w.rotation.y = (c.s < 0 ? Math.PI : 0) + (c.front ? steer : 0);
         c.w.userData.spin.rotation.x = c.s < 0 ? -spin : spin;
+        const b = root.userData.bend && root.userData.bend[i]; if (b) { c.w.rotation.y += b.toe * c.s; c.w.rotation.z += b.camber; }
       });
     },
   };
@@ -655,17 +667,18 @@ function buildShell(kind, paint) {
   const bx = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
   const cy = (r, l, m, seg = 16) => { const g = new THREE.CylinderGeometry(r, r, l, seg); g.rotateX(Math.PI / 2); return new THREE.Mesh(g, m); };
   const lights = new THREE.Group(); root.add(lights);
+  const brk = []; // breakable parts: [name, object, toughness in m/s]
   if (kind === 'drift') {
     // slim projector headlights in the nose corners, a dark intake, a front lip, tail light bars, mirrors, a wing on stands
     for (const s of [-1, 1]) {
       const z = 0.2, hl = bx(0.03, 0.009, 0.014, mt.lamp); hl.position.set(s * 0.055, top(z) - 0.004, z); hl.rotation.set(-0.5, s * 0.25, 0); lights.add(hl);
       const tl = bx(0.04, 0.008, 0.004, mt.tail); tl.position.set(s * 0.058, top(S.z0 + 0.004) + 0.012, S.z0 + 0.002); lights.add(tl);
-      const mir = bx(0.012, 0.008, 0.006, mt.paint); at(s * (width(0.035) - S.inset * 0.3), belt(0.035) + 0.009, 0.035, mir);
+      const mir = bx(0.012, 0.008, 0.006, mt.paint); at(s * (width(0.035) - S.inset * 0.3), belt(0.035) + 0.009, 0.035, mir); brk.push([s > 0 ? 'Right mirror' : 'Left mirror', mir, 2.5]);
     }
     at(0, 0.032, S.z1 - 0.004, bx(0.08, 0.012, 0.006, mt.trim));
-    const lip = at(0, 0.021, S.z1 - 0.012, bx(0.15, 0.003, 0.03, mt.trim));
+    const lip = at(0, 0.021, S.z1 - 0.012, bx(0.15, 0.003, 0.03, mt.trim)); brk.push(['Front lip', lip, 5]);
     tag('Lights: projector headlights, tail bars', lights, [0, 0.06, 0.2]); tag('Front lip and intake', lip, [0, 0.03, 0.2]);
-    const wing = new THREE.Group(); at(0, 0, 0, wing);
+    const wing = new THREE.Group(); at(0, 0, 0, wing); brk.push(['Rear wing', wing, 4]);
     const wz = -0.205, wy = top(wz) + 0.022;
     const blade = bx(0.17, 0.0025, 0.03, mt.paint); blade.position.set(0, wy, wz); blade.rotation.x = -0.08; wing.add(blade);
     for (const s of [-1, 1]) { const st = bx(0.004, 0.022, 0.014, mt.trim); st.position.set(s * 0.045, wy - 0.011, wz); wing.add(st); const ep = bx(0.0025, 0.016, 0.034, mt.trim); ep.position.set(s * 0.086, wy + 0.004, wz); wing.add(ep); }
@@ -676,20 +689,20 @@ function buildShell(kind, paint) {
       const hl = cy(0.008, 0.004, mt.lamp); hl.position.set(s * 0.06, top(S.z1 - 0.01) - 0.012, S.z1 - 0.004); lights.add(hl);
       const tl = bx(0.012, 0.02, 0.004, mt.tail); tl.position.set(s * 0.082, belt(S.z0 + 0.01) + 0.006, S.z0 + 0.004); lights.add(tl);
       const ind = bx(0.012, 0.006, 0.004, mt.amber); ind.position.set(s * 0.082, belt(S.z0 + 0.01) - 0.008, S.z0 + 0.004); lights.add(ind);
-      for (const wz of [C.wb / 2, -C.wb / 2]) { const fl = bx(0.03, 0.03, 0.002, mt.trim); fl.position.set(s * 0.093, 0.045, wz - 0.045); root.add(fl); if (s > 0 && wz < 0) tag('Mudflaps', fl, [0.09, 0.05, wz - 0.045]); }
-      const mir = bx(0.012, 0.01, 0.006, mt.paint); at(s * (width(0.06) - S.inset * 0.2), belt(0.06) + 0.01, 0.06, mir);
+      for (const wz of [C.wb / 2, -C.wb / 2]) { const fl = bx(0.03, 0.03, 0.002, mt.trim); fl.position.set(s * 0.093, 0.045, wz - 0.045); root.add(fl); brk.push([(wz > 0 ? 'Front ' : 'Rear ') + (s > 0 ? 'right' : 'left') + ' mudflap', fl, 3.5]); if (s > 0 && wz < 0) tag('Mudflaps', fl, [0.09, 0.05, wz - 0.045]); }
+      const mir = bx(0.012, 0.01, 0.006, mt.paint); at(s * (width(0.06) - S.inset * 0.2), belt(0.06) + 0.01, 0.06, mir); brk.push([s > 0 ? 'Right mirror' : 'Left mirror', mir, 2.5]);
     }
-    const pod = new THREE.Group(); at(0, 0, 0, pod);
+    const pod = new THREE.Group(); at(0, 0, 0, pod); brk.push(['Light pod', pod, 5]);
     const pz = 0.16, py = top(pz) + 0.01; const bar = bx(0.13, 0.004, 0.006, mt.trim); bar.position.set(0, py - 0.006, pz); pod.add(bar);
     for (let i = 0; i < 4; i++) { const x = (i - 1.5) * 0.031, l = cy(0.0115, 0.008, mt.trim, 20); l.position.set(x, py + 0.004, pz + 0.002); pod.add(l); const f = cy(0.0098, 0.002, mt.lamp, 20); f.position.set(x, py + 0.004, pz + 0.007); pod.add(f); }
     tag('Light pod: four lamps', pod, [0, 0.11, 0.16]); tag('Lights: headlights, tail lights', lights, [0, 0.08, 0.19]);
-    const scoop = at(0, top(-0.03) + 0.004, -0.03, bx(0.03, 0.007, 0.04, mt.paint)); scoop.rotation.x = -0.06; at(0, top(-0.03) + 0.0045, -0.0095, bx(0.026, 0.005, 0.002, mt.trim));
+    const scoop = at(0, top(-0.03) + 0.004, -0.03, bx(0.03, 0.007, 0.04, mt.paint)); scoop.rotation.x = -0.06; brk.push(['Roof scoop', scoop, 7]); at(0, top(-0.03) + 0.0045, -0.0095, bx(0.026, 0.005, 0.002, mt.trim));
     tag('Roof scoop', scoop, [0, 0.15, -0.02]);
-    const sp = at(0, top(-0.17) + 0.004, -0.178, bx(0.16, 0.003, 0.03, mt.paint)); sp.rotation.x = 0.25;
+    const sp = at(0, top(-0.17) + 0.004, -0.178, bx(0.16, 0.003, 0.03, mt.paint)); sp.rotation.x = 0.25; brk.push(['Hatch spoiler', sp, 5]);
     tag('Hatch spoiler', sp, [0, 0.14, -0.18]);
   }
   tag('Windows: tinted, inside-painted', body, [0.05, 0.1, -0.03]);
-  root.userData = { kind, parts, mats: mt, section, S };
+  root.userData = { kind, parts, mats: mt, section, S, brk };
   return root;
 }
 // ======== Stage 4: paint schemes, colours and decals ========
@@ -722,19 +735,20 @@ function paintMaterial(kind) {
   const mt = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0xffffff, shininess: 120, envMap: PARTS.envTex, reflectivity: 0.22, side: THREE.DoubleSide });
   const SG = PARTS.SCHEME_GEO[kind], S = PARTS.SHELLS[kind];
   const u = { uScheme: { value: 0 }, uA: { value: new THREE.Color() }, uB: { value: new THREE.Color() }, uC: { value: new THREE.Color() },
-    uTone: { value: new THREE.Vector2(...SG.tone) }, uSweep: { value: new THREE.Vector2(...SG.sweep) }, uStripe: { value: new THREE.Vector2(...SG.stripe) }, uRoof: { value: SG.roof }, uZ: { value: new THREE.Vector2(S.z0, S.z1) } };
+    uTone: { value: new THREE.Vector2(...SG.tone) }, uSweep: { value: new THREE.Vector2(...SG.sweep) }, uStripe: { value: new THREE.Vector2(...SG.stripe) }, uRoof: { value: SG.roof }, uZ: { value: new THREE.Vector2(S.z0, S.z1) } }; paintScuff(u);
   mt.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP; varying vec3 vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 varying vec3 vOP; varying vec3 vON; uniform float uScheme; uniform vec3 uA; uniform vec3 uB; uniform vec3 uC;
-uniform vec2 uTone; uniform vec2 uSweep; uniform vec2 uStripe; uniform float uRoof; uniform vec2 uZ;`).replace('#include <color_fragment>', `#include <color_fragment>
+uniform vec2 uTone; uniform vec2 uSweep; uniform vec2 uStripe; uniform float uRoof; uniform vec2 uZ;` + SCUFF_GLSL).replace('#include <color_fragment>', `#include <color_fragment>
 { vec3 c = uA; float ax = abs(vOP.x), y = vOP.y, z = vOP.z;
   if (uScheme > 0.5 && uScheme < 1.5) { if (y < uTone.x + z * uTone.y) c = uB; }
   else if (uScheme < 2.5 && uScheme > 1.5) { if (vON.y > 0.2 && ax > uStripe.x && ax < uStripe.y) c = uB; else if (vON.y > 0.2 && ax > uStripe.y && ax < uStripe.y + 0.0018) c = uC; }
   else if (uScheme < 3.5 && uScheme > 2.5) { float l = y - (uSweep.x + z * uSweep.y); if (abs(vON.x) > 0.25 && l > 0.0 && l < 0.013) c = uB; else if (abs(vON.x) > 0.25 && l > 0.016 && l < 0.019) c = uC; }
   else if (uScheme < 4.5 && uScheme > 3.5) { c = mix(uB, uA, smoothstep(uZ.x, uZ.y, z)); }
   else if (uScheme > 4.5) { if (y > uRoof) c = uC; else if (y < uTone.x - 0.008 + z * uTone.y) c = uB; }
+  { float d = dmgNear(vOP); if (d < 1.0) { float n = dmgHash(floor(vOP.xz * vec2(2600.0, 340.0)) + floor(vOP.y * 2600.0)); float sc = step(0.62 + 0.38 * d, n); c = mix(c * (0.78 + 0.22 * d), vec3(0.74, 0.74, 0.72), sc * 0.75); } }
   diffuseColor.rgb = c; }`);
   };
   mt.userData.u = u; return mt;
@@ -819,6 +833,7 @@ function applyLivery(shell, L) {
     g.add(topDecal(shell, 0, D.hood[0] + 0.045, 0.06, 0.015, s3));
   }
   if (dc.banner) g.add(topDecal(shell, 0, D.banner[0], D.banner[2], D.banner[1], DECAL_ART.banner(kind === 'drift' ? 'DRIFT MASTER' : 'DRIFT MASTER RALLY')));
+  g.children.forEach(m => decalTearable(m.material, u));
 }
 // ======== Stage 5: how the shell is held on ========
 // POSTS: 6 mm nylon body posts rise from the chassis (fronts on the shock tower, rears on a small mount behind the
@@ -876,6 +891,119 @@ function buildMounts(shell, type) {
   };
   return root;
 }
+// ======== Stage 6: damage ========
+// hit(state, point, dir, speed): point and dir in the car's own frame (dir points into the car), speed in m/s.
+//  - the shell dents: vertices near the hit move along dir, (1 - d/r)^2 falloff; depth and radius grow with speed,
+//    and the total push on any vertex is capped so the shell never folds through itself. Decals dent with it.
+//  - the paint scuffs and decals tear near the hit (worked out per pixel from the last 8 hits).
+//  - breakable parts (mirrors, wing, lip, light pod, scoop, spoiler, mudflaps) snap off when the hit, weakened by
+//    distance, beats their toughness, and fly off as loose debris.
+//  - the shell comes off: on MAGNETS above 6 m/s it is knocked clean off; on POSTS above 8.5 m/s a clip pops out
+//    and the shell sits crooked, above 11 m/s it tears off the posts.
+//  - a hit within 6 cm of a wheel above 4.5 m/s bends that corner: camber and toe show on the wheel.
+PARTS.HIT_SPOTS = [ // [name, point on the right side (x, y, z as a fraction of the shell length from the tail) or the parts to aim at, direction]
+  ['NOSE', [0, 0.5, 0.995], [0, -0.1, -1]], ['FRONT CORNER', [0.8, 0.45, 0.88], [-0.7, 0, -0.7]], ['DOOR', [1, 0.5, 0.47], [-1, 0, 0]],
+  ['REAR CORNER', [0.8, 0.5, 0.1], [-0.7, 0, 0.7]], ['TAIL', [0, 0.55, 0.004], [0, -0.1, 1]], ['MIRROR', ['Right mirror'], [-1, -0.2, 0]], ['WING / SPOILER', ['Rear wing', 'Hatch spoiler'], [0, -0.5, 1]], ['ROOF (ROLLOVER)', [0.3, 1, 0.45], [-0.3, -1, 0]],
+];
+function paintScuff(u) { // uniforms shared by the paint and the decals of one shell
+  u.uHit = { value: Array.from({ length: 8 }, () => new THREE.Vector4(0, -1, 0, 0.001)) }; u.uHitN = { value: 0 };
+}
+const SCUFF_GLSL = `
+uniform vec4 uHit[8]; uniform float uHitN;
+float dmgHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float dmgNear(vec3 p) { float m = 2.0; for (int i = 0; i < 8; i++) { if (float(i) >= uHitN) break; m = min(m, distance(p, uHit[i].xyz) / uHit[i].w); } return m; }`;
+function decalTearable(mt, u) {
+  mt.onBeforeCompile = sh => {
+    sh.uniforms.uHit = u.uHit; sh.uniforms.uHitN = u.uHitN;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP;' + SCUFF_GLSL).replace('#include <map_fragment>', `#include <map_fragment>
+{ float d = dmgNear(vOP); if (d < 1.0) { float n = dmgHash(floor(vOP.xz * 700.0) + floor(vOP.y * 700.0)); if (n > 0.25 + 0.75 * d) discard; diffuseColor.rgb *= 0.75 + 0.25 * d; } }`);
+  };
+  mt.needsUpdate = true;
+}
+function damageInit(shell, chassis, mounts) {
+  shell.updateMatrixWorld(true); // parts' world positions must be current before measuring them
+  const body = shell.children[0], st = shell.userData.dmg = shell.userData.dmg || {};
+  st.shell = shell; st.chassis = chassis; st.mounts = mounts; st.body = body;
+  st.base = st.base || Float32Array.from(body.geometry.attributes.position.array);
+  if (!st.decalBase || st.decalsOf !== shell.userData.decals) { st.decalBase = new Map(); st.decalsOf = shell.userData.decals; if (shell.userData.decals) shell.userData.decals.children.forEach(d => st.decalBase.set(d, Float32Array.from(d.geometry.attributes.position.array))); }
+  st.debris = st.debris || []; st.log = st.log || []; st.dents = st.dents || 0; st.hitI = st.hitI || 0;
+  st.homes = st.homes || shell.userData.brk.map(([name, obj, tough]) => ({ name, obj, tough, parent: obj.parent, pos: obj.position.clone(), quat: obj.quaternion.clone(), centre: new THREE.Box3().setFromObject(obj).getCenter(new THREE.Vector3()), off: false }));
+  st.pop = st.pop || null; if (chassis) chassis.userData.bend = chassis.userData.bend || [0, 1, 2, 3].map(() => ({ camber: 0, toe: 0 }));
+  return st;
+}
+function dentGeo(geo, base, p, dir, depth, rad) {
+  const a = geo.attributes.position.array, cap = 0.016;
+  for (let i = 0; i < a.length; i += 3) {
+    const dx = a[i] - p.x, dy = a[i + 1] - p.y, dz = a[i + 2] - p.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz); if (d >= rad) continue;
+    const f = (1 - d / rad) * (1 - d / rad) * depth;
+    let nx = a[i] + dir.x * f, ny = a[i + 1] + dir.y * f, nz = a[i + 2] + dir.z * f;
+    const ox = nx - base[i], oy = ny - base[i + 1], oz = nz - base[i + 2], o = Math.sqrt(ox * ox + oy * oy + oz * oz);
+    if (o > cap) { nx = base[i] + ox / o * cap; ny = base[i + 1] + oy / o * cap; nz = base[i + 2] + oz / o * cap; }
+    a[i] = nx; a[i + 1] = ny; a[i + 2] = nz;
+  }
+  geo.attributes.position.needsUpdate = true; geo.computeVertexNormals();
+}
+function detach(st, obj, vel, spin) { // a part becomes loose debris in the shell's parent space
+  const sc = st.shell.parent; obj.updateMatrixWorld(true); const m = obj.matrixWorld.clone(); obj.parent.remove(obj); sc.add(obj);
+  m.decompose(obj.position, obj.quaternion, obj.scale); st.debris.push({ obj, vel, spin, rest: 0 });
+}
+function damageHit(st, point, dir, speed, struck) { // struck: the object the hit landed on, if known
+  const out = [], shell = st.shell, u = shell.userData.paintMat && shell.userData.paintMat.userData.u, d = dir.clone().normalize();
+  if (st.pop && st.pop.off) return ['The shell is already off: repair first'];
+  // dent the shell and its decals
+  const depth = Math.min(0.012, 0.0006 * speed * speed), rad = 0.016 + 0.004 * speed;
+  if (speed > 1.2) { dentGeo(st.body.geometry, st.base, point, d, depth, rad); st.decalBase.forEach((b, m) => { if (m.parent) dentGeo(m.geometry, b, point, d, depth, rad); }); st.dents++; out.push(`Dent: ${(depth * 1000).toFixed(1)} mm deep, ${(rad * 2000).toFixed(0)} mm across`); }
+  if (u) { u.uHit.value[st.hitI % 8].set(point.x, point.y, point.z, rad * 0.9 + 0.004); st.hitI++; u.uHitN.value = Math.min(8, st.hitI); out.push('Paint scuffed' + (shell.userData.decals && shell.userData.decals.children.length ? ', decals torn nearby' : '')); }
+  // parts snap off
+  for (const h of st.homes) {
+    if (h.off) continue; let on = false; for (let o = struck; o; o = o.parent) if (o === h.obj) on = true;
+    const dist = on ? 0 : h.centre.distanceTo(point), hitOn = speed * Math.max(0, 1 - dist / 0.1);
+    if (hitOn >= h.tough) { h.off = true; detach(st, h.obj, d.clone().multiplyScalar(speed * 0.18).add(new THREE.Vector3(0, 0.6 + speed * 0.05, 0)), new THREE.Vector3(Math.random() * 12 - 6, Math.random() * 12 - 6, Math.random() * 12 - 6)); out.push(h.name + ' broke off'); }
+  }
+  // the shell's hold on the chassis
+  const type = st.mounts ? st.mounts.userData.type : 'posts';
+  if (type === 'magnets' && speed >= 6 || type === 'posts' && speed >= 11) { st.pop = { off: true, t: 0, from: shell.position.clone(), vel: new THREE.Vector3(d.x, 0, d.z).normalize().multiplyScalar(0.55 + speed * 0.05).add(new THREE.Vector3(0, 0.9, 0)), spin: new THREE.Vector3(-d.z, 0, d.x).multiplyScalar(1.6) }; out.push(type === 'magnets' ? 'Shell knocked off the magnets' : 'Shell torn off the posts'); }
+  else if (type === 'posts' && speed >= 8.5 && !(st.pop && st.pop.crooked)) {
+    const clips = st.mounts.children[1].children; let best = null, bd = 1e9; clips.forEach(c => { if (c.parent && c.userData.home) { const dd = c.userData.home.distanceTo(point); if (dd < bd) { bd = dd; best = c; } } });
+    if (best) detach(st, best, d.clone().multiplyScalar(0.8).add(new THREE.Vector3(0, 1.2, 0)), new THREE.Vector3(20, 9, 14));
+    st.pop = { crooked: true, rx: -d.z * 0.06, rz: d.x * 0.06, y: 0.006 }; shell.rotation.set(st.pop.rx, 0, st.pop.rz); shell.position.y = st.pop.y; out.push('A clip popped out: the shell sits crooked');
+  }
+  // bent suspension near a wheel
+  if (st.chassis && speed >= 4.5) st.chassis.userData.corners.forEach((c, i) => {
+    const wp = c.k.pos, dd = Math.hypot(wp.x - point.x, wp.z - point.z); if (dd > 0.06) return;
+    const b = st.chassis.userData.bend[i], k = (speed - 4) * (1 - dd / 0.06);
+    b.camber = Math.min(0.14, b.camber + k * 0.02); b.toe = Math.max(-0.09, Math.min(0.09, b.toe + k * 0.012 * Math.sign(d.z || 1) * (c.front ? 1 : -1)));
+    out.push(`${c.front ? 'Front' : 'Rear'} ${c.s > 0 ? 'right' : 'left'} arm bent: ${(b.camber * 57.3).toFixed(1)}° camber, ${(b.toe * 57.3).toFixed(1)}° toe`);
+  });
+  if (!out.length) out.push('A light tap: no damage');
+  st.log.unshift(...out.map(t => `${(speed * 3.6).toFixed(0)} km/h · ${t}`)); st.log.length = Math.min(st.log.length, 12);
+  return out;
+}
+function damageStep(st, dt) {
+  for (const p of st.debris) {
+    if (p.rest > 1.5) continue;
+    p.vel.y -= 9.8 * dt; p.obj.position.addScaledVector(p.vel, dt);
+    p.obj.rotation.x += p.spin.x * dt; p.obj.rotation.y += p.spin.y * dt; p.obj.rotation.z += p.spin.z * dt;
+    const low = new THREE.Box3().setFromObject(p.obj).min.y; // the part's real lowest point, whatever its pivot
+    if (low < 0.0005) { p.obj.position.y += 0.0005 - low; p.vel.y = Math.abs(p.vel.y) * 0.3; p.vel.x *= 0.6; p.vel.z *= 0.6; p.spin.multiplyScalar(0.55); if (p.vel.length() < 0.08) { p.rest += dt; p.vel.set(0, 0, 0); } }
+  }
+  const P = st.pop; if (P && P.off && P.t < 2.5) { // the shell flies clear, lands on the floor beside the car and slides to a stop
+    P.t += dt; const sh = st.shell; P.vel.y -= 9.8 * dt; sh.position.addScaledVector(P.vel, dt); sh.rotation.x += P.spin.x * dt; sh.rotation.z += P.spin.z * dt;
+    const floorY = Math.hypot(sh.position.x, sh.position.z) > 0.16 ? -0.019 : 0.035;
+    if (sh.position.y < floorY) { sh.position.y = floorY; P.vel.y = Math.abs(P.vel.y) * 0.15; P.spin.multiplyScalar(0.4); sh.rotation.x *= 0.9; sh.rotation.z *= 0.9; const k = Math.exp(-5 * dt); P.vel.x *= k; P.vel.z *= k; }
+  }
+}
+function damageRepair(st) {
+  const sh = st.shell;
+  st.body.geometry.attributes.position.array.set(st.base); st.body.geometry.attributes.position.needsUpdate = true; st.body.geometry.computeVertexNormals();
+  st.decalBase.forEach((b, m) => { m.geometry.attributes.position.array.set(b); m.geometry.attributes.position.needsUpdate = true; m.geometry.computeVertexNormals(); });
+  const u = sh.userData.paintMat && sh.userData.paintMat.userData.u; if (u) u.uHitN.value = 0;
+  for (const h of st.homes) if (h.off) { h.obj.parent.remove(h.obj); h.parent.add(h.obj); h.obj.position.copy(h.pos); h.obj.quaternion.copy(h.quat); h.obj.scale.set(1, 1, 1); h.off = false; }
+  for (const p of st.debris) if (!st.homes.find(h => h.obj === p.obj) && p.obj.userData.home) { p.obj.parent.remove(p.obj); st.mounts.children[1].add(p.obj); p.obj.position.copy(p.obj.userData.home); p.obj.rotation.set(0, p.obj.userData.home.x > 0 ? 0 : Math.PI, 0); p.obj.scale.set(1, 1, 1); }
+  st.debris = []; st.pop = null; sh.position.set(0, 0, 0); sh.rotation.set(0, 0, 0); st.dents = 0; st.hitI = 0; st.log = [];
+  if (st.chassis) st.chassis.userData.bend.forEach(b => { b.camber = 0; b.toe = 0; });
+}
 /* ======== END PARTS ======== */
 scene.add(new THREE.HemisphereLight(0xf2f4ff, 0x30333a, 0.7));
 const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(2, 2.5, 1.2); scene.add(key);
@@ -883,7 +1011,7 @@ const rimL = new THREE.DirectionalLight(0xbfd4ff, 0.45); rimL.position.set(-2, 1
 const fillL = new THREE.PointLight(0xffffff, 0.3, 3); fillL.position.set(0.6, 0.2, -0.6); scene.add(fillL);
 const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshLambertMaterial({ color: 0x30343c })); floorDisc.rotation.x = -Math.PI / 2; scene.add(floorDisc);
 
-const sel = { mount: 'posts', lifted: false, shell: 'drift', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
+const sel = { speed: 5, mount: 'posts', lifted: false, shell: 'drift', withChassis: true, xray: false, stage: 'wheels', type: 'drift', set: 0, all: false, roll: true, build: 'drift', rim: 0, steer: true, susp: true };
 try { const s = JSON.parse(localStorage.getItem('dm-parts-sel2') || 'null'); if (s) for (const k of ['type', 'set', 'build', 'rim', 'shell', 'mount']) if (s[k] !== undefined) sel[k] = s[k]; } catch (e) {}
 const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify({ type: sel.type, set: sel.set, build: sel.build, rim: sel.rim, shell: sel.shell, mount: sel.mount })); } catch (e) {} };
 
@@ -891,7 +1019,7 @@ const save = () => { try { localStorage.setItem('dm-parts-sel2', JSON.stringify(
 const TYPES = Object.keys(PARTS.TYRES), wheels = {}, wheelGroup = new THREE.Group(); scene.add(wheelGroup);
 for (const t of TYPES) wheels[t] = PARTS.WHEELSETS[t].map((_, i) => { const w = buildWheel(t, i); wheelGroup.add(w); return w; });
 // stage 2: chassis, rebuilt when the build or rim set changes
-let chassis = null, shell = null, mounts = null, liftT = 0;
+let chassis = null, shell = null, mounts = null, liftT = 0, dmg = null;
 const LIV = {}; for (const k of Object.keys(PARTS.SHELLS)) LIV[k] = JSON.parse(JSON.stringify(PARTS.LIVERY_DEFAULT));
 LIV.offroad.scheme = 'roof'; LIV.offroad.palette = 1; Object.assign(LIV.offroad, { a: PARTS.PALETTES[1].a, b: PARTS.PALETTES[1].b, c: PARTS.PALETTES[1].c, number: 7 }); LIV.offroad.decals.mud = true;
 try { const l = JSON.parse(localStorage.getItem('dm-parts-livery') || 'null'); if (l) for (const k in LIV) if (l[k]) Object.assign(LIV[k], l[k], { decals: { ...LIV[k].decals, ...(l[k].decals || {}) } }); } catch (e) {}
@@ -906,10 +1034,10 @@ function listButtons(el, items, cur, onPick) {
 }
 let focusIdx = -1;
 function render() {
-  const W = sel.stage === 'wheels', PT = sel.stage === 'paint', MT = sel.stage === 'mount', SH = sel.stage === 'shell' || PT || MT;
-  $('pWheels').hidden = !W; $('pChassis').hidden = sel.stage !== 'chassis'; $('pShell').hidden = sel.stage !== 'shell'; $('pPaint').hidden = !PT; $('pMount').hidden = !MT; $('gWheel').hidden = !W; $('gChassis').hidden = W;
-  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(sel.stage === 'chassis')); $('sShell').setAttribute('aria-pressed', String(sel.stage === 'shell')); $('sPaint').setAttribute('aria-pressed', String(PT)); $('sMount').setAttribute('aria-pressed', String(MT));
-  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : MT ? 5 : PT ? 4 : SH ? 3 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
+  const W = sel.stage === 'wheels', PT = sel.stage === 'paint', MT = sel.stage === 'mount', DM = sel.stage === 'damage', SH = sel.stage === 'shell' || PT || MT || DM;
+  $('pWheels').hidden = !W; $('pChassis').hidden = sel.stage !== 'chassis'; $('pShell').hidden = sel.stage !== 'shell'; $('pPaint').hidden = !PT; $('pMount').hidden = !MT; $('pDamage').hidden = !DM; $('gWheel').hidden = !W; $('gChassis').hidden = W;
+  $('sWheels').setAttribute('aria-pressed', String(W)); $('sChassis').setAttribute('aria-pressed', String(sel.stage === 'chassis')); $('sShell').setAttribute('aria-pressed', String(sel.stage === 'shell')); $('sPaint').setAttribute('aria-pressed', String(PT)); $('sMount').setAttribute('aria-pressed', String(MT)); $('sDamage').setAttribute('aria-pressed', String(DM));
+  document.querySelectorAll('#steps li').forEach(li => { const n = +li.dataset.s, cur = W ? 1 : DM ? 6 : MT ? 5 : PT ? 4 : SH ? 3 : 2; li.className = n < cur ? 'done' : n === cur ? 'now' : ''; });
   $('vSpin').setAttribute('aria-pressed', String(sel.roll)); $('vSteer').setAttribute('aria-pressed', String(sel.steer)); $('vSusp').setAttribute('aria-pressed', String(sel.susp));
   wheelGroup.visible = W; if (chassis) chassis.visible = !W && (!SH || sel.withChassis); if (shell) shell.visible = SH; if (mounts && !SH) mounts.visible = false;
   if (W) {
@@ -933,16 +1061,18 @@ function render() {
     if (!shell || shell.userData.kind !== sel.shell) { if (shell) scene.remove(shell); shell = buildShell(sel.shell); scene.add(shell); if (mounts) { mounts.userData.dispose(); scene.remove(mounts); mounts = null; } }
     if (mounts && mounts.userData.type !== sel.mount) { mounts.userData.dispose(); scene.remove(mounts); mounts = null; }
     if (!mounts) { mounts = buildMounts(shell, sel.mount); scene.add(mounts); mounts.userData.lift(liftT); }
-    mounts.visible = MT || sel.mount === 'posts'; if (!MT) { liftT = 0; sel.lifted = false; mounts.userData.lift(0); }
+    mounts.visible = MT || sel.mount === 'posts'; if (!MT && !DM) { liftT = 0; sel.lifted = false; mounts.userData.lift(0); }
+    if (DM) { dmg = damageInit(shell, chassis, mounts); damagePanel(); }
     if (MT) mountPanel();
-    applyLivery(shell, LIV[sel.shell]); if (PT) paintPanel();
+    { const key = JSON.stringify(LIV[sel.shell]); if (shell.userData.livKey !== key) { applyLivery(shell, LIV[sel.shell]); shell.userData.livKey = key; } } if (PT) paintPanel();
     for (const mt of [shell.userData.mats.paint, shell.userData.mats.glass, shell.userData.paintMat]) { mt.transparent = sel.xray; mt.opacity = sel.xray ? 0.35 : 1; mt.depthWrite = !sel.xray; mt.needsUpdate = true; }
     document.querySelectorAll('#shells button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === sel.shell)));
     $('snote').textContent = S.note; $('vChassis').setAttribute('aria-pressed', String(sel.withChassis)); $('vGlass').setAttribute('aria-pressed', String(sel.xray));
     listButtons($('slist'), shell.userData.parts.map((p, i) => [i + 1, p.name]), focusIdx, i => { focusIdx = i; const f = shell.userData.parts[i].focus; want.target.set(f[0], f[1], f[2]); want.dist = 0.26; $('cur').textContent = shell.userData.parts[i].name.toUpperCase(); render(); });
     setSpec([['LENGTH', mm(S.z1 - S.z0)], ['WIDTH', mm(Math.max(...S.width.map(k => k[1])) * 2)], ['HEIGHT', mm(Math.max(...S.top.map(k => k[1])))], ['WHEELBASE', mm(C.wb)], ['FITS', C.name + ' chassis'], ['MATERIAL', 'polycarbonate, 0.75 mm'], ['WINDOWS', 'tinted, painted inside']]);
     if (MT) { const mp = mounts.userData.parts; if (focusIdx < 0) $('cur').textContent = S.name + ' · ' + PARTS.MOUNTS[sel.mount].name; setSpec(sel.mount === 'posts' ? [['POSTS', '4 × 6 mm nylon'], ['HEIGHT HOLES', 'every 3 mm'], ['CLIPS', '1 mm spring-steel R-clips'], ['WASHERS', 'rubber, on the shell'], ['FRONT POSTS', 'on the shock tower'], ['REAR POSTS', 'mount bar behind the gearbox']] : [['MAGNETS', '4 × neodymium, 10 × 3 mm'], ['HOLDERS', 'nylon, on the same mount points'], ['IN THE SHELL', 'steel discs, glued'], ['VISIBLE', 'nothing from outside']]); }
-    if (!MT && (focusIdx < 0 || PT)) $('cur').textContent = S.name + (PT ? ' · ' + PARTS.SCHEMES.find(x => x.key === LIV[sel.shell].scheme).name : '');
+    if (DM) { $('cur').textContent = S.name + ' · ' + (dmg.log[0] ? dmg.log[0].split(' · ').slice(1).join(' · ') : 'CLICK THE SHELL TO HIT IT'); setSpec([['DENTS', String(dmg.dents)], ['PARTS OFF', String(dmg.homes.filter(h => h.off).length) + ' of ' + dmg.homes.length], ['SHELL', dmg.pop ? (dmg.pop.off ? 'off the chassis' : 'loose, sitting crooked') : 'held'], ['MOUNT', PARTS.MOUNTS[sel.mount].name], ['BENT CORNERS', String(chassis.userData.bend.filter(b => b.camber > 0.001).length)]]); }
+    if (!MT && !DM && (focusIdx < 0 || PT)) $('cur').textContent = S.name + (PT ? ' · ' + PARTS.SCHEMES.find(x => x.key === LIV[sel.shell].scheme).name : '');
     floorDisc.visible = true; floorDisc.scale.setScalar(0.34);
   } else {
     if (!chassis || chassis.userData.kind !== sel.build || chassis.userData.rim !== sel.rim) { makeChassis(); chassis.userData.rim = sel.rim; }
@@ -969,6 +1099,23 @@ function paintPanel() {
 for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('input', e => { const L = LIV[sel.shell]; L[id.slice(1).toLowerCase()] = e.target.value; L.palette = -1; saveLiv(); applyLivery(shell, L); });
 for (const id of ['cA', 'cB', 'cC']) $(id).addEventListener('change', () => render());
 $('num').addEventListener('change', e => { const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)); LIV[sel.shell].number = v; saveLiv(); render(); });
+function damagePanel() {
+  $('dshells').innerHTML = ''; for (const k of Object.keys(PARTS.SHELLS)) chip($('dshells'), PARTS.SHELLS[k].name, k === sel.shell, () => { if (dmg) damageRepair(dmg); dmg = null; sel.shell = k; save(); render(); home(); });
+  $('dmounts').innerHTML = ''; for (const k of Object.keys(PARTS.MOUNTS)) chip($('dmounts'), PARTS.MOUNTS[k].name, k === sel.mount, () => { if (dmg) damageRepair(dmg); sel.mount = k; save(); render(); });
+  $('spd').value = sel.speed; $('spdOut').textContent = sel.speed.toFixed(1) + ' m/s · ' + (sel.speed * 3.6).toFixed(0) + ' km/h';
+  $('spots').innerHTML = ''; for (const [name, f, dv] of PARTS.HIT_SPOTS) chip($('spots'), name, false, () => hitSpot(f, dv));
+  const ol = $('dlog'); ol.innerHTML = ''; if (!dmg.log.length) { const li = document.createElement('li'); li.textContent = 'No damage yet.'; ol.appendChild(li); } for (const l of dmg.log) { const li = document.createElement('li'); li.textContent = l; ol.appendChild(li); }
+}
+const ray = new THREE.Raycaster();
+function hitAt(pointWorld, dirWorld, struck) { if (!dmg) return; const pl = shell.worldToLocal(pointWorld.clone()); damageHit(dmg, pl, dirWorld, sel.speed, struck); render(); }
+function hitSpot(f, dv) {
+  const S = PARTS.SHELLS[sel.shell], wMax = Math.max(...S.width.map(k => k[1])), hMax = Math.max(...S.top.map(k => k[1]));
+  const d = new THREE.Vector3(...dv).normalize(), part = typeof f[0] === 'string' && dmg.homes.find(h => f.includes(h.name) && !h.off);
+  if (typeof f[0] === 'string' && !part) { dmg.log.unshift('Nothing left to hit there'); render(); return; }
+  const guess = part ? part.centre.clone() : new THREE.Vector3(f[0] * wMax, f[1] * hMax, S.z0 + f[2] * (S.z1 - S.z0));
+  ray.set(guess.clone().addScaledVector(d, -0.3), d); const hit = ray.intersectObject(shell, true)[0];
+  hitAt(hit ? hit.point : shell.localToWorld(guess), d, hit && hit.object);
+}
 function mountPanel() {
   $('mshells').innerHTML = ''; for (const k of Object.keys(PARTS.SHELLS)) chip($('mshells'), PARTS.SHELLS[k].name, k === sel.shell, () => { sel.shell = k; focusIdx = -1; save(); render(); home(); });
   $('mtypes').innerHTML = ''; for (const k of Object.keys(PARTS.MOUNTS)) chip($('mtypes'), PARTS.MOUNTS[k].name, k === sel.mount, () => { sel.mount = k; focusIdx = -1; save(); render(); });
@@ -979,12 +1126,14 @@ for (const k of Object.keys(PARTS.SHELLS)) { const b = document.createElement('b
 for (const k of Object.keys(PARTS.CHASSIS)) { const b = document.createElement('button'); b.type = 'button'; b.dataset.b = k; b.textContent = PARTS.CHASSIS[k].name; b.addEventListener('click', () => { sel.build = k; sel.rim = 0; focusIdx = -1; save(); render(); home(); }); $('builds').appendChild(b); }
 
 // orbit camera; yaw 0 looks from +x (a wheel's outer face, the car's right side)
-const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 }, shell: { t: [0, 0.05, 0], yaw: -0.75, pitch: 0.3, dist: 0.66 }, paint: { t: [0, 0.055, 0], yaw: -0.55, pitch: 0.28, dist: 0.62 }, mount: { t: [0, 0.07, -0.02], yaw: -0.6, pitch: 0.5, dist: 0.6 } };
+const HOME = { one: { t: [0, 0.033, 0], yaw: 0.95, pitch: 0.28, dist: 0.32 }, all: { t: [0, 0.13, 0], yaw: 0.12, pitch: 0.1, dist: 0.62 }, chassis: { t: [0, 0.03, 0], yaw: 0.75, pitch: 0.5, dist: 0.62 }, shell: { t: [0, 0.05, 0], yaw: -0.75, pitch: 0.3, dist: 0.66 }, paint: { t: [0, 0.055, 0], yaw: -0.55, pitch: 0.28, dist: 0.62 }, damage: { t: [0, 0.04, 0], yaw: -0.65, pitch: 0.36, dist: 0.72 }, mount: { t: [0, 0.07, -0.02], yaw: -0.6, pitch: 0.5, dist: 0.6 } };
 const orbit = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 }, want = { target: new THREE.Vector3(), yaw: 0, pitch: 0, dist: 1 };
 let fit = 1;
-function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.stage === 'shell' ? HOME.shell : sel.stage === 'paint' ? HOME.paint : sel.stage === 'mount' ? HOME.mount : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage !== 'wheels') render(); }
-function setStage(st) { sel.stage = st; try { if (location.hash !== '#' + st) history.replaceState(null, '', '#' + st); } catch (e) {} render(); home(); }
-$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis')); $('sShell').addEventListener('click', () => setStage('shell')); $('sPaint').addEventListener('click', () => setStage('paint')); $('sMount').addEventListener('click', () => setStage('mount'));
+function home() { const h = sel.stage === 'chassis' ? HOME.chassis : sel.stage === 'shell' ? HOME.shell : sel.stage === 'paint' ? HOME.paint : sel.stage === 'mount' ? HOME.mount : sel.stage === 'damage' ? HOME.damage : sel.all ? HOME.all : HOME.one; want.target.set(...h.t); want.yaw = h.yaw; want.pitch = h.pitch; want.dist = h.dist * (sel.stage === 'wheels' && !sel.all ? 1 : fit); focusIdx = -1; if (sel.stage !== 'wheels') render(); }
+function setStage(st) { if (sel.stage === 'damage' && st !== 'damage' && dmg) { damageRepair(dmg); dmg = null; } sel.stage = st; try { if (location.hash !== '#' + st) history.replaceState(null, '', '#' + st); } catch (e) {} render(); home(); }
+$('sWheels').addEventListener('click', () => setStage('wheels')); $('sChassis').addEventListener('click', () => setStage('chassis')); $('sShell').addEventListener('click', () => setStage('shell')); $('sPaint').addEventListener('click', () => setStage('paint')); $('sMount').addEventListener('click', () => setStage('mount')); $('sDamage').addEventListener('click', () => setStage('damage'));
+$('spd').addEventListener('input', e => { sel.speed = +e.target.value; $('spdOut').textContent = sel.speed.toFixed(1) + ' m/s · ' + (sel.speed * 3.6).toFixed(0) + ' km/h'; });
+$('repair').addEventListener('click', () => { if (dmg) damageRepair(dmg); render(); });
 $('vLift').addEventListener('click', () => { sel.lifted = !sel.lifted; render(); }); $('vGlass2').addEventListener('click', () => { sel.xray = !sel.xray; render(); });
 $('vChassis').addEventListener('click', () => { sel.withChassis = !sel.withChassis; render(); }); $('vGlass').addEventListener('click', () => { sel.xray = !sel.xray; render(); });
 $('vOne').addEventListener('click', () => { sel.all = false; render(); home(); });
@@ -992,21 +1141,28 @@ $('vAll').addEventListener('click', () => { sel.all = true; render(); home(); })
 $('vSpin').addEventListener('click', () => { sel.roll = !sel.roll; render(); });
 $('vSteer').addEventListener('click', () => { sel.steer = !sel.steer; render(); });
 $('vSusp').addEventListener('click', () => { sel.susp = !sel.susp; render(); });
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint' || h === 'mount') && h !== sel.stage) setStage(h); });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint' || h === 'mount' || h === 'damage') && h !== sel.stage) setStage(h); });
 const pts = new Map(); let pinch0 = 0;
-stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+let downAt = null;
+stage.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; downAt = [e.clientX, e.clientY]; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
 stage.addEventListener('pointermove', e => {
   if (!pts.has(e.pointerId)) return; const [px, py] = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (pts.size === 1) { want.yaw += (e.clientX - px) * 0.008; want.pitch = clamp(want.pitch + (e.clientY - py) * 0.006, -0.6, 1.5); }
   else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0) want.dist = clamp(want.dist * pinch0 / d, 0.08, 2.5); pinch0 = d; }
 });
-const up = e => { pts.delete(e.pointerId); pinch0 = 0; };
+const up = e => {
+  if (e.type === 'pointerup' && downAt && sel.stage === 'damage' && shell && pts.size === 1 && Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) < 5) {
+    const r = canvas.getBoundingClientRect(); ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
+    const h = ray.intersectObject(shell, true)[0]; if (h) { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); hitAt(h.point, n.negate().add(ray.ray.direction).normalize(), h.object); }
+  }
+  downAt = null; pts.delete(e.pointerId); pinch0 = 0;
+};
 stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
 stage.addEventListener('wheel', e => { e.preventDefault(); want.dist = clamp(want.dist * Math.exp(e.deltaY * 0.001), 0.08, 2.5); }, { passive: false });
 stage.addEventListener('dblclick', home);
 function resize() { const r = stage.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); fit = Math.max(1, 1.5 / camera.aspect); }
 new ResizeObserver(resize).observe(stage); resize();
-{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint' || h === 'mount') sel.stage = h; }
+{ const h = location.hash.slice(1); if (h === 'wheels' || h === 'chassis' || h === 'shell' || h === 'paint' || h === 'mount' || h === 'damage') sel.stage = h; }
 render(); home(); Object.assign(orbit, { yaw: want.yaw, pitch: want.pitch, dist: want.dist }); orbit.target.copy(want.target);
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let last = performance.now(), t = 0, spin = 0;
@@ -1018,9 +1174,10 @@ function frame(now) {
   if (sel.roll && !reduce) spin += dt * 0.9;
   if (sel.stage === 'wheels') { for (const ty of TYPES) for (const w of wheels[ty]) w.userData.spin.rotation.x = spin; }
   else if (chassis) {
-    const tr = PARTS.CHASSIS[chassis.userData.kind].travel * (sel.stage === 'shell' || sel.stage === 'paint' ? 0.5 : sel.stage === 'mount' ? 0 : 1), a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
+    const tr = PARTS.CHASSIS[chassis.userData.kind].travel * (sel.stage === 'shell' || sel.stage === 'paint' ? 0.5 : sel.stage === 'mount' || sel.stage === 'damage' ? 0 : 1), a = sel.susp && !reduce ? t * 1.6 : 0, amp = sel.susp && !reduce ? tr : 0;
     chassis.userData.pose([Math.sin(a) * amp, Math.sin(a + 0.8) * amp, Math.sin(a + 2.2) * amp, Math.sin(a + 3.0) * amp], sel.steer && !reduce ? Math.sin(t * 0.9) * 0.45 : 0, spin * 1.5);
   }
+  if (dmg && sel.stage === 'damage') damageStep(dmg, dt);
   if (mounts && sel.stage === 'mount') { const goal = sel.lifted ? 1 : 0; if (liftT !== goal) { liftT = reduce ? goal : Math.max(0, Math.min(1, liftT + Math.sign(goal - liftT) * dt / 1.6)); mounts.userData.lift(liftT); } }
   const cp = Math.cos(orbit.pitch);
   camera.position.set(orbit.target.x + Math.cos(orbit.yaw) * cp * orbit.dist, orbit.target.y + Math.sin(orbit.pitch) * orbit.dist, orbit.target.z - Math.sin(orbit.yaw) * cp * orbit.dist);
