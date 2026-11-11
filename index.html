@@ -57,19 +57,26 @@ canvas#view { width: 100%; height: 100%; display: block; }
 .lights b.on { background: radial-gradient(circle at 40% 35%, #ff9b8f, var(--red) 55%, #800); box-shadow: 0 0 2cqw var(--red); }
 .lights.go b { background: radial-gradient(circle at 40% 35%, #b9ffb0, #2ee04a 55%, #0a6b1a); box-shadow: 0 0 2cqw #2ee04a; }
 .msg { font-weight: 700; font-family: var(--display); font-size: 4.20cqw; color: var(--hot); margin-top: 1cqw; }
-.overlay { position: absolute; inset: 0; pointer-events: auto; background: linear-gradient(90deg, rgba(5,7,12,.92) 0%, rgba(5,7,12,.78) 34%, rgba(5,7,12,.15) 62%, rgba(5,7,12,0) 100%); }
-.mpanel { position: absolute; left: 5cqw; top: 6cqw; bottom: 4cqw; width: 36cqw; display: flex; flex-direction: column; gap: 1.6cqw; }
-.mtitle { font-weight: 700; font-family: var(--display); font-size: 3.60cqw; letter-spacing: .02em; color: #fff; line-height: 1; }
-.mkind { font-size: 1.15cqw; letter-spacing: .32em; color: var(--hot); font-weight: 500; margin-top: .5cqw; }
+.overlay { position: absolute; inset: 0; pointer-events: auto; background: linear-gradient(90deg, rgba(5,7,12,.62) 0%, rgba(5,7,12,.28) 30%, rgba(5,7,12,0) 52%), linear-gradient(0deg, rgba(5,7,12,.45) 0%, rgba(5,7,12,0) 40%); }
+.mpanel { position: absolute; left: 5cqw; top: 5cqw; bottom: 5cqw; width: 30cqw; display: flex; flex-direction: column; gap: 1.2cqw; }
+.mlist { margin-top: auto !important; }
+.mtitle { font-weight: 700; font-family: var(--title, var(--display)); font-size: 2.4cqw; letter-spacing: .14em; color: #fff; line-height: 1; text-shadow: 0 .1cqw .6cqw rgba(0,0,0,.5); }
+.mkind { font-size: 0.95cqw; letter-spacing: .32em; color: var(--hot); font-weight: 500; margin-top: .6cqw; }
+.mkind:empty { display: none; }
 .mlist { list-style: none; margin: 1cqw 0 0; padding: 0; display: flex; flex-direction: column; gap: .25cqw; }
-.mitem { display: flex; justify-content: space-between; align-items: center; gap: 1cqw; padding: .3cqw 0; font-family: var(--display); font-size: 1.75cqw; letter-spacing: .04em; color: #8b95a3; cursor: pointer; }
-.mitem .mlabel::before { content: '\25B8'; display: inline-block; width: 1.6cqw; color: transparent; }
-.mitem.sel { color: #fff; font-weight: 700; }
-.mitem.sel .mlabel::before { color: var(--hot); }
-.mval { display: flex; align-items: center; gap: .6cqw; font-family: var(--ui); font-weight: 500; font-size: 1.30cqw; letter-spacing: .08em; color: var(--hot); }
+.mitem { display: flex; justify-content: space-between; align-items: center; gap: 1cqw; padding: .25cqw 0 .25cqw 1.2cqw; font-family: var(--display); font-weight: 500; font-size: 1.45cqw; letter-spacing: .1em; color: rgba(230,236,244,.55); cursor: pointer; border-left: .18cqw solid transparent; text-shadow: 0 .1cqw .4cqw rgba(0,0,0,.6); }
+
+.mitem.sel { color: #fff; border-left-color: var(--hot); }
+.mitem:not(.sel) .marr { visibility: hidden; }
+.mval { display: flex; align-items: center; gap: .5cqw; font-family: var(--ui); font-weight: 500; font-size: 1.15cqw; letter-spacing: .1em; color: inherit; }
+.mitem.sel .mval { color: var(--hot); }
 .marr { font: inherit; font-size: 1.70cqw; line-height: 1; color: inherit; background: none; border: 0; padding: 0 .3cqw; cursor: pointer; opacity: .7; }
 .marr:hover, .marr:focus-visible { opacity: 1; outline: none; }
 .mnote { font-size: 1.10cqw; line-height: 1.5; color: var(--dim); max-width: 32cqw; }
+.rcbars { display: grid; gap: .45cqw; margin-top: .6cqw; }
+.rcbars div { display: grid; grid-template-columns: 6cqw 1fr 4cqw; gap: .8cqw; align-items: center; font-size: 1.0cqw; color: #aab4c2; font-variant-numeric: tabular-nums; }
+.rcbars i { display: block; height: .5cqw; background: #2a2f3a; position: relative; }
+.rcbars i b { position: absolute; top: 0; bottom: 0; background: var(--hot); }
 .mhint { margin-top: auto; font-size: 1.00cqw; letter-spacing: .12em; color: #6b7686; font-weight: 500; }
 .mcontrols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6cqw; font-size: 1.10cqw; color: var(--fg); }
 .mcol { display: flex; flex-direction: column; gap: .5cqw; }
@@ -160,8 +167,11 @@ canvas#view { width: 100%; height: 100%; display: block; }
         <div class="mcol"><b>GAMEPAD</b>
           <span><kbd>RT</kbd> throttle</span><span><kbd>LT</kbd> brake · hold to reverse</span><span>Left stick steer</span>
           <span><kbd>Y</kbd> camera</span><span><kbd>X</kbd> reset car</span><span><kbd>View</kbd> car setup</span><span><kbd>LB</kbd> telemetry</span><span><kbd>Menu</kbd> pause</span></div>
+        <div class="mcol"><b>RC TRANSMITTER</b>
+          <span>Wheel steer · trigger throttle and brake</span><span>Plug it in by USB (or a USB sim dongle), then OPTIONS › TRANSMITTER › CALIBRATE</span><span>Keyboard for menus: <kbd>Esc</kbd> pause, <kbd>C</kbd> camera, <kbd>R</kbd> reset</span></div>
         <div class="mback">Enter / A / Esc to go back</div>
       </div>
+      <div class="mcontrols" id="rcal" hidden><div class="mcol"><b id="rcalT">RC TRANSMITTER</b><span id="rcalS"></span><div class="rcbars" id="rcalB"></div></div><div class="mback">Esc / Backspace to cancel</div></div>
       <div class="mnote" id="mnote"></div>
       <div class="mhint" id="mhint">↑↓ select · ←→ change · Enter / A confirm</div>
     </div>
@@ -799,6 +809,9 @@ const COURSES = [
       [2.6, 1.6, 3.7, 1.6, 'd', 'd'],
     ],
     line: [[1.8, -3.0], [-1.5, -3.2], [-3.3, -1.6], [-3.45, 0.6], [-3.4, 2.6], [-2.6, 3.85], [-0.5, 3.85], [1.6, 3.85], [2.95, 3.35], [3.15, 1.5], [3.05, -0.5], [2.6, -2.3]] },
+  { name: 'FULL FLOOR', map: 'arena', note: 'One layout over the whole floor, marked out by low white boards: a long front straight, up the right side, behind the island, down the left side, then an S and a hairpin through the open front and a sweeping drop back onto the straight.',
+    track: { ctrl: [[-2.4, -5.4], [-0.5, -5.4], [1.5, -5.4], [2.7, -5.25], [3.15, -4.6], [3.15, -3.5], [3.15, -1.5], [3.15, 0.5], [3.15, 2.5], [2.95, 3.55], [2.3, 3.85], [0.5, 3.85], [-1.5, 3.85], [-2.9, 3.75], [-3.4, 3.1], [-3.45, 1.0], [-3.45, -0.3], [-3.2, -0.85], [-2.5, -1.05], [-1.5, -0.9], [-0.5, -1.2], [0.5, -0.9], [1.4, -1.05], [2.0, -1.25], [2.15, -1.8], [2.0, -2.35], [1.4, -2.55], [0.4, -2.45], [-0.6, -2.75], [-1.6, -2.5], [-2.4, -2.7], [-2.95, -3.2], [-3.1, -4.2], [-2.9, -5.05]], width: 0.85, style: 'boards' }, start: [0, 0, 0], gates: [],
+    line: [[-2.4, -5.4], [-0.5, -5.4], [1.5, -5.4], [2.7, -5.25], [3.15, -4.6], [3.15, -3.5], [3.15, -1.5], [3.15, 0.5], [3.15, 2.5], [2.95, 3.55], [2.3, 3.85], [0.5, 3.85], [-1.5, 3.85], [-2.9, 3.75], [-3.4, 3.1], [-3.45, 1.0], [-3.45, -0.3], [-3.2, -0.85], [-2.5, -1.05], [-1.5, -0.9], [-0.5, -1.2], [0.5, -0.9], [1.4, -1.05], [2.0, -1.25], [2.15, -1.8], [2.0, -2.35], [1.4, -2.55], [0.4, -2.45], [-0.6, -2.75], [-1.6, -2.5], [-2.4, -2.7], [-2.95, -3.2], [-3.1, -4.2], [-2.9, -5.05]] },
   { name: 'FIGURE 8', map: 'arena', note: 'A figure of eight in the open front of the arena, round two cones: right-hand loop, through the middle, left-hand loop, back through the middle. Constant transitions from one drift into the other.',
     start: [-0.93, -4.11, 0.985], gates: [
       [0, -4.15, 0, -2.65, 'x', 'x'],
@@ -923,19 +936,19 @@ function buildTrackRibbon(tr, g) {
   TRACK = { hw: HWt, idx: 0, tan: TT };
   // no painted lane: the floor itself is the track, only the barriers mark it
   // foam barrier blocks along both edges; red/white outside, blue/white inside
-  const BL = 0.11, BH = 0.06, BT = 0.05, blocks = [];
+  const boards = tr.style === 'boards', BL = boards ? 0.06 : 0.11, BH = boards ? 0.05 : 0.06, BT = boards ? 0.012 : 0.05, blocks = []; // boards: low white flexible walls, as at club tracks
   for (const side of [1, -1]) {
     const edge = TP.map((pt, i) => new THREE.Vector3(pt.x + TN[i].x * side * (HWt + BT / 2), 0, pt.z + TN[i].z * side * (HWt + BT / 2)));
     let carry = 0, count = 0;
     for (let i = 0; i < N; i++) {
       const a = edge[i], b = edge[(i + 1) % N], seg = a.distanceTo(b); let d = carry;
-      while (d < seg) { const pt = a.clone().lerp(b, d / seg); const j = nearestT(pt.x, pt.z, -1); if (Math.hypot(pt.x - TP[j].x, pt.z - TP[j].z) > HWt + BT / 2 - 0.01) blocks.push({ p: pt, ang: Math.atan2(b.x - a.x, b.z - a.z), c: count++ % 2, side }); d += BL + 0.012; }
+      while (d < seg) { const pt = a.clone().lerp(b, d / seg); const j = nearestT(pt.x, pt.z, -1); if (Math.hypot(pt.x - TP[j].x, pt.z - TP[j].z) > HWt + BT / 2 - 0.01) blocks.push({ p: pt, ang: Math.atan2(b.x - a.x, b.z - a.z), c: count++ % 2, side }); d += BL + (boards ? 0.001 : 0.012); }
       carry = d - seg;
     }
   }
-  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(BT, BH, BL), lam({ map: T.foam }), blocks.length);
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(BT, BH, BL), boards ? phong({ color: 0xffffff, shininess: 40, specular: 0x444444 }) : lam({ map: T.foam }), blocks.length);
   const o = new THREE.Object3D(), red = new THREE.Color(0xd42a26), white = new THREE.Color(0xf0eee6), blue = new THREE.Color(0x2a5bd4);
-  blocks.forEach((b, i) => { o.position.set(b.p.x, BH / 2, b.p.z); o.rotation.set(0, b.ang, 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, b.c ? white : (b.side > 0 ? red : blue)); });
+  blocks.forEach((b, i) => { o.position.set(b.p.x, BH / 2, b.p.z); o.rotation.set(0, b.ang, 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, boards ? white : b.c ? white : (b.side > 0 ? red : blue)); });
   g.add(im);
   // checker start line
   const sf = new THREE.Mesh(new THREE.PlaneGeometry(tr.width, 0.1), lam({ map: T.checker, polygonOffset: true, polygonOffsetFactor: -1 }));
@@ -1483,6 +1496,12 @@ function buildShell(kind, paint) {
     if (p.wheel) continue; // the wheels go on the chassis
     if (PARTS.CHROME_DELETE.test(p.name)) continue;     // chrome delete: decorative trim removed, the rest satin black
     const mesh = new THREE.Mesh(p.geo.clone(), p.role === 'paint' ? [mt.paint] : roleMat[p.role] || mt.black); mesh.name = p.name; mesh.userData.dent = true;
+    if (/^rear_hood_CP_Black/.test(p.name)) { // the model's inner wheel-well lining: left out where the wheels sweep when they steer (RC shells are open underneath)
+      const pa = mesh.geometry.attributes.position, ix = mesh.geometry.index.array, keep = [], hubs = Object.values(BODY_ASSET.hubs), c = new THREE.Vector3(), v = new THREE.Vector3();
+      for (let t = 0; t < ix.length; t += 3) { c.set(0, 0, 0); for (let k = 0; k < 3; k++) c.add(v.fromBufferAttribute(pa, ix[t + k])); c.multiplyScalar(1 / 3);
+        if (hubs.every(h => Math.hypot(c.x - h[0], c.y - h[1], c.z - h[2]) > 0.036)) keep.push(ix[t], ix[t + 1], ix[t + 2]); }
+      mesh.geometry.setIndex(keep);
+    }
     if (p.role === 'paint') { mesh.geometry.clearGroups(); mesh.geometry.addGroup(0, mesh.geometry.index.count, 0); body = body || mesh; }
     const b = brkGroups.find(b => b.re.test(p.name));
     if (b) { if (!b.g) { b.g = new THREE.Group(); b.g.name = b.name; root.add(b.g); } b.g.add(mesh); } else root.add(mesh);
@@ -1794,9 +1813,9 @@ function damageRepair(st) {
    roll and pitch), .wheels [{ pivot: steer, m: spin }], .lampM (brake lights) and .shadow. model's x points forward,
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', tyres: 'wide', rim: 'modern', rims: 0, scheme: 'solid', a: PARTS.MODEL_PAINT, b: '#f2f2ee', c: '#141416', ride: 0.2, camber: 0.75, mount: 'posts', glow: '#00e5ff', glowOn: 0 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', tyres: 'wide', rim: 'modern', rims: 0, scheme: 'solid', a: PARTS.MODEL_PAINT, b: '#f2f2ee', c: '#141416', ride: 0, camber: 0.75, mount: 'posts', glow: '#00e5ff', glowOn: 0 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
-try { const st = JSON.parse(localStorage.getItem('cc-style6') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+try { const st = JSON.parse(localStorage.getItem('cc-style7') || '{}'); for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
 // tyres follow the driving mode: hard drift tyres in DRIFT mode, rubber grip tyres in GRIP mode
 function carTyre(S) { let grip = false; try { grip = setup.car === 1; } catch (e) {} return grip ? 'grip' : 'drift'; }
 // the decal sheet for the car (none yet: the owner's own texture goes here, see PARTS.DECAL_SLOTS)
@@ -1804,7 +1823,7 @@ let CAR_DECAL_SHEET = null;
 // ride height: -15 .. +10 mm from the slider (default -10: slammed, as in the drift video). The chassis can come down
 // 3 mm before the plate touches the floor; lower than that, the shell drops on its posts and the cambered tyres tuck
 // up inside the arches
-const rideMM = v => -15 + clamp(v ?? 0.6, 0, 1) * 25;
+const rideMM = v => clamp(v ?? 0, 0, 1) * 10; // 0 (stock: tyres just inside the arch lips) .. +10 mm. Lower would put the tyres through the fenders
 function carRide(S) { const r = rideMM(S.ride) / 1000, ch = Math.max(r, -0.003); return { chassis: ch, shell: r }; }
 // static camber: the slider sets the front 0-12°, the rear half that (default 9° / 4.5°, as on the video's cars)
 const camberDeg = (S, front) => clamp(S.camber ?? 0.75, 0, 1) * (front ? 12 : 6);
@@ -1847,7 +1866,7 @@ function buildCar(S = CAR_STYLE) {
     update(steer, roll) {
       const tr = PARTS.CHASSIS[chassis.userData.kind].travel, bend = chassis.userData.bend;
       chassis.userData.corners.forEach((c, i) => c.g.userData.update(clamp(-roll * c.s * 0.05, -tr, tr) - ride.chassis, c.front ? steer : 0, 0)); // arms reach down to the wheels whatever the ride height
-      wheels.forEach((w, i) => { const b = bend && bend[i], cam = camberDeg(S, w.front) * Math.PI / 180; w.camber.rotation.set(w.s * (cam + (b ? b.camber : 0)), b ? w.s * b.toe : 0, 0); });
+      wheels.forEach((w, i) => { const b = bend && bend[i], cam = camberDeg(S, w.front) * Math.PI / 180; w.camber.rotation.set(-w.s * (cam + (b ? b.camber : 0)), b ? w.s * b.toe : 0, 0); }); // negative camber: tops lean in
     },
   };
   root.userData.update(0, 0);
@@ -1886,7 +1905,7 @@ function carImpact(vn, nx, nz, circle) {
   const big = out.find(t => /broke off|knocked off|torn off|bent|clip popped/i.test(t)); if (big) flash(big.toUpperCase(), 1.6);
 }
 // rebuild the car with a new look (customize screen) or new tyres (mode change)
-function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style6', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
+function rebuildCar() { carRepair(); scene.remove(carObj); carObj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); carObj = buildCar(CAR_STYLE); scene.add(carObj); carObj.position.set(car.x || 0, car.y || 0, car.z || 0); carObj.rotation.y = car.h || 0; try { localStorage.setItem('cc-style7', JSON.stringify(CAR_STYLE)); } catch (e) {} if (ghost.obj) { scene.remove(ghost.obj); ghost.obj = null; } }
 
 /* ---------------- driving model: 1/10 electric on-road (RWD drift or 4WD grip) ----------------
    SI units (m, kg, s, N). Body frame: x forward, y left, yaw rate r positive turning left.
@@ -2690,6 +2709,7 @@ function menuItems() {
     opt('GHOST', ghostOn ? 'ON' : 'OFF', () => { ghostOn = !ghostOn; try { localStorage.setItem('cc-ghost', ghostOn ? '1' : '0'); } catch (e) {} }),
     opt('VOLUME', volLabel(), d => setVol((muted ? volume : volume + d))),
     act('CONTROLS', () => { menu.controls = true; renderMenu(); }),
+    act('TRANSMITTER · ' + (rcPad() && RCAL[rcPad().id] ? 'CALIBRATED' : 'CALIBRATE'), () => rcStart()),
     back,
   ];
   const shared = [
@@ -2704,7 +2724,7 @@ function menuItems() {
 }
 function renderMenu() {
   const items = menuItems(); menu.sel = clamp(menu.sel, 0, items.length - 1);
-  $('mkind').textContent = menu.sub ? menu.sub.toUpperCase() : menu.kind === 'main' ? 'RC DRIFT SIM' : 'PAUSED';
+  $('mkind').textContent = menu.sub ? menu.sub.toUpperCase() : menu.kind === 'main' ? '' : 'PAUSED';
   const ul = $('mlist'); ul.innerHTML = '';
   items.forEach((it, i) => {
     const li = document.createElement('li'); li.className = 'mitem' + (i === menu.sel ? ' sel' : ''); li.id = 'mi-' + i;
@@ -2727,7 +2747,8 @@ function renderMenu() {
   const c = COURSES[setup.layout], venue = MAPS[c.map] ? MAPS[c.map].name : '';
   $('mnote').textContent = menu.sub ? '' : venue + ' · ' + c.note.split(/[:.]/)[0];
   $('mhint').textContent = menu.sub || menu.kind === 'pause' ? '↑↓ select · ←→ change · Enter confirm · Esc back' : '↑↓ select · ←→ change · Enter confirm';
-  $('mcontrols').hidden = !menu.controls; $('mlist').hidden = menu.controls; $('mnote').hidden = menu.controls || !!menu.sub;
+  $('rcal').hidden = !rc.on; if (rc.on) { $('mlist').hidden = true; $('mnote').hidden = true; $('mcontrols').hidden = true; return; }
+  $('mcontrols').hidden = !menu.controls; $('mlist').hidden = menu.controls; $('mnote').hidden = true; $('mhint').hidden = true; // minimal: no track note or key hints
 }
 function openMenu(kind) {
   menu.open = true; menu.kind = kind; menu.sel = 0; menu.controls = false; menu.sub = null;
@@ -2740,6 +2761,7 @@ function closeMenu() {
   race.paused = false; audio.suspend(false); $('msg').textContent = '';
 }
 function menuNav(dy, dx, ok, back) {
+  if (rc.on) { if (back) rcStop(); return; } // calibrating a transmitter: only cancel
   if (menu.controls) { if (back || ok) { menu.controls = false; renderMenu(); } return; }
   const items = menuItems();
   if (dy) { menu.sel = (menu.sel + dy + items.length) % items.length; audio.blip(660, 0.03, 'triangle', 0.05); renderMenu(); }
@@ -2807,6 +2829,43 @@ function padButtons(gp, dt) {
   }
   padPrev = now;
 }
+/* ---------------- RC transmitter ----------------
+   A transmitter on USB (directly, or through a simulator dongle) shows up as a generic joystick: the wheel and the
+   trigger are axes, in an order and range that differs per make. CALIBRATE finds them: each step finishes when the
+   input is held steady for a moment, so transmitters with no buttons can do it. Saved per device id. */
+let RCAL = {}; try { RCAL = JSON.parse(localStorage.getItem('dm-rcal') || '{}'); } catch (e) {}
+const rc = { on: false, step: 0, hold: 0, base: null, cal: null, pad: null };
+const RC_STEPS = [['LET GO OF THE WHEEL AND TRIGGER', 'centre'], ['TURN THE WHEEL FULLY LEFT AND HOLD', 'left'], ['TURN THE WHEEL FULLY RIGHT AND HOLD', 'right'], ['PULL THE TRIGGER TO FULL THROTTLE AND HOLD', 'thr'], ['PUSH THE TRIGGER TO FULL BRAKE AND HOLD', 'brk']];
+function rcPad() { const pads = navigator.getGamepads ? navigator.getGamepads() : []; for (const p of pads) if (p && p.connected) return p; return null; }
+function rcStart() { const gp = rcPad(); if (!gp) { flash('NO CONTROLLER FOUND · PLUG IN AND PRESS / MOVE SOMETHING', 2.5); return; } Object.assign(rc, { on: true, step: 0, hold: 0, base: null, cal: {}, pad: gp.id, prev: null }); menu.controls = false; renderMenu(); }
+function rcStop() { rc.on = false; renderMenu(); }
+function rcStep() {
+  if (!rc.on) return; const gp = rcPad(); if (!gp) return; const now = performance.now() / 1000, dt = Math.min(0.25, now - (rc.t || now)); rc.t = now; // real time, whatever the frame rate
+  const ax = Array.from(gp.axes), [txt, key] = RC_STEPS[rc.step];
+  const still = rc.prev && ax.every((v, i) => Math.abs(v - rc.prev[i]) < 0.02); rc.prev = ax;
+  let ok = false, best = -1, bd = 0;
+  if (key !== 'centre') ax.forEach((v, i) => { const d = Math.abs(v - rc.base[i]); if (d > bd && !(key === 'right' && i !== rc.cal.steerAxis) && !(key === 'brk' && false)) { bd = d; best = i; } });
+  if (key === 'centre') ok = true; else ok = bd > 0.35 && (key !== 'right' || best === rc.cal.steerAxis) && (key !== 'thr' || best !== rc.cal.steerAxis) && (key !== 'brk' || best !== rc.cal.steerAxis);
+  rc.hold = ok && still ? rc.hold + dt : 0;
+  $('rcalT').textContent = 'RC TRANSMITTER · STEP ' + (rc.step + 1) + ' OF ' + RC_STEPS.length; $('rcalS').textContent = txt + (rc.hold > 0 ? ' · ' + Math.max(0, Math.ceil((0.9 - rc.hold) * 10) / 10).toFixed(1) + ' S' : '');
+  $('rcalB').innerHTML = ''; ax.slice(0, 8).forEach((v, i) => { const d = document.createElement('div'); d.innerHTML = `<span>AXIS ${i}</span><i><b style="left:${(Math.min(v, 0) + 1) * 50}%;width:${Math.abs(v) * 50}%"></b></i><span>${v.toFixed(2)}</span>`; $('rcalB').appendChild(d); });
+  if (rc.hold < 0.9) return;
+  rc.hold = 0; const C = rc.cal;
+  if (key === 'centre') rc.base = ax.slice();
+  if (key === 'left') { C.steerAxis = best; C.steerC = rc.base[best]; C.steerL = ax[best]; }
+  if (key === 'right') C.steerR = ax[best];
+  if (key === 'thr') { C.thrAxis = best; C.thrC = rc.base[best]; C.thrMax = ax[best]; }
+  if (key === 'brk') { C.brkAxis = best; C.brkC = rc.base[best]; C.brkMax = ax[best]; }
+  audio.blip(880, 0.06, 'triangle', 0.08);
+  if (++rc.step >= RC_STEPS.length) { RCAL[rc.pad] = C; try { localStorage.setItem('dm-rcal', JSON.stringify(RCAL)); } catch (e) {} rc.on = false; flash('TRANSMITTER CALIBRATED', 1.6); renderMenu(); }
+}
+// a calibrated transmitter's wheel and trigger, as steer (-1 right .. 1 left) and throttle / brake (0..1)
+function rcRead(gp) {
+  const C = RCAL[gp.id]; if (!C) return null; const a = gp.axes, lin = (v, c, e) => (e - c) ? clamp((v - c) / (e - c), 0, 1) : 0;
+  const sv = a[C.steerAxis] ?? C.steerC, steer = lin(sv, C.steerC, C.steerL) - lin(sv, C.steerC, C.steerR);
+  const thr = lin(a[C.thrAxis] ?? C.thrC, C.thrC, C.thrMax), brk = lin(a[C.brkAxis] ?? C.brkC, C.brkC, C.brkMax), dz = v => v < 0.03 ? 0 : (v - 0.03) / 0.97;
+  return { steer: Math.abs(steer) < 0.02 ? 0 : steer, thr: dz(thr), brk: dz(brk) };
+}
 function pollInput(dt) {
   const kbT = keys.ArrowUp || keys.KeyW ? 1 : 0, kbB = keys.ArrowDown || keys.KeyS ? 1 : 0;
   const kbS = (keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0);
@@ -2817,16 +2876,22 @@ function pollInput(dt) {
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   for (const p of pads) if (p && p.connected) { gp = p; break; }
   input.pad = gp;
-  if (gp) {
+  const rcIn = gp && !rc.on ? rcRead(gp) : null;
+  if (rcIn) { gS = rcIn.steer; gT = rcIn.thr; gB = rcIn.brk; } // calibrated RC transmitter: no stick expo, the wheel is already proportional
+  else if (gp) {
     const dz = 0.12, ax = gp.axes[0] || 0;
     let x = Math.abs(ax) < dz ? 0 : Math.sign(ax) * (Math.abs(ax) - dz) / (1 - dz);
     gS = -(x * 0.6 + x * x * x * 0.4); // a little expo: fine control near centre
     const val = i => { const b = gp.buttons[i]; return b ? (b.value || (b.pressed ? 1 : 0)) : 0; };
     gT = val(7); gB = val(6);
-    if (gp.mapping !== 'standard' && gp.axes.length >= 6) { gT = Math.max(gT, (gp.axes[5] + 1) / 2); gB = Math.max(gB, (gp.axes[2] + 1) / 2); }
+    // some pads without the standard mapping report their triggers as axes 5 and 2, resting at -1. Only trust them once
+    // seen resting there: a transmitter's axes rest at 0 and would otherwise read as half throttle and half brake
+    if (gp.mapping !== 'standard' && gp.axes.length >= 6) { if (gp.axes[5] < -0.9 && gp.axes[2] < -0.9) input.trigAxes = gp.id; if (input.trigAxes === gp.id) { gT = Math.max(gT, (gp.axes[5] + 1) / 2); gB = Math.max(gB, (gp.axes[2] + 1) / 2); } }
     gT = gT < 0.04 ? 0 : gT; gB = gB < 0.04 ? 0 : gB;
     padButtons(gp, dt);
   }
+  if (gp && rcIn) padButtons(gp, dt);
+  rcStep();
   input.thr = Math.max(kbT, gT); input.brk = Math.max(kbB, gB); input.thrDigital = kbT > gT;
   input.steer = Math.abs(gS) > 0.001 ? gS : input.kbSteer;
 }

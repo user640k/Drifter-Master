@@ -12,6 +12,9 @@ Note: `index.html` has no `<html>/<head>/<body>` wrapper because it was authored
 ## Controls
 Arrows/WASD drive (hold Down at a stop to reverse), C camera, G car setup, T telemetry, M mute (volume is in the menu, saved between sessions), R reset car, Esc/P pause menu.
 
+## RC transmitter
+A real RC transmitter works as a controller when it shows up on the computer as a USB joystick (many have a USB / simulator port, or use a USB sim dongle). Its wheel and trigger are axes whose order and range differ by make, so calibrate it once: OPTIONS › TRANSMITTER › CALIBRATE, then follow five steps (let go; wheel full left; full right; trigger full throttle; full brake). Each step finishes when you hold the input steady for a moment, so transmitters with no buttons work. The calibration is saved per device; after that the wheel steers and the trigger throttles and brakes proportionally. Use the keyboard for menus (Esc pause, C camera, R reset).
+
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry Menu/Options pause menu. Barrier hits rumble.
@@ -34,7 +37,7 @@ The shape is never changed: the model is only scaled uniformly to true 1/10 of t
 Hard hits on walls, the track edge or the opponent (over about 4 km/h into the obstacle) damage the car with the Parts Lab damage model: dents, scuffed paint and torn decals where it hit, mirrors, wing, lip, light pod, scoop, spoiler or mudflaps breaking off and lying on the track, the shell knocked off its magnets or out of its clips, and bent suspension. A bent corner pulls the car to one side. Restart or reset (R) repairs everything.
 
 ## Menu
-DRIVE, TRACK, OPPONENT (none, easy, medium, hard), CAR (the car screen) and OPTIONS › (CAMERA, GHOST, VOLUME, CONTROLS). Arrows / mouse / gamepad; Esc / B goes back. Behind the menu is the selected venue, without the car. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
+Minimal: a small spaced title top left, the list bottom left over the venue (no panel), a thin accent line on the selected item, values arrows only on the selected one. DRIVE, TRACK, OPPONENT (none, easy, medium, hard), CAR (the car screen) and OPTIONS › (CAMERA, GHOST, VOLUME, CONTROLS). Arrows / mouse / gamepad; Esc / B goes back. Behind the menu is the selected venue, without the car. Esc / P / Menu opens the same list as a pause menu with RESUME, RESTART and MAIN MENU.
 
 Drift only for now: grip mode is switched off (its code is kept).
 
@@ -55,6 +58,7 @@ The warehouse, living-room and drift garage maps are removed for now (they are i
 
 ## Courses
 Drive through the gates in order (they are not marked on the floor); gate 0 is start/finish. Each cone you hit adds a second to the lap. Best lap is kept per course and mode.
+- **FULL FLOOR** (arena): one layout over the whole floor, marked out by low white boards (after a photo of a club track): a long front straight, up the right side, behind the island, down the left side, then an S and a hairpin through the open front and a sweeping drop back onto the straight.
 - **FIGURE 8** (arena): a figure of eight in the open front of the arena round two cones, right-hand loop then left-hand loop: constant transitions from one drift into the other.
 - **HOME LOOP** (home track): along the front, up the pink-lit side, behind the islands past the pit building, back down the blue side.
 - **MAIN LAYOUT** (arena): full clockwise lap: the long front sweeper, up the fence side, along the back in front of the stand, down the stand side.
@@ -80,6 +84,8 @@ A drift counts once the car slides past 12 deg at over 0.7 m/s. Points flow in a
 
 ## Sound
 The motor is a synthesised whine (triangle fundamental, sine harmonics, a quiet gear-mesh tone, a little wobble) that follows motor speed from about 95 Hz at a crawl to roughly 900 Hz flat out, so you hear every bit of extra revs; it is silent off the throttle. Under it, softened (lowpassed) loops cut from a recording of a real RC drift car add tire and drive-train texture, cross-faded by slide. Everything the car makes is placed at the car and heard from the camera: further away it gets quieter, duller and panned to its side (chase cam close, driver's stand and ceiling cam far).
+
+Wheel clearance: checked by sampling the body surface against each tyre in the game across full steering lock; with the model's inner wheel-well lining left out where the wheels sweep (RC shells are open underneath), no tyre touches the body at any steering angle, camber or allowed ride height.
 
 ## Floor imperfections
 Each venue's floor has a gentle height profile at RC scale, felt through the suspension at each wheel (the body heaves, pitches and rolls on its springs and dampers) and so by the FPV camera:
