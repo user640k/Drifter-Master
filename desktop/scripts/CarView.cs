@@ -5,8 +5,11 @@ using System;
 
 namespace DriftMaster {
   public partial class CarView : Node3D {
-    MeshInstance3D _blob; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
+    MeshInstance3D _blob, _neonFloorNode; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
     public StandardMaterial3D Paint; StandardMaterial3D _glass;
+    // options carried over from the web version: the body shell on or off, neon under the car, tinted or clear windows
+    Node3D _shell, _neon; StandardMaterial3D _neonBar, _neonFloor; OmniLight3D _neonLight; bool _clear, _onBoard;
+    public static readonly (string name, Color col)[] Neons = { ("OFF", Colors.Black), ("PINK", new Color(1f, 0.25f, 0.71f)), ("ICE BLUE", new Color(0.25f, 0.8f, 1f)), ("GREEN", new Color(0.3f, 1f, 0.45f)), ("AMBER", new Color(1f, 0.62f, 0.12f)), ("PURPLE", new Color(0.62f, 0.3f, 1f)), ("WHITE", new Color(1f, 0.97f, 0.9f)) };
     public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
     public Node3D StickCam; Node3D _stick; // a second FPV camera on a short stick: fixed to the roof, reaching back, looking forward over the car
     public static float StickY = 0.195f, StickZ = -0.5f, StickTilt = 7f; // 19.5 cm up: it has to pass under the bridge (23 cm)
@@ -16,7 +19,7 @@ namespace DriftMaster {
     public override void _Ready() {
       var model = GD.Load<PackedScene>("res://assets/sedan.glb").Instantiate<Node3D>(); AddChild(model);
       _body = new Node3D { Name = "Body" }; AddChild(_body);
-      foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; }
+      foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; }
       for (int i = 0; i < 4; i++) {
         _wheel[i] = model.FindChild(Names[i], true, false) as Node3D; _spin[i] = model.FindChild(Names[i] + "_Spin", true, false) as Node3D;
         if (_spin[i] != null) _camber[i] = _spin[i].Quaternion;
@@ -27,6 +30,17 @@ namespace DriftMaster {
         for (int y = 0; y < 32; y++) for (int x = 0; x < 64; x++) { float u = (x - 31.5f) / 31.5f, v = (y - 15.5f) / 15.5f, d = Mathf.Pow(Mathf.Pow(Mathf.Abs(u), 3) + Mathf.Pow(Mathf.Abs(v), 3), 1 / 3f); img.SetPixel(x, y, new Color(0, 0, 0, 0.62f * Mathf.SmoothStep(1, 0.45f, d))); }
         var bm = new StandardMaterial3D { AlbedoTexture = ImageTexture.CreateFromImage(img), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, NoDepthTest = false, DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled, RenderPriority = -1 };
         _blob = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.27f, 0.5f) }, MaterialOverride = bm, Position = new Vector3(0, 0.003f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; AddChild(_blob); }
+      { // neon under the car: two lit tubes along the chassis, their light on the floor, and a little of it on the car
+        _neon = new Node3D { Name = "Neon", Visible = false }; _body.AddChild(_neon);
+        _neonBar = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded };
+        foreach (int sd in new[] { -1, 1 }) _neon.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.006f, 0.005f, 0.17f) }, MaterialOverride = _neonBar, Position = new Vector3(sd * 0.044f, 0.012f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        var img = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) { float u = (x - 31.5f) / 31.5f, v = (y - 31.5f) / 31.5f, d = Mathf.Pow(Mathf.Pow(Mathf.Abs(u), 2.6f) + Mathf.Pow(Mathf.Abs(v), 2.6f), 1 / 2.6f), a = Mathf.SmoothStep(1, 0.25f, d); img.SetPixel(x, y, new Color(1, 1, 1, a * a)); }
+        _neonFloor = new StandardMaterial3D { AlbedoTexture = ImageTexture.CreateFromImage(img), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, BlendMode = BaseMaterial3D.BlendModeEnum.Add, DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled };
+        var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.42f, 0.62f) }, MaterialOverride = _neonFloor, Position = new Vector3(0, 0.0045f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Name = "NeonFloor" };
+        AddChild(floor); floor.Visible = false; _neonFloorNode = floor; // on the car's root, not its body: the light lies on the floor and does not lean
+        _neonLight = new OmniLight3D { Position = new Vector3(0, 0.02f, 0), OmniRange = 0.45f, OmniAttenuation = 1.2f, LightEnergy = 0.9f, ShadowEnabled = false }; _neon.AddChild(_neonLight);
+      }
       // car paint: a deep colour under a clear coat; glass: dark tint
       Fpv = new Node3D { Name = "Fpv", Position = new Vector3(FpvX, FpvY, FpvZ), Rotation = new Vector3(Mathf.DegToRad(FpvTilt), Mathf.Pi, 0) }; _body.AddChild(Fpv);
       { // the stick: a little foot on the roof, a thin carbon rod up and back, the camera at its end
@@ -44,13 +58,22 @@ namespace DriftMaster {
         var mi = (MeshInstance3D)node; string nm = mi.Name.ToString();
         if (nm.EndsWith("_paint")) mi.MaterialOverride = Paint; else if (nm.Contains("_glass_")) mi.MaterialOverride = glass;
         else if (nm.StartsWith("Shell_") && mi.Mesh != null) for (int si = 0; si < mi.Mesh.GetSurfaceCount(); si++) if (mi.Mesh.SurfaceGetMaterial(si) is BaseMaterial3D bm0) { var d = (BaseMaterial3D)bm0.Duplicate(); d.CullMode = BaseMaterial3D.CullModeEnum.Disabled; mi.SetSurfaceOverrideMaterial(si, d); } // the shell is seen from inside too
-        if (mi != _blob && !_stick.IsAncestorOf(mi)) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        if (mi != _blob && mi != _neonFloorNode && !_stick.IsAncestorOf(mi) && !_neon.IsAncestorOf(mi)) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
       }
     }
 
     // from the driver's seat the tint is light enough to see the track through
     public void ShowStick(bool on) { _stick.Visible = on; }
-    public void SetOnBoard(bool on) { _glass.AlbedoColor = new Color(0.05f, 0.065f, 0.085f, on ? 0.16f : 0.8f); }
+    public void SetOnBoard(bool on) { _onBoard = on; Glass(); }
+    // tinted: dark, as on most shells; clear: the chassis and the cabin show through
+    public void SetWindows(bool clear) { _clear = clear; Glass(); }
+    void Glass() { _glass.AlbedoColor = _clear ? new Color(0.75f, 0.82f, 0.88f, 0.1f) : new Color(0.05f, 0.065f, 0.085f, _onBoard ? 0.16f : 0.8f); _glass.Metallic = _clear ? 0.1f : 0.3f; }
+    // shell off: the bare chassis, as on a setup stand (the body posts stay)
+    public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; }
+    public void SetNeon(int i) {
+      var c = Neons[i % Neons.Length].col; bool on = i % Neons.Length != 0; _neon.Visible = on; _neonFloorNode.Visible = on; if (!on) return;
+      _neonBar.AlbedoColor = c.Lerp(Colors.White, 0.45f); _neonFloor.AlbedoColor = new Color(c.R, c.G, c.B, 0.55f); _neonLight.LightColor = c;
+    }
 
     public void Pose(CarPhysics c, Track t) {
       // nose up or down with the slope under the two axles
@@ -60,7 +83,7 @@ namespace DriftMaster {
       float y = c.Air ? (float)c.Y : (float)((gf + gr) / 2);
       Transform = new Transform3D(new Basis(Vector3.Up, (float)c.Hd) * new Basis(Vector3.Right, -slope), new Vector3((float)c.X, y, (float)c.Z));
       _body.Transform = new Transform3D(new Basis(Vector3.Right, -(float)c.Pitch) * new Basis(Vector3.Back, (float)c.Roll * 1.6f), new Vector3(0, (float)c.Heave, 0));
-      _blob.Visible = !c.Air;
+      _blob.Visible = !c.Air; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {
         if (_wheel[i] == null || _spin[i] == null) continue;
         bool front = i < 2; _wheel[i].Transform = new Transform3D(new Basis(Vector3.Up, front ? (float)c.Steer : 0) * _wheelBase[i].Basis, _wheelBase[i].Origin);

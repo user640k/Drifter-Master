@@ -12,7 +12,7 @@ namespace DriftMaster {
     // lap timing
     double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
     // test hooks: --shot=file --frames=n --auto --cam=n --at=index
-    float[] _view6; bool _bare; double _poseSteer = double.NaN; /* test and icon shots: the car alone on a clear background, wheels turned */ string _shot; int _frames = 90, _frame; bool _auto, _autoDrift; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
+    float[] _view6; bool _bare; double _poseSteer = double.NaN; /* test and icon shots: the car alone on a clear background, wheels turned */ string _shot; int _frames = 90, _frame; bool _auto, _autoDrift; int _paintIdx; bool _shellOn = true, _clearGlass; int _neonIdx; /* car options, kept between runs in user://settings.cfg */ float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
     static readonly Color[] Paints = { new Color(0.09f, 0.094f, 0.106f), new Color(0.86f, 0.87f, 0.85f), new Color(0.72f, 0.05f, 0.06f), new Color(0.06f, 0.22f, 0.6f), new Color(0.95f, 0.72f, 0.05f), new Color(0.1f, 0.42f, 0.3f) };
 
     public override void _Ready() {
@@ -23,6 +23,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
+        else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
         else if (a == "--bare") _bare = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
         else if (a.StartsWith("--orbit=")) { _view6 = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 8; }
@@ -33,7 +34,8 @@ namespace DriftMaster {
       if (!_bare) AddChild(Hall.Build(_t)); else { GetViewport().TransparentBg = true; }
       BuildLights();
       _car = new CarPhysics { T = _t }; _view = new CarView(); AddChild(_view);
-      _view.Paint.AlbedoColor = Paints[_paintIdx % Paints.Length];
+      if (_shot == null) LoadOptions();
+      ApplyOptions();
       if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
       _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
       BuildOnBoard();
@@ -85,11 +87,23 @@ namespace DriftMaster {
       _hud = L(new Vector2(24, 18), 22, Colors.White);
       _stats = L(new Vector2(24, 150), 15, new Color(0.75f, 0.9f, 1f)); _stats.Visible = false;
       _help = L(new Vector2(24, 0), 14, new Color(1, 1, 1, 0.8f)); _help.SetAnchorsPreset(Control.LayoutPreset.BottomLeft); _help.Position = new Vector2(24, -40);
-      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · M mute · N motor sound · - = volume · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
+      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · B shell · G neon · V windows · M mute · N motor sound · - = volume · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
       _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
       _pause = L(Vector2.Zero, 34, Colors.White); _pause.Text = "PAUSED\nEsc resume  ·  Q quit"; _pause.HorizontalAlignment = HorizontalAlignment.Center; _pause.VerticalAlignment = VerticalAlignment.Center; _pause.SetAnchorsPreset(Control.LayoutPreset.FullRect); _pause.Visible = false;
       if (_shot != null) _help.Visible = false;
     }
+
+    void ApplyOptions(bool save = false) {
+      _view.Paint.AlbedoColor = Paints[_paintIdx % Paints.Length]; _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+    }
+    void LoadOptions() {
+      var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
+      _paintIdx = (int)cf.GetValue("car", "paint", 0); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
+      _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
+    }
+    double _sayT; string _sayText = "";
+    void Say(string s) { _sayText = s; _sayT = 1.6; }
 
     void ResetCar() { _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
 
@@ -100,7 +114,10 @@ namespace DriftMaster {
       else if (key(Key.Q) && _pause.Visible) GetTree().Quit();
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
       else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 1 : _camMode + 1; _camSnap = true; }
-      else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; _view.Paint.AlbedoColor = Paints[_paintIdx]; }
+      else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; ApplyOptions(true); }
+      else if (key(Key.B)) { _shellOn = !_shellOn; ApplyOptions(true); Say(_shellOn ? "SHELL ON" : "SHELL OFF"); }
+      else if (key(Key.G)) { _neonIdx = (_neonIdx + 1) % CarView.Neons.Length; ApplyOptions(true); Say("NEON " + CarView.Neons[_neonIdx].name); }
+      else if (key(Key.V)) { _clearGlass = !_clearGlass; ApplyOptions(true); Say(_clearGlass ? "CLEAR WINDOWS" : "TINTED WINDOWS"); }
       else if (key(Key.F2)) _sun.ShadowEnabled = !_sun.ShadowEnabled;
       else if (key(Key.M)) _audio.Muted = !_audio.Muted;
       else if (key(Key.N)) _audio.Motor = !_audio.Motor;
@@ -181,6 +198,7 @@ namespace DriftMaster {
     void UpdateHud() {
       double sp = Math.Sqrt(_car.U * _car.U + _car.V * _car.V);
       _hud.Text = $"LAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
+      if (_sayT > 0) { _sayT -= GetProcessDeltaTime(); _hud.Text += "\n\n" + _sayText; }
       if (_stats.Visible) _stats.Text = $"{Engine.GetFramesPerSecond()} fps   draw calls {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0}   tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}\nresolution {_scales[_scaleIdx] * 100:0}%   shadows {(_sun.ShadowEnabled ? "on" : "off")}   {RenderingServer.GetVideoAdapterName()}";
     }
   }

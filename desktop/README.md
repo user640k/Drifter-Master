@@ -17,6 +17,9 @@ Open the `desktop` folder in Godot 4.6 (.NET edition) and press Play, or export 
 | Reset to the start | R | Y |
 | Camera (pilot's stand, ceiling, on board, roof stick) | C | X |
 | Paint colour | P | |
+| Shell on / off | B | |
+| Neon under the car (off, six colours) | G | |
+| Windows tinted / clear | V | |
 | Mute, motor sound on/off, volume down / up | M, N, - / = | |
 | Shadows on/off | F2 | |
 | Frame rate and draw calls | F3 | |
@@ -33,6 +36,7 @@ Open the `desktop` folder in Godot 4.6 (.NET edition) and press Play, or export 
 - **Stick camera**: the same analog camera on a short carbon stick fixed to the roof, about 29 cm behind the rear bumper and 6 cm above the roof (19.5 cm off the floor, so it clears the 23 cm bridge), looking forward and a little down over the car. It is rigid to the body, so it leans and turns with the car; the stick shows only in this view.
 - **Sound** (`scripts/CarAudio.cs`, `tools/make_sounds.py`): cut from a reference recording of a 1/10 drift car sliding on a polished floor (`tools/sound_src/reference.wav`, the sound of a video, used with permission for non-commercial use only). Mostly tyres: a broad roar that comes up as they slide or spin, a quieter texture for rolling. The motor's gliding whistle is taken out of the recording and put back by the game, pitched by wheel speed and kept under the tyres (`N` switches it off). On top: the body shell buzzing on the chassis, tyres clicking over tile joints, a thud and clack into barriers. Everything is placed at the car and always heard from where the pilot stands, whichever camera is showing: the on-board and stick cameras carry no microphone. The recording carries its own room, so the game adds only a touch of echo. `M` mutes, `-` and `=` change the volume.
 - **Icon**: the blue sedan above "DriftMaster" in white, no background (`icon.png`, `icon.ico`, built by `tools/make_icon.py` from a render of the game's own car). It is the window and taskbar icon and is stamped onto `DriftMaster.exe` at export.
+- **Car options** (from the web version; kept between runs in `user://settings.cfg`): the shell on or off (the bare chassis with its body posts), neon tubes under the car in six colours with their light on the floor, and tinted or clear windows.
 - **Bare room**: only the room and the track. A neon "Drift Master" sign with cable and socket is built (`Hall.BuildNeon`) but switched off for now.
 - **No engine splash**: the boot image is switched off in `project.godot` (black screen until the game appears).
 - **Car** (`assets/sedan.glb`): the sedan exported from the browser version, parts merged by material.
@@ -43,4 +47,4 @@ Wall, foam, ceiling and board textures are from ambientCG.com (CC0 1.0): Painted
 
 ## Not in yet
 
-Menus, rivals, liveries, car setup, damage, other bodies and tracks.
+Menus, rivals, liveries (beyond plain colours), car setup, damage, other bodies and tracks.
