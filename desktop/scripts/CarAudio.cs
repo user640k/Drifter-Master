@@ -1,6 +1,6 @@
-// The car's sound, matched to a reference video of a 1/10 drift car on a polished floor in a big room
-// (tools/make_sounds.py): mostly the tyres, a broad roar that comes up as they slide, in a room that rings on.
-//  - roar, roll, hiss: noise shaped to the reference's spectrum: sliding, rolling, wheelspin
+// The car's sound, cut from a reference recording of a 1/10 drift car on a polished floor (tools/make_sounds.py):
+// mostly the tyres, a broad roar that comes up as they slide.
+//  - roar, roll, hiss: textures cut from the recording: sliding, rolling, wheelspin
 //  - whine: the motor, a thin whistle that glides with wheel speed, well under the tyres as in the reference
 //  - shell: the thin body buzzing and ticking on the chassis, louder the more the car shakes and leans
 //  - tick: each hard tyre clicking over each tile joint (a 304.8 mm grid), so the patter speeds up with the car
@@ -29,10 +29,11 @@ namespace DriftMaster {
     }
 
     public override void _Ready() {
-      // the room, as it sounds in the reference: hard floor, bare walls, nothing soft. The sound hangs on for well over a second
+      // the room: only a touch. The recorded tyre sounds already carry the room they were recorded in, so more echo on top
+      // would be a room inside a room; this only ties the made sounds (shell, ticks, hits, motor) to the same space
       _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master");
       AudioServer.AddBusEffect(_bus, new AudioEffectLowPassFilter { CutoffHz = 1500, Resonance = 0.25f }, 0); AudioServer.SetBusEffectEnabled(_bus, 0, false); // on only from inside the car
-      AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.82f, Damping = 0.28f, Spread = 1f, Hipass = 0.15f, PredelayMsec = 24, PredelayFeedback = 0.3f, Dry = 0.85f, Wet = 0.4f }, 1);
+      AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.5f, Spread = 0.8f, Hipass = 0.2f, PredelayMsec = 10, PredelayFeedback = 0.1f, Dry = 1f, Wet = 0.08f }, 1);
       AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 2);
       _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true);
       _tick = Player("tick", false, 10); _hit = Player("hit", false, 3);

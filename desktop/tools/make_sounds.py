@@ -2,17 +2,18 @@
 """Builds the desktop version's sounds into assets/snd (24 kHz mono WAV).
    usage: make_sounds.py <out dir>
 
-   The running sounds are matched to a reference video of a 1/10 drift car sliding on a polished floor in a big room.
-   Nothing of the recording itself is used, only what was measured from it (tools/sound_src/ref_*.npy):
-     - its average spectrum while the car is loud (sliding) and while it is quiet (rolling, coasting): a broad roar
-       centred near 500 Hz with lesser humps near 1.7, 2.3 and 3.9 kHz, almost nothing under 150 Hz or over 6 kHz
-     - how its loudness flutters: about 17% from one hundredth of a second to the next, part slow, part fast
-     - the motor: a thin whistle gliding between about 0.9 and 2.4 kHz with wheel speed (whine.wav, pitched in the game)
-   Noise is shaped to those spectra and given that flutter. The shell sounds are made here too: a thin polycarbonate
-   body is a drum, with a few broad resonances; it buzzes on its posts, and the hard tyres click over tile joints."""
+   The running sounds are cut from a reference recording (tools/sound_src/reference.wav: the sound of a video of a
+   1/10 drift car sliding on a polished floor in a big room; used with permission for non-commercial use):
+     - the recording is split by loudness: its loud quarter is the car sliding, its quiet quarter rolling and coasting
+     - the motor's whistle glides up and down in it, which would chirp at random once cut up, so the narrow lines that
+       stand well above the noise are taken out of each instant; the game adds its own whistle, pitched by wheel speed
+     - each kind is re-laid as a 5 second texture of overlapping grains, which loops without a seam
+   The recording carries its own room, so the game adds very little echo on top.
+   The shell sounds are made here: a thin polycarbonate body is a drum, with a few broad resonances; it buzzes on its
+   posts, and the hard tyres click over tile joints."""
 import sys, os, wave, numpy as np
-from scipy.signal import butter, sosfilt, lfilter
-from scipy.ndimage import uniform_filter1d
+from scipy.signal import stft, istft, butter, sosfilt, lfilter
+from scipy.ndimage import median_filter, uniform_filter1d
 out = sys.argv[1]; here = os.path.dirname(os.path.abspath(__file__)); SR = 24000
 rng = np.random.default_rng(11)
 def save(name, a, peak=0.7):
@@ -24,20 +25,28 @@ def band(a, lo, hi, order=2):
     else: sos = butter(order, hi, 'lowpass', fs=SR, output='sos')
     return sosfilt(sos, a)
 
-ref_f = np.load(os.path.join(here, 'sound_src', 'ref_freq.npy'))
-def shaped(env_name, secs=4.0, lo=0, hi=1e9, flutter=0.17):
-    env = np.load(os.path.join(here, 'sound_src', env_name)); n = int(secs * SR)
-    X = np.fft.rfft(rng.normal(0, 1, n)); f = np.fft.rfftfreq(n, 1 / SR)
-    g = np.interp(f, ref_f, env); g[(f < max(lo, 60)) | (f > hi)] = 0            # the measured spectrum, laid on noise
-    y = np.fft.irfft(X * g, n)                                                    # periodic: loops without a seam
-    # flutter: the tyres letting go and biting. A slow part (1-4 Hz) and a quick part (16-50 Hz), wrapped so it loops too
-    def wander(f0, f1):
-        M = np.fft.rfft(rng.normal(0, 1, n)); mf = np.fft.rfftfreq(n, 1 / SR); M[(mf < f0) | (mf > f1)] = 0; m = np.fft.irfft(M, n); return m / m.std()
-    mod = 1 + flutter * (0.62 * wander(1, 4) + 0.5 * wander(8, 16) + 0.6 * wander(16, 50))
-    return y * np.clip(mod, 0.3, 2)
-save('roar', shaped('ref_loud.npy'))                         # sliding: the whole loud spectrum
-save('roll', shaped('ref_quiet.npy', flutter=0.1))           # rolling and coasting
-save('hiss', shaped('ref_loud.npy', lo=2000, flutter=0.22))  # wheelspin: the top of it
+w = wave.open(os.path.join(here, 'sound_src', 'reference.wav')); assert w.getframerate() == SR
+ref = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
+# take the motor's lines out, instant by instant
+f, t, Z = stft(ref, SR, nperseg=1024, noverlap=768); mag = np.abs(Z)
+floor = median_filter(uniform_filter1d(mag, 5, axis=1), (31, 1), mode='nearest')
+gain = np.minimum(1, 2.0 * floor / (mag + 1e-9)); gain[f < 700] = 1                     # only lines well above the noise, and only where the motor sings
+_, clean = istft(Z * gain, SR, nperseg=1024, noverlap=768); clean = clean[:len(ref)]
+# loudness, a tenth of a second at a time
+hop = SR // 10; lv = np.sqrt((clean[:len(clean) // hop * hop].reshape(-1, hop) ** 2).mean(1)); q1, q3 = np.percentile(lv, [30, 70])
+def texture(pick, secs=5.0, grain=0.2):
+    starts = [i * hop for i in range(len(lv) - 3) if all(pick(lv[i + k]) for k in range(3))]   # places where 0.3 s in a row is of this kind
+    n = int(secs * SR); g = int(grain * SR); win = np.hanning(g); y = np.zeros(n + g); ws = np.zeros(n + g)
+    for pos in range(0, n, g // 4):
+        s0 = starts[rng.integers(0, len(starts))] + rng.integers(0, hop); seg = clean[s0:s0 + g]
+        seg = seg / (np.sqrt((seg ** 2).mean()) + 1e-9)                                  # even loudness: the game sets the level
+        y[pos:pos + g] += seg * win; ws[pos:pos + g] += win
+    y[:g] += y[n:n + g]; ws[:g] += ws[n:n + g]; return y[:n] / np.maximum(ws[:n], 1e-3)
+roar = texture(lambda v: v >= q3)
+save('roar', roar)                                           # sliding
+save('roll', texture(lambda v: v <= q1))                     # rolling and coasting
+save('hiss', band(roar, 2000, None))                         # wheelspin: the top of the slide
+
 # the motor's whistle: one second at 1 kHz with a little second harmonic and a slight waver; the game sets its pitch
 t = np.arange(SR) / SR; wav = np.cumsum(rng.normal(0, 1, SR)); wav = uniform_filter1d(wav - np.linspace(wav[0], wav[-1], SR), 400); wav = wav / (np.abs(wav).max() + 1e-9)
 ph = 2 * np.pi * 1000 * t + 0.6 * wav
