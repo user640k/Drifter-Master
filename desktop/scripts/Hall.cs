@@ -22,7 +22,7 @@ namespace DriftMaster {
       var m = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/floor.gdshader") };
       Texture2D tx(string f) => GD.Load<Texture2D>("res://assets/tex/" + f);
       m.SetShaderParameter("tile_albedo", tx("ptile_albedo.jpg")); m.SetShaderParameter("tile_rough", tx("ptile_rough.jpg"));
-      m.SetShaderParameter("wear", tx("floor_wear.png")); m.SetShaderParameter("wear_rough", tx("floor_wear_rough.jpg"));
+      m.SetShaderParameter("wear", tx(t.Wear + ".png")); m.SetShaderParameter("wear_rough", tx(t.Wear + "_rough.jpg"));
       m.SetShaderParameter("hall_half", new Vector2((float)t.HallX, (float)t.HallZ)); m.SetShaderParameter("tile_size", Tile);
       return m;
     }
@@ -122,7 +122,7 @@ namespace DriftMaster {
       foreach (int s in new[] { 1, -1 }) {
         double carry = 0; int count = 0;
         for (int i = 0; i < n; i++) {
-          int j = (i + 1) % n; bool raised = t.E[i] > 0.004 || t.E[j] > 0.004;
+          int j = (i + 1) % n; bool raised = t.Boards || t.E[i] > 0.004 || t.E[j] > 0.004; // boards: on the raised road, and all round a track marked out with them
           double bt = raised ? 0.012 : 0.05, bl = raised ? 0.06 : 0.11, gap = raised ? 0.001 : 0.004, bh = raised ? 0.05 : 0.06, o = t.Hw + bt / 2;
           double ax = t.X[i] + t.NX[i] * s * o, az = t.Z[i] + t.NZ[i] * s * o, bx = t.X[j] + t.NX[j] * s * o, bz = t.Z[j] + t.NZ[j] * s * o;
           double seg = Math.Sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az)), d = carry;
@@ -132,7 +132,7 @@ namespace DriftMaster {
               var basis = new Basis(Vector3.Up, (float)Math.Atan2(bx - ax, bz - az));
               float tilt = (float)Math.Atan2(t.E[j] - t.E[i], seg); basis = basis * new Basis(Vector3.Right, -tilt);
               var xf = new Transform3D(basis, new Vector3((float)px, (float)(bh / 2 + e), (float)pz));
-              if (raised) boards.Add((xf, (count / 5) % 2 == 0 ? white : blue)); else { foam.Add((xf, (count / 3) % 2 == 0 ? blue : yellow)); }
+              if (raised) boards.Add((xf, t.Boards ? white : (count / 5) % 2 == 0 ? white : blue)); else { foam.Add((xf, (count / 3) % 2 == 0 ? blue : yellow)); }
               count++;
             }
             d += bl + gap;

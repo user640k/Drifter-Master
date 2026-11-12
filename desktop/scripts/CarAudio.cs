@@ -32,7 +32,8 @@ namespace DriftMaster {
     public override void _Ready() {
       // the room: only a touch. The recorded tyre sounds already carry the room they were recorded in, so more echo on top
       // would be a room inside a room; this only ties the made sounds (shell, ticks, hits, motor) to the same space
-      _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master");
+      _bus = AudioServer.GetBusIndex("Car"); // (still there after a change of track)
+      if (_bus < 0) { _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master"); } else while (AudioServer.GetBusEffectCount(_bus) > 0) AudioServer.RemoveBusEffect(_bus, 0);
       AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.5f, Spread = 0.8f, Hipass = 0.2f, PredelayMsec = 10, PredelayFeedback = 0.1f, Dry = 1f, Wet = 0.08f }, 0);
       AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 1);
       _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true);

@@ -11,7 +11,7 @@ namespace DriftMaster {
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
       ("SEDAN", "sedan", 0.130, 0.068, 0.006f), ("COUPE", "coupe", 0.115, 0.060, -0.012f), ("PICKUP", "pickup", 0.165, 0.074, 0.03f) };
     public int Body; public float RoofY = 0.133f, HalfW = 0.095f, HalfL = 0.21f;
-    public static readonly string[] Liveries = { "SOLID", "BONNET", "FADE", "FLAMES", "CAMO", "STREAKS", "HOLOGRAM" };
+    public static readonly string[] Liveries = { "SOLID", "BONNET", "FADE", "FLAMES", "CAMO", "STREAKS" }; // (the shader also has a hologram film, scheme 6, not offered for now)
     // options carried over from the web version: the body shell on or off, neon under the car, tinted or clear windows
     Node3D _shell, _neon; StandardMaterial3D _neonBar, _neonFloor; OmniLight3D _neonLight; bool _clear, _onBoard;
     public static readonly (string name, Color col)[] Neons = { ("OFF", Colors.Black), ("PINK", new Color(1f, 0.25f, 0.71f)), ("ICE BLUE", new Color(0.25f, 0.8f, 1f)), ("GREEN", new Color(0.3f, 1f, 0.45f)), ("AMBER", new Color(1f, 0.62f, 0.12f)), ("PURPLE", new Color(0.62f, 0.3f, 1f)), ("WHITE", new Color(1f, 0.97f, 0.9f)) };

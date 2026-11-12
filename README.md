@@ -5,7 +5,7 @@
 | Version | Where | What |
 |---|---|---|
 | **Web** | this folder: `index.html` | The browser game (also the itch.io build). |
-| **Desktop** | [`desktop/`](desktop/) | A Godot 4.6 + C# build for PC, in progress: one hall, the HILLSIDE layout, the sedan. See [`desktop/README.md`](desktop/README.md). |
+| **Desktop** | [`desktop/`](desktop/) | A Godot 4.6 + C# build for PC, in progress: one hall, two layouts, three bodies. See [`desktop/README.md`](desktop/README.md). |
 
 Everything below is about the web version.
 

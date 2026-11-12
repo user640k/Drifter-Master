@@ -12,6 +12,7 @@ namespace DriftMaster {
     public double Hw, Ds, HallX, HallZ;
     public double[] Start = new double[3];
     public double[][] RaceLine;
+    public string Name = "", Wear = "floor_wear"; public bool Boards; /* the floor sheet's name; white boards all round in place of foam blocks */
     public int Idx; // where the car last was on the lap: the hint that keeps a search on its own level at the crossing
     public const double CarR = 0.098;
 

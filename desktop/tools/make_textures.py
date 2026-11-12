@@ -65,8 +65,7 @@ import json, os, math
 from PIL import ImageDraw
 HX, HZ, PXM = 4.5, 2.5, 256
 Wp, Hp = int(HX * 2 * PXM), int(HZ * 2 * PXM)
-wr = np.random.default_rng(777); rr = lambda a, b: a + wr.random() * (b - a)
-rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
+rr = lambda a, b: a + wr.random() * (b - a)
 def over(mask, col, rough=0.0):
     global rgb, al, ro
     m = mask[..., None]; c = np.array(col, np.float32) / 255
@@ -81,68 +80,97 @@ def layer(): im = Image.new('L', (Wp, Hp), 0); return im, ImageDraw.Draw(im)
 def arr(im, blur=0): 
     a = np.asarray(im).astype(np.float32) / 255
     return gaussian_filter(a, blur) if blur else a
-# broad dust haze
-for i in range(60): over(soft(rr(-HX, HX), rr(-HZ, HZ), rr(0.4, 1.5), rr(0.03, 0.09)), (170, 168, 160), 0.10)
-# dust along the walls, where nothing drives
-yy, xx = np.mgrid[0:Hp, 0:Wp]; dw = np.minimum(np.minimum(xx, Wp - 1 - xx), np.minimum(yy, Hp - 1 - yy)) / PXM
-over(np.exp(-dw / 0.22).astype(np.float32) * 0.2, (175, 170, 160), 0.16)
-# the lanes: the cars sweep the dust off and polish the tile
-tj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'hillside.json')))
-from scipy.interpolate import splprep, splev
-_l = np.array([(x, z + 3.4) for x, z in tj['raceLine']]); _tck, _ = splprep([np.append(_l[:, 0], _l[0, 0]), np.append(_l[:, 1], _l[0, 1])], s=0, per=True)
-line = list(zip(*splev(np.linspace(0, 1, 600, endpoint=False), _tck)))  # the racing line, smooth
-def lane(width, off=0.0, wob=0.0):
-    im, d = layer(); pts = []
-    n = len(line)
-    for i, (x, z) in enumerate(line):
-        qx, qz = line[(i + 1) % n]; dx, dz = qx - x, qz - z; l = math.hypot(dx, dz) or 1; o = off + math.sin(i * 0.04 + off * 9) * wob
-        pts.append(px(x - dz / l * o, z + dx / l * o))
-    d.line(pts + [pts[0]], fill=255, width=max(1, int(width * PXM)), joint='curve'); return im
-lm = arr(lane(0.62), 22); lm = lm / lm.max()
-al *= (1 - 0.75 * lm); ro -= 0.10 * lm
-# dried spills: a dull patch with a paler ring; a few stay glossy
-for i in range(14):
-    x, z, s = rr(-HX + 0.4, HX - 0.4), rr(-HZ + 0.4, HZ - 0.4), rr(0.05, 0.2); blot = np.zeros((Hp, Wp), np.float32)
-    for k in range(5): blot = np.maximum(blot, soft(x + rr(-s, s), z + rr(-s, s) * 0.7, s * rr(0.5, 1.1), 1))
-    core = np.clip(blot * 3, 0, 1); ring = np.clip(1 - np.abs(blot - 0.25) / 0.12, 0, 1) * (blot > 0.05)
-    glossy = wr.random() < 0.3
-    ro += (-0.16 if glossy else 0.22) * core; over(gaussian_filter(ring.astype(np.float32), 2.5) * 0.06, (150, 148, 140))
-# chips: pale specks where the surface is gone
-im, d = layer()
-for i in range(650):
-    cx, cz = px(rr(-HX, HX), rr(-HZ, HZ)); s = rr(0.0015, 0.007) * PXM; d.ellipse((cx - s, cz - s, cx + s, cz + s), fill=int(rr(90, 255)))
-over(arr(im, 0.5) * 0.45, (150, 150, 146), 0.15)
-# cracked tiles: short jagged hairlines
-im, d = layer()
-for i in range(12):
-    x, z, a = rr(-HX, HX), rr(-HZ, HZ), rr(0, 6.28); pts = [px(x, z)]
-    for k in range(int(rr(4, 12))): a += rr(-0.7, 0.7); s = rr(0.02, 0.07); x += math.cos(a) * s; z += math.sin(a) * s; pts.append(px(x, z))
-    d.line(pts, fill=255, width=1)
-over(arr(im, 0.4) * 0.5, (120, 120, 116), 0.2)
-# tape left from old layouts, some torn short
-for i in range(13):
-    im, d = layer(); x, z, a, L = rr(-HX + 0.4, HX - 0.4), rr(-HZ + 0.4, HZ - 0.4), rr(0, 3.14), rr(0.12, 0.7)
-    cx, cz = px(x, z); ux, uz = math.cos(a) * L / 2 * PXM, math.sin(a) * L / 2 * PXM
-    d.line([(cx - ux, cz - uz), (cx + ux, cz + uz)], fill=255, width=int(0.048 * PXM))
-    m = arr(im) * (0.75 + 0.25 * gaussian_filter(wr.random((Hp // 8 + 1, Wp // 8 + 1)).astype(np.float32), 2).repeat(8, 0).repeat(8, 1)[:Hp, :Wp])
-    over(m * (1 - 0.6 * lm) * 0.2, (220, 200, 90) if wr.random() < 0.3 else (225, 225, 215), 0.2)
-# faded paint from an old layout: broken arcs
-for i in range(6):
-    im, d = layer(); cx, cz = px(rr(-HX + 1, HX - 1), rr(-HZ + 1, HZ - 1)); R = rr(0.6, 2.0) * PXM; a0 = rr(0, 360); a = a0
-    while a < a0 + rr(60, 170):
-        if wr.random() < 0.75: d.arc((cx - R, cz - R, cx + R, cz + R), a, a + 11, fill=255, width=int(0.022 * PXM))
-        a += 14
-    over(arr(im, 0.6) * 0.17, (230, 230, 220) if wr.random() < 0.5 else (225, 190, 40))
-# fine scratches
-im, d = layer()
-for i in range(1000):
-    x, z, a, l = rr(-HX, HX), rr(-HZ, HZ), rr(0, 6.28), rr(0.03, 0.3); d.line([px(x, z), px(x + math.cos(a) * l, z + math.sin(a) * l)], fill=int(rr(60, 200)), width=1)
-over(arr(im, 0.35) * 0.16, (210, 210, 205), 0.06)
-# tyre lines round the lap
-for k in range(10): over(arr(lane(0.014, rr(-0.24, 0.24), 0.06), 0.8) * 0.07, (170, 170, 168))
-out_rgba = np.dstack([rgb.clip(0, 1), al.clip(0, 1)])
-Image.fromarray((out_rgba * 255).astype(np.uint8), 'RGBA').save(f'{out}/floor_wear.png', optimize=True)
-Image.fromarray(((0.5 + ro).clip(0, 1) * 255).astype(np.uint8)).save(f'{out}/floor_wear_rough.jpg', quality=85)
+# one sheet per track: (data file, how far its layout was moved along z, name suffix, turf and kerbs?)
+for TFILE, Z0, SUF, TURF in (('hillside.json', -3.4, '', False), ('infield.json', 0.0, '_infield', True)):
+    wr = np.random.default_rng(777); tj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', TFILE)))
+    rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
+    # broad dust haze
+    for i in range(60): over(soft(rr(-HX, HX), rr(-HZ, HZ), rr(0.4, 1.5), rr(0.03, 0.09)), (170, 168, 160), 0.10)
+    # dust along the walls, where nothing drives
+    yy, xx = np.mgrid[0:Hp, 0:Wp]; dw = np.minimum(np.minimum(xx, Wp - 1 - xx), np.minimum(yy, Hp - 1 - yy)) / PXM
+    over(np.exp(-dw / 0.22).astype(np.float32) * 0.2, (175, 170, 160), 0.16)
+    # the lanes: the cars sweep the dust off and polish the tile
+    from scipy.interpolate import splprep, splev
+    _l = np.array([(x, z - Z0) for x, z in tj['raceLine']]); _tck, _ = splprep([np.append(_l[:, 0], _l[0, 0]), np.append(_l[:, 1], _l[0, 1])], s=0, per=True)
+    line = list(zip(*splev(np.linspace(0, 1, 600, endpoint=False), _tck)))  # the racing line, smooth
+    def lane(width, off=0.0, wob=0.0):
+        im, d = layer(); pts = []
+        n = len(line)
+        for i, (x, z) in enumerate(line):
+            qx, qz = line[(i + 1) % n]; dx, dz = qx - x, qz - z; l = math.hypot(dx, dz) or 1; o = off + math.sin(i * 0.04 + off * 9) * wob
+            pts.append(px(x - dz / l * o, z + dx / l * o))
+        d.line(pts + [pts[0]], fill=255, width=max(1, int(width * PXM)), joint='curve'); return im
+    lm = arr(lane(0.62), 22); lm = lm / lm.max()
+    al *= (1 - 0.75 * lm); ro -= 0.10 * lm
+    # dried spills: a dull patch with a paler ring; a few stay glossy
+    for i in range(14):
+        x, z, s = rr(-HX + 0.4, HX - 0.4), rr(-HZ + 0.4, HZ - 0.4), rr(0.05, 0.2); blot = np.zeros((Hp, Wp), np.float32)
+        for k in range(5): blot = np.maximum(blot, soft(x + rr(-s, s), z + rr(-s, s) * 0.7, s * rr(0.5, 1.1), 1))
+        core = np.clip(blot * 3, 0, 1); ring = np.clip(1 - np.abs(blot - 0.25) / 0.12, 0, 1) * (blot > 0.05)
+        glossy = wr.random() < 0.3
+        ro += (-0.16 if glossy else 0.22) * core; over(gaussian_filter(ring.astype(np.float32), 2.5) * 0.06, (150, 148, 140))
+    # chips: pale specks where the surface is gone
+    im, d = layer()
+    for i in range(650):
+        cx, cz = px(rr(-HX, HX), rr(-HZ, HZ)); s = rr(0.0015, 0.007) * PXM; d.ellipse((cx - s, cz - s, cx + s, cz + s), fill=int(rr(90, 255)))
+    over(arr(im, 0.5) * 0.45, (150, 150, 146), 0.15)
+    # cracked tiles: short jagged hairlines
+    im, d = layer()
+    for i in range(12):
+        x, z, a = rr(-HX, HX), rr(-HZ, HZ), rr(0, 6.28); pts = [px(x, z)]
+        for k in range(int(rr(4, 12))): a += rr(-0.7, 0.7); s = rr(0.02, 0.07); x += math.cos(a) * s; z += math.sin(a) * s; pts.append(px(x, z))
+        d.line(pts, fill=255, width=1)
+    over(arr(im, 0.4) * 0.5, (120, 120, 116), 0.2)
+    # tape left from old layouts, some torn short
+    for i in range(13):
+        im, d = layer(); x, z, a, L = rr(-HX + 0.4, HX - 0.4), rr(-HZ + 0.4, HZ - 0.4), rr(0, 3.14), rr(0.12, 0.7)
+        cx, cz = px(x, z); ux, uz = math.cos(a) * L / 2 * PXM, math.sin(a) * L / 2 * PXM
+        d.line([(cx - ux, cz - uz), (cx + ux, cz + uz)], fill=255, width=int(0.048 * PXM))
+        m = arr(im) * (0.75 + 0.25 * gaussian_filter(wr.random((Hp // 8 + 1, Wp // 8 + 1)).astype(np.float32), 2).repeat(8, 0).repeat(8, 1)[:Hp, :Wp])
+        over(m * (1 - 0.6 * lm) * 0.2, (220, 200, 90) if wr.random() < 0.3 else (225, 225, 215), 0.2)
+    # faded paint from an old layout: broken arcs
+    for i in range(6):
+        im, d = layer(); cx, cz = px(rr(-HX + 1, HX - 1), rr(-HZ + 1, HZ - 1)); R = rr(0.6, 2.0) * PXM; a0 = rr(0, 360); a = a0
+        while a < a0 + rr(60, 170):
+            if wr.random() < 0.75: d.arc((cx - R, cz - R, cx + R, cz + R), a, a + 11, fill=255, width=int(0.022 * PXM))
+            a += 14
+        over(arr(im, 0.6) * 0.17, (230, 230, 220) if wr.random() < 0.5 else (225, 190, 40))
+    # fine scratches
+    im, d = layer()
+    for i in range(1000):
+        x, z, a, l = rr(-HX, HX), rr(-HZ, HZ), rr(0, 6.28), rr(0.03, 0.3); d.line([px(x, z), px(x + math.cos(a) * l, z + math.sin(a) * l)], fill=int(rr(60, 200)), width=1)
+    over(arr(im, 0.35) * 0.16, (210, 210, 205), 0.06)
+    # tyre lines round the lap
+    for k in range(10): over(arr(lane(0.014, rr(-0.24, 0.24), 0.06), 0.8) * 0.07, (170, 170, 168))
+    # turf and kerbs (tracks that have them): artificial grass fills the ground between the lanes, and the inside of each
+    # tight bend has a red and white kerb. Both are flat on the floor, so they are painted into this sheet.
+    if TURF:
+        from scipy.spatial import ConvexHull
+        cx = np.array(tj['x']); cz = np.array(tj['z']) - Z0; hw = tj['hw']; n = len(cx)
+        im, d = layer(); R = (hw + 0.035) * PXM
+        for a, b in zip(cx, cz): q = px(a, b); d.ellipse((q[0] - R, q[1] - R, q[0] + R, q[1] + R), fill=255)   # discs along the lane: no gaps at the bends
+        lanes = arr(im) > 0.5
+        hull = ConvexHull(np.c_[cx, cz]); im, d = layer(); d.polygon([px(*np.c_[cx, cz][i]) for i in hull.vertices], fill=255); inside = arr(im) > 0.5
+        grass = inside & ~lanes
+        g = wr.random((Hp, Wp)).astype(np.float32); blade = gaussian_filter(g, (0.6, 0.6)); clump = gaussian_filter(wr.random((Hp, Wp)).astype(np.float32), 9)
+        tone = 0.78 + 0.5 * (blade - 0.5) * 2.2 + 0.5 * (clump - 0.5) * 3
+        for k, base in enumerate((0.16, 0.42, 0.14)): rgb[..., k] = np.where(grass, base * tone, rgb[..., k])
+        al[:] = np.where(grass, 1.0, al); ro[:] = np.where(grass, 0.45, ro)
+        # kerbs: where the lane bends tighter than about 0.9 m, along its inner edge
+        hd = np.arctan2(np.roll(cx, -1) - np.roll(cx, 1), np.roll(cz, -1) - np.roll(cz, 1)); dh = np.roll(hd, -1) - np.roll(hd, 1); kap = np.arctan2(np.sin(dh), np.cos(dh)) / (2 * tj['ds'])
+        step = max(1, int(round(0.09 / tj['ds'])))
+        for i in range(0, n, step):
+            if abs(kap[i]) < 1 / 0.9: continue
+            j = (i + step) % n; sgn = 1 if kap[i] > 0 else -1
+            def edge(q, o):
+                tx, tz = np.cos(hd[q]), -np.sin(hd[q]); return (cx[q] + sgn * tx * o, cz[q] + sgn * tz * o)   # across the lane, to the inside
+            quad = [px(*edge(i, hw - 0.005)), px(*edge(j, hw - 0.005)), px(*edge(j, hw - 0.075)), px(*edge(i, hw - 0.075))]
+            im, d = layer(); d.polygon(quad, fill=255); m = arr(im) > 0.5; red = (i // step) % 2 == 0
+            for k, v in enumerate((0.78, 0.08, 0.07) if red else (0.9, 0.9, 0.88)): rgb[..., k] = np.where(m, v, rgb[..., k])
+            al[:] = np.where(m, 1.0, al); ro[:] = np.where(m, 0.1, ro)
+    out_rgba = np.dstack([rgb.clip(0, 1), al.clip(0, 1)])
+    Image.fromarray((out_rgba * 255).astype(np.uint8), 'RGBA').save(f'{out}/floor_wear{SUF}.png', optimize=True)
+    Image.fromarray(((0.5 + ro).clip(0, 1) * 255).astype(np.uint8)).save(f'{out}/floor_wear{SUF}_rough.jpg', quality=85)
 
 # ---- neon sign "Drift Master": glass tube lettering in a single-stroke script (Sacramento, SIL OFL), "Drift" in pink and
 # "Master" in ice blue. neon_tube.png is the lit tube (white-hot down the middle, colour at the glass, a tight halo);
