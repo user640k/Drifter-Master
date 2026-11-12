@@ -11,7 +11,7 @@ namespace DriftMaster {
     // lap timing
     double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
     // test hooks: --shot=file --frames=n --auto --cam=n --at=index
-    string _shot; int _frames = 90, _frame; bool _auto; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
+    float[] _view6; string _shot; int _frames = 90, _frame; bool _auto; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
     static readonly Color[] Paints = { new Color(0.09f, 0.094f, 0.106f), new Color(0.86f, 0.87f, 0.85f), new Color(0.72f, 0.05f, 0.06f), new Color(0.06f, 0.22f, 0.6f), new Color(0.95f, 0.72f, 0.05f), new Color(0.1f, 0.42f, 0.3f) };
 
     public override void _Ready() {
@@ -20,6 +20,7 @@ namespace DriftMaster {
         if (a.StartsWith("--shot=")) _shot = a.Substring(7); else if (a.StartsWith("--frames=")) _frames = int.Parse(a.Substring(9));
         else if (a == "--auto") _auto = true; else if (a.StartsWith("--cam=")) _camMode = int.Parse(a.Substring(6)); else if (a.StartsWith("--at=")) at = int.Parse(a.Substring(5));
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
+        else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
       // the layout sat at z = -4.9..-1.9 in the big warehouse; here it is centred in a hall of its own (9.0 x 5.0 m)
       _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/hillside.json"), -3.4, 4.5, 2.5);
@@ -41,7 +42,7 @@ namespace DriftMaster {
       };
       AddChild(new WorldEnvironment { Environment = env });
       // the tube lights overhead as one soft downward light with a shadow, plus two fills so the walls fall off
-      _sun = new DirectionalLight3D { LightEnergy = 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.5f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
+      _sun = new DirectionalLight3D { LightEnergy = 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.0f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
       _sun.RotationDegrees = new Vector3(-78, 24, 0); AddChild(_sun);
       foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
       // one probe for the whole room: the glossy tiles mirror the ceiling lights
@@ -69,7 +70,7 @@ namespace DriftMaster {
       if (key(Key.Escape) || pad(JoyButton.Start)) _pause.Visible = !_pause.Visible;
       else if (key(Key.Q) && _pause.Visible) GetTree().Quit();
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
-      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = (_camMode + 1) % 4; _camSnap = true; }
+      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = (_camMode + 1) % 4; if (_camMode > 3) _camMode = 0; _camSnap = true; }
       else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; _view.Paint.AlbedoColor = Paints[_paintIdx]; }
       else if (key(Key.F2)) _sun.ShadowEnabled = !_sun.ShadowEnabled;
       else if (key(Key.F3)) _stats.Visible = !_stats.Visible;
@@ -117,7 +118,8 @@ namespace DriftMaster {
     void UpdateCamera(float dt) {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
-      if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
+      if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
+      else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
         pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0); fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(0.75f / pos.DistanceTo(look))), 14, 40);
       } else if (_camMode == 2) { pos = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); look = new Vector3(0, 0, 0); fov = 100; } // from the ceiling
       else if (_camMode == 3) { // on board
@@ -127,6 +129,10 @@ namespace DriftMaster {
         if (sp > 0.8) { double va = Math.Atan2(_car.Vx, _car.Vz), d = va - ang; d = Math.Atan2(Math.Sin(d), Math.Cos(d)); if (Math.Abs(d) < 2.2) ang += d * 0.55; }
         var f = new Vector3((float)Math.Sin(ang), 0, (float)Math.Cos(ang));
         pos = p - f * 0.78f + new Vector3(0, 0.3f, 0); look = p + f * 0.25f + new Vector3(0, 0.05f, 0);
+      }
+      if (_camMode == 0 && _car.Y < 0.06) { // following the car under the bridge: duck below the deck instead of sitting inside it
+        double deck = 0; for (int q = 0; q < _t.N; q++) if (_t.E[q] > 0.12) { double dx = pos.X - _t.X[q], dz = pos.Z - _t.Z[q]; if (dx * dx + dz * dz < (_t.Hw + 0.1) * (_t.Hw + 0.1)) { deck = _t.E[q]; break; } }
+        if (deck > 0) pos.Y = Math.Min(pos.Y, (float)deck - 0.075f);
       }
       pos.X = Mathf.Clamp(pos.X, -hx, hx); pos.Z = Mathf.Clamp(pos.Z, -hz, hz);
       float k = _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * (_camMode == 0 ? 6 : 12));

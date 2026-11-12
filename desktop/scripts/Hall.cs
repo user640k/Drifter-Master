@@ -31,19 +31,17 @@ namespace DriftMaster {
       var root = new Node3D { Name = "Hall" };
       float hx = (float)t.HallX, hz = (float)t.HallZ;
       var floorMat = FloorMat(t);
-      var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2) }, MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(floor);
+      var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2), SubdivideWidth = 17, SubdivideDepth = 9 }, MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(floor);
 
-      // walls: painted plaster, a dark skirting board, and a grey band at driver height
+      // walls: painted plaster and a dark skirting board, nothing else
       var wall = Mat("wall.jpg", new Color(0.93f, 0.93f, 0.9f), 0.9f); wall.Uv1Triplanar = true; wall.Uv1WorldTriplanar = true; wall.Uv1Scale = Vector3.One / 2.2f;
       var skirt = Mat(null, new Color(0.13f, 0.14f, 0.15f), 0.6f);
-      var band = Mat(null, new Color(0.16f, 0.36f, 0.72f), 0.55f);
+      var signWall = Mat("wall.jpg", new Color(0.13f, 0.135f, 0.15f), 0.85f); signWall.Uv1Triplanar = true; signWall.Uv1WorldTriplanar = true; signWall.Uv1Scale = Vector3.One / 2.2f;
       foreach (int s in new[] { -1, 1 }) {
-        Box(root, new Vector3(hx * 2, CeilY, 0.06f), new Vector3(0, CeilY / 2, s * (hz + 0.03f)), wall);
+        Box(root, new Vector3(hx * 2, CeilY, 0.06f), new Vector3(0, CeilY / 2, s * (hz + 0.03f)), s < 0 ? signWall : wall); // the wall with the neon sign is painted dark, so the sign reads
         Box(root, new Vector3(0.06f, CeilY, hz * 2), new Vector3(s * (hx + 0.03f), CeilY / 2, 0), wall);
         Box(root, new Vector3(hx * 2, 0.07f, 0.012f), new Vector3(0, 0.035f, s * (hz - 0.006f)), skirt);
         Box(root, new Vector3(0.012f, 0.07f, hz * 2), new Vector3(s * (hx - 0.006f), 0.035f, 0), skirt);
-        Box(root, new Vector3(hx * 2, 0.09f, 0.008f), new Vector3(0, 1.05f, s * (hz - 0.004f)), band);
-        Box(root, new Vector3(0.008f, 0.09f, hz * 2), new Vector3(s * (hx - 0.004f), 1.05f, 0), band);
       }
       // ceiling: suspended tiles, with tube-light panels that also light the floor's reflections
       var ceil = Mat("ceiling.jpg", new Color(0.86f, 0.86f, 0.84f), 0.95f, 1); ceil.Uv1Scale = new Vector3(hx * 2 / 3.6f, hz * 2 / 3.6f, 1);
@@ -60,7 +58,7 @@ namespace DriftMaster {
       BuildDeck(root, t, floorMat);
       BuildBarriers(root, t);
       BuildStartLine(root, t);
-      BuildDecor(root, t);
+      BuildNeon(root, t);
       return root;
     }
 
@@ -103,9 +101,9 @@ namespace DriftMaster {
         }
       }
       if (!any) return;
-      var topMi = new MeshInstance3D { Mesh = top.Commit(), MaterialOverride = floorMat, Name = "Deck" }; root.AddChild(topMi);
+      var topMi = new MeshInstance3D { Mesh = top.Commit(), MaterialOverride = floorMat, Name = "Deck", CastShadow = GeometryInstance3D.ShadowCastingSetting.DoubleSided }; root.AddChild(topMi);
       var board = Mat("board.jpg", new Color(0.9f, 0.86f, 0.8f), 0.8f); board.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
-      var sideMi = new MeshInstance3D { Mesh = side.Commit(), MaterialOverride = board, Name = "DeckSides" }; root.AddChild(sideMi);
+      var sideMi = new MeshInstance3D { Mesh = side.Commit(), MaterialOverride = board, Name = "DeckSides", CastShadow = GeometryInstance3D.ShadowCastingSetting.DoubleSided }; root.AddChild(sideMi);
       // legs under the bridge span, beside the lower road
       var leg = Mat("board.jpg", new Color(0.8f, 0.76f, 0.7f), 0.8f);
       for (int i = 0; i < n; i += 10) {
@@ -163,15 +161,51 @@ namespace DriftMaster {
       mi.Rotation = new Vector3(0, (float)Math.Atan2(t.NX[0], t.NZ[0]) + Mathf.Pi / 2, 0); root.AddChild(mi);
     }
 
-    // a little life: the club name on the wall, a pit table, a tyre stack. Original artwork only.
-    static void BuildDecor(Node3D root, Track t) {
-      float hx = (float)t.HallX, hz = (float)t.HallZ;
-      var title = new Label3D { Text = "DRIFT MASTER", FontSize = 220, PixelSize = 0.0022f, Modulate = new Color(0.1f, 0.11f, 0.13f), OutlineSize = 0, Position = new Vector3(0, 1.75f, -hz + 0.004f), Shaded = false }; root.AddChild(title);
-      var sub = new Label3D { Text = "1:10 RC DRIFT  ·  P-TILE  ·  HILLSIDE LAYOUT", FontSize = 64, PixelSize = 0.0022f, Modulate = new Color(0.16f, 0.36f, 0.72f), OutlineSize = 0, Position = new Vector3(0, 1.42f, -hz + 0.004f), Shaded = false }; root.AddChild(sub);
-      var wood = Mat("board.jpg", new Color(0.85f, 0.8f, 0.72f), 0.7f); var steel = Mat(null, new Color(0.2f, 0.21f, 0.23f), 0.5f);
-      float tx = -hx + 0.75f, tz = hz - 0.32f;
-      Box(root, new Vector3(1.2f, 0.03f, 0.5f), new Vector3(tx, 0.72f, tz), wood, true);
-      foreach (int a in new[] { -1, 1 }) foreach (int b in new[] { -1, 1 }) Box(root, new Vector3(0.03f, 0.71f, 0.03f), new Vector3(tx + a * 0.56f, 0.355f, tz + b * 0.22f), steel, true);
+    // The one thing on the walls: a neon sign, "Drift Master", with its transformer, and a cable hanging down to a socket.
+    static void BuildNeon(Node3D root, Track t) {
+      float hz = (float)t.HallZ, wz = -hz; const float cy = 1.6f, w = 3.0f, h = w * 640f / 2048f;
+      Texture2D tx(string f) => GD.Load<Texture2D>("res://assets/tex/" + f);
+      // light on the wall behind the tubes
+      var glowM = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = tx("neon_glow.jpg"), BlendMode = BaseMaterial3D.BlendModeEnum.Add, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, AlbedoColor = new Color(0.8f, 0.8f, 0.8f) };
+      root.AddChild(new MeshInstance3D { Mesh = new QuadMesh { Size = new Vector2(w * 2, h * 2) }, Position = new Vector3(0, cy, wz + 0.004f), MaterialOverride = glowM, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Name = "NeonGlow" });
+      // the tubes, standing 3 cm off the wall on small clear posts
+      var tubeM = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = tx("neon_tube.png"), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
+      root.AddChild(new MeshInstance3D { Mesh = new QuadMesh { Size = new Vector2(w, h) }, Position = new Vector3(0, cy, wz + 0.03f), MaterialOverride = tubeM, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Name = "NeonTubes" });
+      var post = new StandardMaterial3D { AlbedoColor = new Color(0.85f, 0.87f, 0.9f, 0.55f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.2f };
+      foreach (float px in new[] { -1.33f, -0.8f, -0.32f, 0.29f, 0.78f, 1.3f }) Box(root, new Vector3(0.012f, 0.012f, 0.03f), new Vector3(px, cy - 0.08f, wz + 0.015f), post);
+      // coloured light from the sign into the room
+      root.AddChild(new OmniLight3D { Position = new Vector3(-0.8f, cy, wz + 0.45f), LightColor = new Color(1f, 0.2f, 0.58f), LightEnergy = 0.55f, OmniRange = 3.6f, OmniAttenuation = 1.4f });
+      root.AddChild(new OmniLight3D { Position = new Vector3(0.65f, cy, wz + 0.45f), LightColor = new Color(0.3f, 0.85f, 1f), LightEnergy = 0.5f, OmniRange = 3.6f, OmniAttenuation = 1.4f });
+      // transformer under the right-hand end, two thin leads up to the tube ends
+      var black = Mat(null, new Color(0.035f, 0.035f, 0.04f), 0.55f); var white = Mat(null, new Color(0.9f, 0.9f, 0.88f), 0.4f); var cord = Mat(null, new Color(0.82f, 0.82f, 0.8f), 0.5f); // white flex and a white transformer, so they show on the dark wall
+      var tr = new Vector3(1.5f, cy - 0.52f, wz + 0.022f); Box(root, new Vector3(0.16f, 0.07f, 0.044f), tr, cord);
+      Cable(root, new Vector3(1.4f, cy - 0.13f, wz + 0.03f), new Vector3(1.38f, cy - 0.36f, wz + 0.02f), new Vector3(1.45f, cy - 0.38f, wz + 0.02f), tr + new Vector3(-0.05f, 0.035f, 0), 0.0022f, cord);
+      Cable(root, new Vector3(-1.41f, cy - 0.2f, wz + 0.03f), new Vector3(-1.38f, cy - 0.56f, wz + 0.012f), new Vector3(0.4f, cy - 0.5f, wz + 0.012f), tr + new Vector3(-0.08f, 0, 0), 0.0022f, cord);
+      // mains cable: out of the transformer, slack down the wall, up into the plug from below
+      var sock = new Vector3(2.1f, 0.32f, wz);
+      Box(root, new Vector3(0.086f, 0.086f, 0.008f), sock + new Vector3(0, 0, 0.004f), white);
+      Box(root, new Vector3(0.04f, 0.04f, 0.028f), sock + new Vector3(0, 0, 0.022f), cord);
+      Cable(root, tr + new Vector3(0.08f, 0, 0), tr + new Vector3(0.42f, -0.02f, 0.005f), sock + new Vector3(-0.28f, -0.42f, 0.02f), sock + new Vector3(0, -0.02f, 0.03f), 0.0035f, cord, new Vector3(0, 0.25f, 0));
+      // two clips hold it to the wall
+      Box(root, new Vector3(0.016f, 0.01f, 0.012f), tr + new Vector3(0.2f, -0.012f, -0.012f), white);
+    }
+
+    // a round cable along a cubic curve (p0..p3 are its control points; endTan, if given, is the direction it arrives from)
+    static void Cable(Node3D root, Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float r, Material mat, Vector3? endTan = null) {
+      if (endTan.HasValue) p2 = new Vector3(p2.X, p2.Y, p2.Z) + (p3 - endTan.Value - p2) * 0.0f; // p2 is already placed below the plug
+      const int seg = 28, sides = 6; var st = new SurfaceTool(); st.Begin(Mesh.PrimitiveType.Triangles);
+      Vector3 At(float u) { float v = 1 - u; return p0 * (v * v * v) + p1 * (3 * v * v * u) + p2 * (3 * v * u * u) + p3 * (u * u * u); }
+      var ring = new Vector3[seg + 1, sides]; var nrm = new Vector3[seg + 1, sides];
+      for (int i = 0; i <= seg; i++) {
+        float u = i / (float)seg; var c = At(u); var tan = (At(Math.Min(1, u + 0.01f)) - At(Math.Max(0, u - 0.01f))).Normalized();
+        var a = tan.Cross(Vector3.Back); if (a.Length() < 0.01f) a = tan.Cross(Vector3.Up); a = a.Normalized(); var b = tan.Cross(a).Normalized();
+        for (int k = 0; k < sides; k++) { float an = k * Mathf.Tau / sides; nrm[i, k] = a * Mathf.Cos(an) + b * Mathf.Sin(an); ring[i, k] = c + nrm[i, k] * r; }
+      }
+      for (int i = 0; i < seg; i++) for (int k = 0; k < sides; k++) { int k2 = (k + 1) % sides;
+        void V(int ii, int kk) { st.SetNormal(nrm[ii, kk]); st.AddVertex(ring[ii, kk]); }
+        V(i, k); V(i + 1, k); V(i + 1, k2); V(i, k); V(i + 1, k2); V(i, k2); }
+      var m2 = (StandardMaterial3D)mat.Duplicate(); m2.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+      root.AddChild(new MeshInstance3D { Mesh = st.Commit(), MaterialOverride = m2, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
     }
   }
 }

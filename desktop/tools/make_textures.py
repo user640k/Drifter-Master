@@ -56,14 +56,14 @@ simple('Sponge001', 'foam.jpg', 512, gray=True)      # grey detail; the block co
 simple('OfficeCeiling001', 'ceiling.jpg', 1024)
 simple('Chipboard004', 'board.jpg', 1024)
 
-# ---- floor wear: one sheet over the whole hall floor (4 mm a pixel), after the browser version's floorWear/paintWear,
+# ---- floor wear: one sheet over the whole hall floor (about 4 mm a pixel; 2304 x 1280, sizes the graphics card can compress), after the browser version's floorWear/paintWear,
 # retuned for black tile, where wear shows as dust, dullness and pale marks rather than dark stains:
 # dust haze and dusty edges, lanes the cars keep clean and polished, dried spills, chips, cracked corners,
 # tape and faded paint from old layouts, fine scratches, faint tyre lines.
 # floor_wear.png is colour + how much of it covers the tile; floor_wear_rough.jpg shifts the gloss (grey = no change).
 import json, os, math
 from PIL import ImageDraw
-HX, HZ, PXM = 4.5, 2.5, 250
+HX, HZ, PXM = 4.5, 2.5, 256
 Wp, Hp = int(HX * 2 * PXM), int(HZ * 2 * PXM)
 wr = np.random.default_rng(777); rr = lambda a, b: a + wr.random() * (b - a)
 rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
@@ -143,4 +143,29 @@ for k in range(10): over(arr(lane(0.014, rr(-0.24, 0.24), 0.06), 0.8) * 0.07, (1
 out_rgba = np.dstack([rgb.clip(0, 1), al.clip(0, 1)])
 Image.fromarray((out_rgba * 255).astype(np.uint8), 'RGBA').save(f'{out}/floor_wear.png', optimize=True)
 Image.fromarray(((0.5 + ro).clip(0, 1) * 255).astype(np.uint8)).save(f'{out}/floor_wear_rough.jpg', quality=85)
+
+# ---- neon sign "Drift Master": glass tube lettering in a single-stroke script (Sacramento, SIL OFL), "Drift" in pink and
+# "Master" in ice blue. neon_tube.png is the lit tube (white-hot down the middle, colour at the glass, a tight halo);
+# neon_glow.jpg is the light it throws on the wall behind, added on top of the wall.
+from PIL import ImageFont
+NW, NH = 2048, 640
+font = ImageFont.truetype(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts', 'Sacramento-Regular.ttf'), 372)
+def word_mask(txt_all, part):
+    im = Image.new('L', (NW, NH), 0); d = ImageDraw.Draw(im); bb = d.textbbox((0, 0), txt_all, font=font)
+    ox, oy = (NW - (bb[2] - bb[0])) / 2 - bb[0], (NH - (bb[3] - bb[1])) / 2 - bb[1]
+    pre = txt_all[:txt_all.index(part)]; d.text((ox + d.textlength(pre, font=font), oy), part, font=font, fill=255)
+    return np.asarray(im.filter(ImageFilter.MaxFilter(3))).astype(np.float32) / 255
+tube = np.zeros((NH, NW, 4), np.float32); glow = np.zeros((NH * 2, NW * 2, 3), np.float32)
+for part, col in (('Drift', (1.0, 0.16, 0.55)), ('Master', (0.25, 0.85, 1.0))):
+    m = word_mask('Drift Master', part); c = np.array(col, np.float32)
+    core = np.clip(gaussian_filter(m, 2.2) * 1.5 - 0.7, 0, 1)                 # hottest along the middle of the tube
+    halo = gaussian_filter(m, 7) * 0.9 + gaussian_filter(m, 18) * 0.5
+    rgbt = c[None, None, :] * (1 - core[..., None]) + core[..., None] * (0.45 + 0.55 * c[None, None, :]) + core[..., None] * 0.25
+    a = np.clip(np.maximum(m, halo * 0.75), 0, 1)
+    tube[..., :3] = np.where(a[..., None] > tube[..., 3:4], np.where(m[..., None] > 0.02, rgbt, c[None, None, :]), tube[..., :3]); tube[..., 3] = np.maximum(tube[..., 3], a)
+    big = np.zeros((NH * 2, NW * 2), np.float32); big[NH // 2:NH // 2 + NH, NW // 2:NW // 2 + NW] = m
+    g = gaussian_filter(big, 45) * 2.2 + gaussian_filter(big, 130) * 3.2
+    glow += g[..., None] * c[None, None, :]
+Image.fromarray((tube.clip(0, 1) * 255).astype(np.uint8), 'RGBA').save(f'{out}/neon_tube.png', optimize=True)
+Image.fromarray((glow.clip(0, 1) * 255).astype(np.uint8)).resize((1024, 320), Image.LANCZOS).save(f'{out}/neon_glow.jpg', quality=90)
 print('ok')

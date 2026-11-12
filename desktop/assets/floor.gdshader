@@ -2,7 +2,7 @@
 shader_type spatial;
 uniform sampler2D tile_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D tile_rough : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D wear : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
+uniform sampler2D wear : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D wear_rough : filter_linear_mipmap, repeat_disable;
 uniform vec2 hall_half = vec2(4.5, 2.5);
 uniform float tile_size = 1.2192;
