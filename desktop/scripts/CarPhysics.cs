@@ -22,8 +22,18 @@ namespace DriftMaster {
   public sealed class CarPhysics {
     public const double DT = 1.0 / 720, GRAV = 9.81;
     // real 1/10 drift chassis: 257 mm wheelbase, 169 mm between tyre centres
-    public const double M = 1.45, L = 0.257, TW = 0.169, H = 0.03, HRC = 0.011, HPC = 0.010;
-    public const double IZ = 0.021, IXX = 0.0050, IYY = 0.019, R = 0.032;
+    public const double L = 0.257, TW = 0.169, HRC = 0.011, HPC = 0.010;
+    public const double IYY = 0.019, R = 0.032;
+    // what the shell changes: the car's mass, how high its centre of gravity sits, and how hard it is to roll and to turn.
+    // (the sedan's figures; SetBody gives the others)
+    public double M = 1.45, H = 0.03, IXX = 0.0050, IZ = 0.021;
+    /// the chassis alone is about 1.32 kg with its centre of gravity 26 mm up; a shell adds its own mass at its own height
+    public void SetBody(double shellKg, double shellCgUp, double halfWidth, double halfLength) {
+      const double mc = 1.32, hc = 0.0262;
+      M = mc + shellKg; H = (mc * hc + shellKg * shellCgUp) / M;
+      IXX = 0.0044 + shellKg * (halfWidth * halfWidth / 3 + (shellCgUp - H) * (shellCgUp - H)) + mc * (hc - H) * (hc - H);
+      IZ = 0.0186 + shellKg * (halfLength * halfLength + halfWidth * halfWidth) / 3;
+    }
     public const double KROLL = 8.5, KPITCH = 16, ZETA = 0.5;
     public const double CDA = 0.0042, RR = 0.42, DRIVELINE = 0.035, DRAGBRAKE = 0.7, BRAKEF = 30, LOADSENS = 0.12;
     public const double TB = 12, TC = 1.1;        // hard plastic: builds early, then slides at nearly constant friction

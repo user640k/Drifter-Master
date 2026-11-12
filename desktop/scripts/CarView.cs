@@ -6,7 +6,12 @@ using System;
 namespace DriftMaster {
   public partial class CarView : Node3D {
     MeshInstance3D _blob, _neonFloorNode; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
-    public StandardMaterial3D Paint; StandardMaterial3D _glass;
+    public ShaderMaterial Paint; StandardMaterial3D _glass;
+    /// the shells: name, model, its mass (kg) and how high its own centre of gravity sits (m), and where the cabin is (z)
+    public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
+      ("SEDAN", "sedan", 0.130, 0.068, 0.006f), ("COUPE", "coupe", 0.115, 0.060, -0.012f), ("PICKUP", "pickup", 0.165, 0.074, 0.03f) };
+    public int Body; public float RoofY = 0.133f, HalfW = 0.095f, HalfL = 0.21f;
+    public static readonly string[] Liveries = { "SOLID", "BONNET", "FADE", "FLAMES", "CAMO", "STREAKS", "HOLOGRAM" };
     // options carried over from the web version: the body shell on or off, neon under the car, tinted or clear windows
     Node3D _shell, _neon; StandardMaterial3D _neonBar, _neonFloor; OmniLight3D _neonLight; bool _clear, _onBoard;
     public static readonly (string name, Color col)[] Neons = { ("OFF", Colors.Black), ("PINK", new Color(1f, 0.25f, 0.71f)), ("ICE BLUE", new Color(0.25f, 0.8f, 1f)), ("GREEN", new Color(0.3f, 1f, 0.45f)), ("AMBER", new Color(1f, 0.62f, 0.12f)), ("PURPLE", new Color(0.62f, 0.3f, 1f)), ("WHITE", new Color(1f, 0.97f, 0.9f)) };
@@ -17,7 +22,7 @@ namespace DriftMaster {
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
 
     public override void _Ready() {
-      var model = GD.Load<PackedScene>("res://assets/sedan.glb").Instantiate<Node3D>(); AddChild(model);
+      var model = GD.Load<PackedScene>("res://assets/" + Bodies[Body % Bodies.Length].file + ".glb").Instantiate<Node3D>(); AddChild(model);
       _body = new Node3D { Name = "Body" }; AddChild(_body);
       foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; }
       for (int i = 0; i < 4; i++) {
@@ -52,17 +57,32 @@ namespace DriftMaster {
         _stick.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.03f, 0.006f, 0.03f) }, MaterialOverride = carbon, Position = foot });
         StickCam = new Node3D { Name = "StickCam", Position = cam, Rotation = new Vector3(-Mathf.DegToRad(StickTilt), Mathf.Pi, 0) }; _body.AddChild(StickCam); // looking down a little, at the car and the track ahead
       }
-      Paint = new StandardMaterial3D { CullMode = BaseMaterial3D.CullModeEnum.Disabled, AlbedoColor = new Color(0.09f, 0.094f, 0.106f), Roughness = 0.42f, Metallic = 0.25f, ClearcoatEnabled = true, Clearcoat = 0.8f, ClearcoatRoughness = 0.12f };
+      Paint = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/paint.gdshader") };
       var glass = _glass = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.065f, 0.085f, 0.8f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.08f, Metallic = 0.3f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
       foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) {
         var mi = (MeshInstance3D)node; string nm = mi.Name.ToString();
-        if (nm.EndsWith("_paint")) mi.MaterialOverride = Paint; else if (nm.Contains("_glass_")) mi.MaterialOverride = glass;
+        if (nm.EndsWith("_paint")) { mi.MaterialOverride = Paint;
+          // the painted shell's size: the livery is laid out on it, and the cameras and the handling take the roof height
+          var bb = mi.GetAabb(); Paint.SetShaderParameter("dim", new Vector3(bb.Size.X / 2, bb.Size.Y, bb.Size.Z / 2)); Paint.SetShaderParameter("origin", new Vector3(bb.Position.X + bb.Size.X / 2, bb.Position.Y, bb.Position.Z + bb.Size.Z / 2));
+          var sx = _shell != null ? _shell.Scale : Vector3.One; float sy = _shell != null ? _shell.Position.Y : 0;
+          RoofY = (bb.Position.Y + bb.Size.Y) * sx.Y + sy; HalfW = bb.Size.X / 2 * sx.X; HalfL = bb.Size.Z / 2 * sx.Z; }
+        else if (nm.Contains("_glass_")) mi.MaterialOverride = glass;
         else if (nm.StartsWith("Shell_") && mi.Mesh != null) for (int si = 0; si < mi.Mesh.GetSurfaceCount(); si++) if (mi.Mesh.SurfaceGetMaterial(si) is BaseMaterial3D bm0) { var d = (BaseMaterial3D)bm0.Duplicate(); d.CullMode = BaseMaterial3D.CullModeEnum.Disabled; mi.SetSurfaceOverrideMaterial(si, d); } // the shell is seen from inside too
         if (mi != _blob && mi != _neonFloorNode && !_stick.IsAncestorOf(mi) && !_neon.IsAncestorOf(mi)) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
       }
+      // the cameras ride where this shell's cabin and roof are
+      float cab = Bodies[Body % Bodies.Length].cabZ;
+      Fpv.Position = new Vector3(FpvX, RoofY - 0.031f, cab); StickCam.Position = new Vector3(0, Math.Max(StickY, RoofY + 0.045f), StickZ);
+      foreach (var ch in _stick.GetChildren()) ch.QueueFree();
+      { var carbon = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.05f, 0.055f), Roughness = 0.45f };
+        Vector3 foot = new Vector3(0, RoofY - 0.002f, cab - 0.05f), end = StickCam.Position + new Vector3(0, -0.022f, 0.012f), d = end - foot;
+        var y = d.Normalized(); var x = y.Cross(Vector3.Right).Normalized(); var z = x.Cross(y);
+        _stick.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.002f, BottomRadius = 0.002f, Height = d.Length(), RadialSegments = 8, Rings = 1 }, MaterialOverride = carbon, Transform = new Transform3D(new Basis(x, y, z), (foot + end) / 2), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        _stick.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.03f, 0.006f, 0.03f) }, MaterialOverride = carbon, Position = foot, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
     }
 
     // from the driver's seat the tint is light enough to see the track through
+    public void SetPaint(Color a, Color b, Color c, int scheme) { Paint.SetShaderParameter("col_a", a); Paint.SetShaderParameter("col_b", b); Paint.SetShaderParameter("col_c", c); Paint.SetShaderParameter("scheme", scheme); }
     public void ShowStick(bool on) { _stick.Visible = on; }
     public void SetOnBoard(bool on) { _onBoard = on; Glass(); }
     // tinted: dark, as on most shells; clear: the chassis and the cabin show through

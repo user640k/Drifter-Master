@@ -16,7 +16,9 @@ Open the `desktop` folder in Godot 4.6 (.NET edition) and press Play, or export 
 | Steer | A / D or arrows | left stick |
 | Reset to the start | R | Y |
 | Camera (pilot's stand, ceiling, on board, roof stick) | C | X |
-| Paint colour | P | |
+| Body (sedan, coupe, pickup) | T | |
+| Colour, second colour (12 each) | P, O | |
+| Livery (solid, bonnet, fade, flames, camo, streaks, hologram) | L | |
 | Shell on / off | B | |
 | Neon under the car (off, six colours) | G | |
 | Windows tinted / clear | V | |
@@ -36,6 +38,9 @@ Open the `desktop` folder in Godot 4.6 (.NET edition) and press Play, or export 
 - **Stick camera**: the same analog camera on a short carbon stick fixed to the roof, about 29 cm behind the rear bumper and 6 cm above the roof (19.5 cm off the floor, so it clears the 23 cm bridge), looking forward and a little down over the car. It is rigid to the body, so it leans and turns with the car; the stick shows only in this view.
 - **Sound** (`scripts/CarAudio.cs`, `tools/make_sounds.py`): cut from a reference recording of a 1/10 drift car on a P-tile drift track, the floor the game has (`tools/sound_src/reference.wav`, the sound of a video, used with permission for non-commercial use only). Mostly tyres: a broad roar that comes up as they slide or spin, a quieter texture for rolling. The motor's gliding whine is taken out of the recording and put back by the game, pitched by wheel speed: a tone gliding between about 0.9 and 1.6 kHz with a high whistle three times above it, set to the strength measured in a second sample (`N` switches it off). On top: the body shell buzzing on the chassis, tyres clicking over tile joints, a thud and clack into barriers. Everything is placed at the car and always heard from where the pilot stands, whichever camera is showing: the on-board and stick cameras carry no microphone. How it fades with distance is measured from the same video (a fixed camera, the car near and far): in a hall the car fades much less than outdoors. The recording carries its own room, so the game adds only a touch of echo. `M` mutes, `-` and `=` change the volume.
 - **Icon**: the blue sedan above "DriftMaster" in white, no background (`icon.png`, `icon.ico`, built by `tools/make_icon.py` from a render of the game's own car). It is the window and taskbar icon. After a Windows export, `python3 tools/stamp_icon.py build/win/DriftMaster.exe icon.png` writes it over Godot's icon inside the exe.
+- **Bodies**: sedan, coupe and pickup (`assets/*.glb`, exported from the web version), on the same chassis. The on-board and stick cameras move to each shell's cabin and roof.
+- **Paint** (`assets/paint.gdshader`): twelve colours and seven liveries drawn on the shell in its own space: solid, a second-colour bonnet, a fade from nose to tail, flames along the sides, camo, raked streaks, and a hologram chrome that shifts through the rainbow with the angle of view. Original artwork from noise shapes, no logos.
+- **Shells and handling**: each shell has its own mass and centre of gravity (`CarPhysics.SetBody`): the pickup is the heaviest and tallest, the coupe the lightest and lowest. The effect is real but small, as on a real car where the shell is about a tenth of the weight: in the same drift the pickup rolls about 12% more than the sedan and 20% more than the coupe and turns in a couple of milliseconds later; drift angle and speed hardly change.
 - **Car options** (from the web version; kept between runs in `user://settings.cfg`): the shell on or off (the bare chassis with its body posts), neon tubes under the car in six colours with their light on the floor, and tinted or clear windows.
 - **Bare room**: only the room and the track. A neon "Drift Master" sign with cable and socket is built (`Hall.BuildNeon`) but switched off for now.
 - **No engine splash**: the boot image is switched off in `project.godot` (black screen until the game appears).
@@ -47,4 +52,4 @@ Wall, foam, ceiling and board textures are from ambientCG.com (CC0 1.0): Painted
 
 ## Not in yet
 
-Menus, rivals, liveries (beyond plain colours), car setup, damage, other bodies and tracks.
+Menus, rivals, car setup, damage, the other three bodies, more tracks.
