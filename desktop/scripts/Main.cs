@@ -12,14 +12,14 @@ namespace DriftMaster {
     // lap timing
     double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
     // test hooks: --shot=file --frames=n --auto --cam=n --at=index
-    float[] _view6; string _shot; int _frames = 90, _frame; bool _auto; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
+    float[] _view6; string _shot; int _frames = 90, _frame; bool _auto, _autoDrift; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
     static readonly Color[] Paints = { new Color(0.09f, 0.094f, 0.106f), new Color(0.86f, 0.87f, 0.85f), new Color(0.72f, 0.05f, 0.06f), new Color(0.06f, 0.22f, 0.6f), new Color(0.95f, 0.72f, 0.05f), new Color(0.1f, 0.42f, 0.3f) };
 
     public override void _Ready() {
       int at = -1;
       foreach (var a in OS.GetCmdlineUserArgs()) {
         if (a.StartsWith("--shot=")) _shot = a.Substring(7); else if (a.StartsWith("--frames=")) _frames = int.Parse(a.Substring(9));
-        else if (a == "--auto") _auto = true; else if (a.StartsWith("--cam=")) _camMode = int.Parse(a.Substring(6)); else if (a.StartsWith("--at=")) at = int.Parse(a.Substring(5));
+        else if (a == "--auto") _auto = true; else if (a == "--drift") _auto = _autoDrift = true; else if (a.StartsWith("--cam=")) _camMode = int.Parse(a.Substring(6)); else if (a.StartsWith("--at=")) at = int.Parse(a.Substring(5));
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
@@ -83,7 +83,7 @@ namespace DriftMaster {
       _hud = L(new Vector2(24, 18), 22, Colors.White);
       _stats = L(new Vector2(24, 150), 15, new Color(0.75f, 0.9f, 1f)); _stats.Visible = false;
       _help = L(new Vector2(24, 0), 14, new Color(1, 1, 1, 0.8f)); _help.SetAnchorsPreset(Control.LayoutPreset.BottomLeft); _help.Position = new Vector2(24, -40);
-      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · M mute · - = volume · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
+      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · M mute · N motor sound · - = volume · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
       _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
       _pause = L(Vector2.Zero, 34, Colors.White); _pause.Text = "PAUSED\nEsc resume  ·  Q quit"; _pause.HorizontalAlignment = HorizontalAlignment.Center; _pause.VerticalAlignment = VerticalAlignment.Center; _pause.SetAnchorsPreset(Control.LayoutPreset.FullRect); _pause.Visible = false;
       if (_shot != null) _help.Visible = false;
@@ -101,6 +101,7 @@ namespace DriftMaster {
       else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; _view.Paint.AlbedoColor = Paints[_paintIdx]; }
       else if (key(Key.F2)) _sun.ShadowEnabled = !_sun.ShadowEnabled;
       else if (key(Key.M)) _audio.Muted = !_audio.Muted;
+      else if (key(Key.N)) _audio.Motor = !_audio.Motor;
       else if (key(Key.Minus)) _audio.Volume = Math.Max(0, _audio.Volume - 0.1f);
       else if (key(Key.Equal)) _audio.Volume = Math.Min(1, _audio.Volume + 0.1f);
       else if (key(Key.F3)) _stats.Visible = !_stats.Visible;
@@ -112,7 +113,7 @@ namespace DriftMaster {
       var inp = new CarInput();
       if (_auto) { // a simple driver for test shots: aim at the lane ahead, steady throttle
         int i = (_t.Idx + 22) % _t.N; double dx = _t.X[i] - _car.X, dz = _t.Z[i] - _car.Z, want = Math.Atan2(dx, dz), dh = want - _car.Hd; dh = Math.Atan2(Math.Sin(dh), Math.Cos(dh));
-        inp.Steer = Math.Clamp(dh * 1.6, -1, 1); inp.Thr = 0.34; return inp;
+        inp.Steer = Math.Clamp(dh * 1.6, -1, 1); inp.Thr = _autoDrift ? 1 : 0.34; inp.ThrDigital = _autoDrift; return inp; // --drift: as on a key, the assist holds a slide
       }
       bool up = Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up), dn = Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down);
       bool lf = Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left), rt = Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right);

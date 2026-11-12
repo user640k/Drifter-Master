@@ -2,13 +2,13 @@
 
 importer="wav"
 type="AudioStreamWAV"
-uid="uid://c3nsg3uj2tcpu"
-path="res://.godot/imported/scrub.wav-fdd0c8bc0b39015148f99d8537c16016.sample"
+uid="uid://difhg70x02hpe"
+path="res://.godot/imported/whine.wav-2676e9ae581f4d8669e2dd7baa3b8c50.sample"
 
 [deps]
 
-source_file="res://assets/snd/scrub.wav"
-dest_files=["res://.godot/imported/scrub.wav-fdd0c8bc0b39015148f99d8537c16016.sample"]
+source_file="res://assets/snd/whine.wav"
+dest_files=["res://.godot/imported/whine.wav-2676e9ae581f4d8669e2dd7baa3b8c50.sample"]
 
 [params]
 

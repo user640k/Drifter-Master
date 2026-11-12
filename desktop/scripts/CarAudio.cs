@@ -1,6 +1,7 @@
-// The car's sound. No motor whine: what you hear is the car on the floor and in the room.
-//  - roll, slide, scrub: the web version's first recorded loops with the motor taken out (tools/make_sounds.py);
-//    they come up with speed and with how hard the tyres are sliding, and barely change pitch
+// The car's sound, matched to a reference video of a 1/10 drift car on a polished floor in a big room
+// (tools/make_sounds.py): mostly the tyres, a broad roar that comes up as they slide, in a room that rings on.
+//  - roar, roll, hiss: noise shaped to the reference's spectrum: sliding, rolling, wheelspin
+//  - whine: the motor, a thin whistle that glides with wheel speed, well under the tyres as in the reference
 //  - shell: the thin body buzzing and ticking on the chassis, louder the more the car shakes and leans
 //  - tick: each hard tyre clicking over each tile joint (a 304.8 mm grid), so the patter speeds up with the car
 //  - hit: into a barrier, or landing
@@ -11,9 +12,9 @@ using System;
 
 namespace DriftMaster {
   public partial class CarAudio : Node3D {
-    AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit; AudioListener3D _ear;
+    AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit, _whine; float _gWhine; AudioListener3D _ear;
     float _gRoll, _gSlide, _gScrub, _gShell; bool _started; int _bus; readonly int[] _cellX = new int[4], _cellZ = new int[4]; bool _cells; double _tickWait; float _pendHit;
-    public float Volume = 0.8f; public bool Muted; public static string Solo; // test: hear one layer only
+    public float Volume = 0.8f; public bool Muted, Motor = true; // Motor: the whistle can be switched off (N) public static string Solo; // test: hear one layer only
     const float TileS = 0.3048f;
 
     static AudioStreamWav Load(string name, bool loop) {
@@ -27,13 +28,12 @@ namespace DriftMaster {
     }
 
     public override void _Ready() {
-      // the room: a 9 x 5 m hall with a tiled floor and bare walls. Not much absorbs, so there are clear early echoes and
-      // about three quarters of a second of tail
+      // the room, as it sounds in the reference: hard floor, bare walls, nothing soft. The sound hangs on for well over a second
       _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master");
-      AudioServer.AddBusEffect(_bus, new AudioEffectLowPassFilter { CutoffHz = 1900, Resonance = 0.6f }, 0); AudioServer.SetBusEffectEnabled(_bus, 0, false); // on only from inside the car
-      AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.5f, Damping = 0.32f, Spread = 0.9f, Hipass = 0.12f, PredelayMsec = 16, PredelayFeedback = 0.25f, Dry = 1f, Wet = 0.24f }, 1);
+      AudioServer.AddBusEffect(_bus, new AudioEffectLowPassFilter { CutoffHz = 2600, Resonance = 0.6f }, 0); AudioServer.SetBusEffectEnabled(_bus, 0, false); // on only from inside the car
+      AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.82f, Damping = 0.28f, Spread = 1f, Hipass = 0.15f, PredelayMsec = 24, PredelayFeedback = 0.3f, Dry = 0.85f, Wet = 0.4f }, 1);
       AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 2);
-      _roll = Player("roll", true); _slide = Player("slide", true); _scrub = Player("scrub", true); _shell = Player("shell", true);
+      _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true);
       _tick = Player("tick", false, 10); _hit = Player("hit", false, 3);
       _ear = new AudioListener3D(); AddChild(_ear); _ear.TopLevel = true; _ear.MakeCurrent();
     }
@@ -51,18 +51,21 @@ namespace DriftMaster {
       float sp = (float)Math.Sqrt(c.U * c.U + c.V * c.V), slide = (float)c.Slide, spin = (float)Math.Abs(c.W - c.U), on = paused || c.Air ? 0 : 1;
       float moving = Smooth(0.08f, 1.6f, sp);
       // how much the car is shaking: speed over the tiles, sliding, and the body rocking on its springs
-      float shake = Mathf.Clamp(0.12f * sp + 0.55f * slide + 5f * (float)Math.Abs(c.RollV) + 4f * (float)Math.Abs(c.PitchV) + 60f * (float)Math.Abs(c.HeaveV), 0, 1.4f);
+      float shake = Mathf.Clamp(0.1f * sp + 0.55f * slide + 5f * (float)Math.Abs(c.RollV) + 4f * (float)Math.Abs(c.PitchV) + 60f * (float)Math.Abs(c.HeaveV), 0, 1.4f);
       float k = 1 - Mathf.Exp(-dt / 0.07f);
-      _gRoll += (on * moving * (0.34f + 0.1f * Mathf.Min(sp / 4, 1)) * (1 - 0.5f * Mathf.Clamp(slide, 0, 1)) - _gRoll) * k;
-      _gSlide += (on * moving * Mathf.Clamp(slide * 1.1f, 0, 1) * 0.55f - _gSlide) * k;
-      _gScrub += (on * Mathf.Clamp(slide * 0.45f + spin * 0.07f, 0, 0.6f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
-      _gShell += (on * shake * (inside ? 0.75f : 0.4f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
-      if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; }
-      _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell);
+      float grind = Mathf.Clamp(slide * 0.9f + spin * 0.12f, 0, 1); // how hard the tyres are sliding or spinning
+      _gRoll += (on * moving * (0.3f + 0.08f * Mathf.Min(sp / 4, 1)) * (1 - 0.6f * grind) - _gRoll) * k;
+      _gSlide += (on * Smooth(0.02f, 0.6f, sp + spin) * grind * 0.8f - _gSlide) * k;
+      _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
+      // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
+      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.028f + 0.06f * (float)c.Thr) * (inside ? 0.5f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
+      _gShell += (on * shake * (inside ? 0.6f : 0.22f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
+      if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
+      _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((850 + 135 * wsp) / 1000f, 0.85f, 2.6f);
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)
       _roll.PitchScale = 0.86f + 0.07f * Mathf.Min(sp, 4.5f); _slide.PitchScale = 0.94f + 0.03f * Mathf.Min(sp, 4.5f); _scrub.PitchScale = 0.95f + 0.04f * Mathf.Min(spin, 5);
       _shell.PitchScale = 0.97f + 0.05f * Mathf.Min(shake, 1);
-      if (!_started) { _started = true; foreach (var p in new[] { _roll, _slide, _scrub, _shell }) p.Play((float)GD.RandRange(0.0, 3.0)); }
+      if (!_started) { _started = true; foreach (var p in new[] { _roll, _slide, _scrub, _shell, _whine }) p.Play((float)GD.RandRange(0.0, 3.0)); }
       // tile joints under each wheel
       _tickWait -= dt; double sh = Math.Sin(c.Hd), ch = Math.Cos(c.Hd); bool crossed = false;
       for (int i = 0; i < 4; i++) {

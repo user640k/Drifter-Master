@@ -2,21 +2,19 @@
 """Builds the desktop version's sounds into assets/snd (24 kHz mono WAV).
    usage: make_sounds.py <out dir>
 
-   The running sounds start from the web version's first recorded loops (tools/sound_src: a real RC drift car on a hard
-   floor, driving steadily, drifting, and the tyre-scrub band), with the motor taken out:
-     - the motor's whine is the narrow peaks in the spectrum; each peak is cut down to the level of the noise around it
-     - what is left (tyres, drivetrain rumble, the floor) is re-laid as a 4 second texture of overlapping grains, so
-       there is no 1.3 s loop to hear and nothing that rises and falls in pitch
-   The shell sounds are made here: a thin polycarbonate body is a drum. It has a few broad resonances and it buzzes and
-   ticks against its posts when the chassis shakes; the hard tyres click over every tile joint."""
+   The running sounds are matched to a reference video of a 1/10 drift car sliding on a polished floor in a big room.
+   Nothing of the recording itself is used, only what was measured from it (tools/sound_src/ref_*.npy):
+     - its average spectrum while the car is loud (sliding) and while it is quiet (rolling, coasting): a broad roar
+       centred near 500 Hz with lesser humps near 1.7, 2.3 and 3.9 kHz, almost nothing under 150 Hz or over 6 kHz
+     - how its loudness flutters: about 17% from one hundredth of a second to the next, part slow, part fast
+     - the motor: a thin whistle gliding between about 0.9 and 2.4 kHz with wheel speed (whine.wav, pitched in the game)
+   Noise is shaped to those spectra and given that flutter. The shell sounds are made here too: a thin polycarbonate
+   body is a drum, with a few broad resonances; it buzzes on its posts, and the hard tyres click over tile joints."""
 import sys, os, wave, numpy as np
-from scipy.signal import stft, istft, butter, sosfilt, lfilter
-from scipy.ndimage import median_filter
+from scipy.signal import butter, sosfilt, lfilter
+from scipy.ndimage import uniform_filter1d
 out = sys.argv[1]; here = os.path.dirname(os.path.abspath(__file__)); SR = 24000
 rng = np.random.default_rng(11)
-def load(name):
-    w = wave.open(os.path.join(here, 'sound_src', name + '.wav')); a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
-    assert w.getframerate() == SR; return a
 def save(name, a, peak=0.7):
     a = a / (np.abs(a).max() + 1e-9) * peak
     w = wave.open(os.path.join(out, name + '.wav'), 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((a * 32767).astype(np.int16).tobytes()); w.close()
@@ -26,21 +24,24 @@ def band(a, lo, hi, order=2):
     else: sos = butter(order, hi, 'lowpass', fs=SR, output='sos')
     return sosfilt(sos, a)
 
-def dewhine(a):
-    f, t, Z = stft(a, SR, nperseg=1024, noverlap=768); mag = np.abs(Z)
-    avg = mag.mean(axis=1); floor = median_filter(avg, 41, mode='nearest')          # the noise level round each frequency
-    gain = np.minimum(1, (floor * 1.15) / (avg + 1e-9))                               # peaks standing above it are the motor
-    _, y = istft(Z * gain[:, None], SR, nperseg=1024, noverlap=768); return y[:len(a)]
-def texture(a, secs=4.0, grain=0.14):
-    n = int(secs * SR); g = int(grain * SR); win = np.hanning(g); y = np.zeros(n + g); wsum = np.zeros(n + g)
-    for pos in range(0, n, g // 4):
-        s = rng.integers(0, len(a) - g); y[pos:pos + g] += a[s:s + g] * win * rng.uniform(0.8, 1.2); wsum[pos:pos + g] += win
-    y[:g] += y[n:n + g]; wsum[:g] += wsum[n:n + g]                                   # the tail wraps round: a seamless loop
-    return y[:n] / np.maximum(wsum[:n], 1e-3)
-
-save('roll', band(texture(dewhine(load('cruise'))), 90, 5200))
-save('slide', band(texture(dewhine(load('drift'))), 120, 7000))
-save('scrub', band(texture(dewhine(load('scrub'))), 900, 9000))
+ref_f = np.load(os.path.join(here, 'sound_src', 'ref_freq.npy'))
+def shaped(env_name, secs=4.0, lo=0, hi=1e9, flutter=0.17):
+    env = np.load(os.path.join(here, 'sound_src', env_name)); n = int(secs * SR)
+    X = np.fft.rfft(rng.normal(0, 1, n)); f = np.fft.rfftfreq(n, 1 / SR)
+    g = np.interp(f, ref_f, env); g[(f < max(lo, 60)) | (f > hi)] = 0            # the measured spectrum, laid on noise
+    y = np.fft.irfft(X * g, n)                                                    # periodic: loops without a seam
+    # flutter: the tyres letting go and biting. A slow part (1-4 Hz) and a quick part (16-50 Hz), wrapped so it loops too
+    def wander(f0, f1):
+        M = np.fft.rfft(rng.normal(0, 1, n)); mf = np.fft.rfftfreq(n, 1 / SR); M[(mf < f0) | (mf > f1)] = 0; m = np.fft.irfft(M, n); return m / m.std()
+    mod = 1 + flutter * (0.62 * wander(1, 4) + 0.5 * wander(8, 16) + 0.6 * wander(16, 50))
+    return y * np.clip(mod, 0.3, 2)
+save('roar', shaped('ref_loud.npy'))                         # sliding: the whole loud spectrum
+save('roll', shaped('ref_quiet.npy', flutter=0.1))           # rolling and coasting
+save('hiss', shaped('ref_loud.npy', lo=2000, flutter=0.22))  # wheelspin: the top of it
+# the motor's whistle: one second at 1 kHz with a little second harmonic and a slight waver; the game sets its pitch
+t = np.arange(SR) / SR; wav = np.cumsum(rng.normal(0, 1, SR)); wav = uniform_filter1d(wav - np.linspace(wav[0], wav[-1], SR), 400); wav = wav / (np.abs(wav).max() + 1e-9)
+ph = 2 * np.pi * 1000 * t + 0.6 * wav
+save('whine', np.sin(ph) + 0.28 * np.sin(2 * ph) + 0.1 * np.sin(3 * ph), 0.5)
 
 # ---- the shell: resonances of a 1/10 polycarbonate body (hollow, papery, a little boxy)
 MODES = [(172, 9), (248, 11), (395, 12), (610, 14), (905, 12), (1340, 10), (2100, 8)]
