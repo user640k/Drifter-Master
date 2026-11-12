@@ -22,4 +22,6 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     z.write(root / 'tools' / 'vendor' / 'three.r128.min.js', 'three.min.js')
     z.write(root / 'tools' / 'vendor' / 'THREE-LICENSE.txt', 'THREE-LICENSE.txt')
     z.write(root / 'tools' / 'vendor' / 'Michroma-OFL.txt', 'Michroma-OFL.txt')
+    z.write(root / 'tools' / 'vendor' / 'BarlowCondensed-OFL.txt', 'BarlowCondensed-OFL.txt')
+    z.write(root / 'tools' / 'vendor' / 'BeVietnamPro-OFL.txt', 'BeVietnamPro-OFL.txt')
 print('wrote', out.relative_to(root), out.stat().st_size // 1024, 'KB')
