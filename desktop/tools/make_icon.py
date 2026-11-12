@@ -19,5 +19,7 @@ while True:
     size -= 2
 d.text(((N - (bb[2] - bb[0])) / 2 - bb[0], 760 - bb[1]), 'DriftMaster', font=f, fill=(255, 255, 255, 255))
 out.save(os.path.join(proj, 'icon.png')); out.resize((256, 256), Image.LANCZOS).save(os.path.join(proj, 'icon_256.png'))
-out.save(os.path.join(proj, 'icon.ico'), sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
+# plain bitmaps inside the .ico, not PNG: Windows Explorer and the window icon loader only take PNG for the 256 px
+# entry, and showed no icon at all when the small ones were PNG too
+out.save(os.path.join(proj, 'icon.ico'), sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (24, 24), (16, 16)], bitmap_format='bmp')
 print('ok')
