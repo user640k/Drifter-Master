@@ -14,7 +14,7 @@ recoloured through a paint mask. Mirrors become their own parts (they break off)
 The asset also carries `meta`: measured points the game fits things to (wheelbase, width, roof, windscreen, mirrors, lamps,
 plate), so nothing is placed by hand.
 """
-import base64, io, json, pathlib, re, sys, collections
+import base64, io, json, os, pathlib, re, sys, collections
 import bpy, bmesh
 import numpy as np
 from PIL import Image, ImageFilter
@@ -176,10 +176,30 @@ if C.get('atlas'):
     Wd = 2048; ims = [(m, im.resize((Wd, int(Wd * im.size[1] / im.size[0])), Image.LANCZOS)) for m, im in ims]
     H = sum(im.size[1] for _, im in ims); big = Image.new('RGB', (Wd, H)); y = 0
     for m, im in ims: big.paste(im, (0, y)); atlas_band[m] = (y / H, im.size[1] / H); y += im.size[1]
-    A = np.asarray(big).astype(np.float32) / 255; mx, mn = A.max(2), A.min(2); sat = (mx - mn) / np.maximum(mx, 1e-3)
-    paintm = (A[..., 2] > A[..., 0] + 0.05) & (A[..., 1] > A[..., 0] + 0.03) & (sat > 0.16) & (mx > 0.25)   # the teal paint
-    mask = Image.fromarray((paintm * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(1.2))
-    shade = big.convert('L')
+    # clean it up: no rust, grime or dents, like a freshly painted RC body. Each pixel is sorted into teal paint, white
+    # paint, or trim (dark, chrome, glass, lamps) by its colour; rust and grime are filled from the nearest clean pixel,
+    # specks are smoothed out of the class map, and the paint is laid back flat (lighting does the shading)
+    from scipy import ndimage
+    A = np.asarray(big).astype(np.float32) / 255; mx, mn = A.max(2), A.min(2); sat = (mx - mn) / np.maximum(mx, 1e-3); R_, G_, B_ = A[..., 0], A[..., 1], A[..., 2]
+    teal = (B_ > R_ + 0.05) & (G_ > R_ + 0.03) & (sat > 0.12) & (mx > 0.22)
+    white = (mx > 0.45) & (sat < 0.22) & ~teal & (R_ - B_ < 0.12)
+    dark = ndimage.uniform_filter((mx < 0.2).astype(np.float32), 15) > 0.6                 # coherent black trim
+    grey = ndimage.uniform_filter(((sat < 0.08) & (mx > 0.22) & (mx < 0.5)).astype(np.float32), 15) > 0.55  # chrome / grey trim
+    cls = np.full(mx.shape, -1, np.int8); cls[teal] = 0; cls[white & ~grey] = 1; cls[(dark & (mx < 0.3)) | (grey & (sat < 0.1))] = 3
+    unknown = cls < 0                                                                       # rust, grime, stains
+    _, (iy, ix) = ndimage.distance_transform_edt(unknown, return_indices=True)
+    cls = cls[iy, ix]; clean = A[iy, ix]                                                   # -> nearest clean pixel
+    sm = np.stack([ndimage.uniform_filter((cls == k).astype(np.float32), 11) for k in (0, 1, 3)], -1)
+    cls = np.array([0, 1, 3], np.int8)[sm.argmax(-1)]
+    paintm = (cls == 0) | (cls == 1)   # teal and the white primer showing through where it flaked: all one paint now
+    cls[cls == 1] = 0
+    out = clean.copy(); cream = np.array([0.91, 0.90, 0.86], np.float32)
+    out[cls == 1] = cream; out[cls == 0] = np.array([0.30, 0.66, 0.64], np.float32)
+    trim = cls == 3; tl = ndimage.median_filter(clean, size=(5, 5, 1)); out[trim] = tl[trim]   # trim: specks smoothed
+    big = Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8))
+    mask = Image.fromarray((paintm * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.0))
+    shade = Image.new('L', big.size, 225)                                                   # flat paint: lighting shades it
+    if os.environ.get('CLEAN_CHECK'): big.resize((1024, int(1024 * big.size[1] / big.size[0]))).save(os.environ['CLEAN_CHECK'])
     def jpg(im, w, q):
         b = io.BytesIO(); im.resize((w, int(w * im.size[1] / im.size[0])), Image.LANCZOS).save(b, 'JPEG', quality=q); return base64.b64encode(b.getvalue()).decode()
     tex = {'dif': jpg(big, 1024, 82), 'paint': jpg(Image.merge('RGB', (shade, mask, Image.new('L', big.size, 0))), 1024, 86)}
