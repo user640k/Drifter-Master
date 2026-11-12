@@ -50,7 +50,7 @@ save('hiss', band(roar, 2000, None))                         # wheelspin: the to
 # the motor's whistle: one second at 1 kHz with a little second harmonic and a slight waver; the game sets its pitch
 t = np.arange(SR) / SR; wav = np.cumsum(rng.normal(0, 1, SR)); wav = uniform_filter1d(wav - np.linspace(wav[0], wav[-1], SR), 400); wav = wav / (np.abs(wav).max() + 1e-9)
 ph = 2 * np.pi * 1000 * t + 0.6 * wav
-save('whine', np.sin(ph) + 0.28 * np.sin(2 * ph) + 0.1 * np.sin(3 * ph), 0.5)
+save('whine', np.sin(ph) + 0.3 * np.sin(2 * ph) + 0.55 * np.sin(3 * ph) + 0.12 * np.sin(4 * ph), 0.5)  # the third harmonic is the high whistle
 
 # ---- the shell: resonances of a 1/10 polycarbonate body (hollow, papery, a little boxy)
 MODES = [(172, 9), (248, 11), (395, 12), (610, 14), (905, 12), (1340, 10), (2100, 8)]

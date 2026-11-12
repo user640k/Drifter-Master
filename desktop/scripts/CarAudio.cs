@@ -60,10 +60,10 @@ namespace DriftMaster {
       _gSlide += (on * Smooth(0.02f, 0.6f, sp + spin) * grind * 0.8f - _gSlide) * k;
       _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
       // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
-      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.028f + 0.06f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
+      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.048f + 0.11f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
       _gShell += (on * shake * (inside ? 0.6f : 0.22f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
       if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
-      _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((850 + 135 * wsp) / 1000f, 0.85f, 2.6f);
+      _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((800 + 90 * wsp) / 1000f, 0.8f, 2.2f);
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)
       _roll.PitchScale = 0.86f + 0.07f * Mathf.Min(sp, 4.5f); _slide.PitchScale = 0.94f + 0.03f * Mathf.Min(sp, 4.5f); _scrub.PitchScale = 0.95f + 0.04f * Mathf.Min(spin, 5);
       _shell.PitchScale = 0.97f + 0.05f * Mathf.Min(shake, 1);
