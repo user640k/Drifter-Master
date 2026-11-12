@@ -8,7 +8,7 @@ namespace DriftMaster {
     MeshInstance3D _blob; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
     public StandardMaterial3D Paint; StandardMaterial3D _glass;
     public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
-    public static float FpvX = 0, FpvY = 0.1f, FpvZ = -0.016f, FpvTilt = 6f;
+    public static float FpvX = 0, FpvY = 0.102f, FpvZ = 0.006f, FpvTilt = 5f;
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
 
     public override void _Ready() {

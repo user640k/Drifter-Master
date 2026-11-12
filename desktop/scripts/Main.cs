@@ -7,6 +7,7 @@ using System;
 namespace DriftMaster {
   public partial class Main : Node3D {
     Track _t; CarPhysics _car; CarView _view; Camera3D _cam; DirectionalLight3D _sun;
+    SubViewport _fpvView; Camera3D _fpvCam; Control _fpvScreen; // the on-board picture: its own 720 x 480 frame, shown as 4:3
     Label _hud, _stats, _help, _pause; double _acc; int _camMode; Vector3 _camPos, _camLook; bool _camSnap = true;
     // lap timing
     double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
@@ -31,6 +32,7 @@ namespace DriftMaster {
       _view.Paint.AlbedoColor = Paints[_paintIdx % Paints.Length];
       if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
       _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
+      BuildOnBoard();
       BuildHud();
       _view.Pose(_car, _t); UpdateCamera(0);
     }
@@ -51,6 +53,25 @@ namespace DriftMaster {
       // and its reflection flickers on and off
       var probe = new ReflectionProbe { Size = new Vector3((float)_t.HallX * 2 + 0.5f, Hall.CeilY + 0.5f, (float)_t.HallZ * 2 + 0.5f), Position = new Vector3(0, Hall.CeilY / 2, 0), BoxProjection = true, Interior = true, UpdateMode = ReflectionProbe.UpdateModeEnum.Once, AmbientMode = ReflectionProbe.AmbientModeEnum.Disabled, EnableShadows = false, Intensity = 0.3f };
       AddChild(probe);
+    }
+
+    // The on-board camera is an analog FPV camera (the Tiny Whoop Pinch, as in the 640KFPV simulator): it draws the room
+    // into a 720 x 480 NTSC frame, shown stretched to 4:3 with black bars at the sides. 115 degrees across the diagonal:
+    // 75 degrees top to bottom.
+    void BuildOnBoard() {
+      _fpvView = new SubViewport { Size = new Vector2I(720, 480), RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled, Msaa3D = Viewport.Msaa.Msaa2X }; AddChild(_fpvView);
+      _fpvCam = new Camera3D { Near = 0.004f, Far = 25, Fov = 75 }; _fpvView.AddChild(_fpvCam); _fpvCam.MakeCurrent();
+      var layer = new CanvasLayer { Layer = 0 }; AddChild(layer);
+      var bg = new ColorRect { Color = Colors.Black }; bg.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+      var box = new AspectRatioContainer { Ratio = 4f / 3f }; box.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+      var pic = new TextureRect { Texture = _fpvView.GetTexture(), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, TextureFilter = CanvasItem.TextureFilterEnum.Linear };
+      pic.Material = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/analog.gdshader") };
+      box.AddChild(pic); bg.AddChild(box); layer.AddChild(bg); _fpvScreen = bg; bg.Visible = false;
+    }
+    void OnBoard(bool on) {
+      if (_fpvScreen.Visible == on) return;
+      _fpvScreen.Visible = on; _fpvView.RenderTargetUpdateMode = on ? SubViewport.UpdateMode.Always : SubViewport.UpdateMode.Disabled;
+      GetViewport().Disable3D = on; _view.SetOnBoard(on); // the window itself draws no 3D while on board: only the small frame is rendered
     }
 
     void BuildHud() {
@@ -120,14 +141,14 @@ namespace DriftMaster {
 
     void UpdateCamera(float dt) {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
-      if (_camMode != 3) { _view.SetOnBoard(false); _cam.Near = 0.02f; _cam.Far = 40; }
+      if (_camMode != 3) OnBoard(false);
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
       if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
         pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0); fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(0.75f / pos.DistanceTo(look))), 14, 40);
       } else if (_camMode == 2) { pos = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); look = new Vector3(0, 0, 0); fov = 100; } // from the ceiling
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
-        _view.SetOnBoard(true); _cam.Near = 0.004f; _cam.Far = 25; _cam.Fov = 82; _cam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
+        OnBoard(true); _fpvCam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
       } else { // chase: behind the car, between where it points and where it is going
         double sp = Math.Sqrt(_car.Vx * _car.Vx + _car.Vz * _car.Vz), ang = _car.Hd;
         if (sp > 0.8) { double va = Math.Atan2(_car.Vx, _car.Vz), d = va - ang; d = Math.Atan2(Math.Sin(d), Math.Cos(d)); if (Math.Abs(d) < 2.2) ang += d * 0.55; }
