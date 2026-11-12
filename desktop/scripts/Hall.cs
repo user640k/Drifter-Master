@@ -57,7 +57,7 @@ namespace DriftMaster {
       BuildDeck(root, t, floorMat);
       BuildBarriers(root, t);
       BuildStartLine(root, t);
-      BuildNeon(root, t);
+      // BuildNeon(root, t); // the neon sign is switched off for now
       return root;
     }
 

@@ -46,7 +46,9 @@ namespace DriftMaster {
       _sun.RotationDegrees = new Vector3(-78, 24, 0); AddChild(_sun);
       foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
       // one probe for the whole room: the glossy tiles mirror the ceiling lights
-      var probe = new ReflectionProbe { Size = new Vector3((float)_t.HallX * 2, Hall.CeilY, (float)_t.HallZ * 2), Position = new Vector3(0, Hall.CeilY / 2, 0), BoxProjection = true, Interior = true, UpdateMode = ReflectionProbe.UpdateModeEnum.Once, AmbientMode = ReflectionProbe.AmbientModeEnum.Disabled, EnableShadows = false, Intensity = 0.45f };
+      // the box reaches a little past the floor, walls and ceiling: a surface lying exactly on the box's face is half in, half out,
+      // and its reflection flickers on and off
+      var probe = new ReflectionProbe { Size = new Vector3((float)_t.HallX * 2 + 0.5f, Hall.CeilY + 0.5f, (float)_t.HallZ * 2 + 0.5f), Position = new Vector3(0, Hall.CeilY / 2, 0), BoxProjection = true, Interior = true, UpdateMode = ReflectionProbe.UpdateModeEnum.Once, AmbientMode = ReflectionProbe.AmbientModeEnum.Disabled, EnableShadows = false, Intensity = 0.3f };
       AddChild(probe);
     }
 
