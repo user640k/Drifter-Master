@@ -907,8 +907,6 @@ PARTS.SCHEMES = [
   { key: 'fade', name: 'FADE', id: 2, preset: ['#b8e02a', '#1f5fd6', '#ff3fa0'] },        // lime into blue, brush streaks
   { key: 'flames', name: 'FLAMES', id: 3, preset: ['#4b23a8', '#a8d83a', '#141416'] },    // purple with lime flames
   { key: 'camo', name: 'CAMO', id: 4, preset: ['#1a1b1e', '#5d6168', '#18c2b0'] },        // digital camo, teal accent
-  { key: 'graffiti', name: 'GRAFFITI', id: 5, preset: ['#f2f0ea', '#141416', '#d8261c'] }, // ink strokes and splatter
-  { key: 'waves', name: 'WAVES', id: 6, preset: ['#f2f0ea', '#141416', '#d8261c'] },      // white, black waves, red sun
 ];
 PARTS.SCHEME_ALIAS = { twotone: 'split', sweep: 'fade', stripes: 'flames', roof: 'camo' }; // older saved looks
 const schemeOf = k => PARTS.SCHEMES.find(s => s.key === (PARTS.SCHEME_ALIAS[k] || k)) || PARTS.SCHEMES[0];
@@ -962,16 +960,6 @@ uniform vec2 uTone; uniform vec2 uSweep; uniform vec2 uStripe; uniform float uRo
   else if (uScheme < 4.5 && uScheme > 3.5) { // CAMO: digital, square pixels in three tones, a few accent patches
     vec2 q = floor(p2 * 230.0); float n = lvN(q * 0.12) * 0.6 + lvN(q * 0.31 + 2.0) * 0.4;
     c = n < 0.42 ? uA : n < 0.57 ? mix(uA, uB, 0.55) : uB; if (lvN(q * 0.13 + 7.0) * lvN(q * 0.05 + 3.0) > 0.5) c = uC; }
-  else if (uScheme < 5.5 && uScheme > 4.5) { // GRAFFITI: big ink strokes over the main colour, an accent stroke, splatter
-    vec2 q = vec2(z * 16.0 + y * 9.0, y * 24.0 - z * 5.0);
-    if (abs(lvN(q * vec2(0.6, 1.0)) - 0.5) < 0.055) c = uB;
-    if (abs(lvN(q * 0.45 + 4.0) - 0.5) < 0.03) c = uC;
-    vec2 g = floor(p2 * 520.0); if (lvH(g) > 0.985 && lvN(p2 * 36.0) > 0.62) c = uB; }
-  else if (uScheme > 5.5) { // WAVES: rolling waves up the sides with foam lines, a sun on the doors
-    float wv = belt * 0.55 + 0.008 * sin(z * 120.0) + 0.004 * sin(z * 270.0 + 1.0);
-    if (side) { vec2 sc = vec2(z - 0.005, y - belt * 0.82); if (length(sc) < 0.022) c = uC;
-      if (y < wv) { c = uB; if (abs(y - wv + 0.007 + 0.003 * sin(z * 210.0)) < 0.0011 || abs(y - wv + 0.016 + 0.003 * sin(z * 160.0 + 2.0)) < 0.0011) c = uA; } }
-    else if (u < 0.22 + 0.04 * sin(ax * 140.0)) c = uB; }
   { float d = dmgNear(vOP); if (d < 1.0) { float n = dmgHash(floor(vOP.xz * vec2(2600.0, 340.0)) + floor(vOP.y * 2600.0)); float sc = step(0.62 + 0.38 * d, n); c = mix(c * (0.78 + 0.22 * d), vec3(0.74, 0.74, 0.72), sc * 0.75); } }
   ${zuk ? '{ vec4 pm = texture2D(uPaint, vUv); diffuseColor.rgb = mix(diffuseColor.rgb, c * (0.25 + 0.85 * pm.r), pm.g); }' : 'diffuseColor.rgb = c;'} }`);
   };

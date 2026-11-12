@@ -37,8 +37,6 @@ The paint is a satin finish like painted polycarbonate in the club photos: soft,
 - FADE: the main colour fading into the second front to back, with raked brush strokes in the accent (lime into blue with pink).
 - FLAMES: flames licking back from the nose along the sides and over the bonnet, with a dark outline (purple with lime).
 - CAMO: digital camo in square pixels, three tones and a few accent flecks (black and grey with teal).
-- GRAFFITI: big ink strokes, an accent stroke and splatter (white, black, red).
-- WAVES: rolling waves up the sides with foam lines and a sun on the doors (white, black, red).
 All original artwork, no real sponsors. They are drawn per pixel from each body's own measurements (length, shoulder line, roof, width), so every livery sits the same way on all six bodies, the wide kit's fenders and the mirrors included, and dents and scuffs show through them. The rival gets a random livery and body each race.
 
 ## Real-world specification
