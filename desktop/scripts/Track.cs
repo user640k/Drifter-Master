@@ -47,6 +47,22 @@ namespace DriftMaster {
     }
     public double GroundAt(double x, double z) => GroundAt(x, z, Idx);
 
+    // small flaws in the floor, felt through the springs: each tile sits a hair high or low, the joints are fine
+    // grooves, the slab under them undulates, and there are a few shallow humps and dips
+    const double TileS = 0.3048, Joint = 0.0004, JointW = 0.004, StepH = 0.00015, Und = 0.0008, Wl = 2.1;
+    static readonly double[][] Patches = MakePatches();
+    static double[][] MakePatches() { var r = new Random(41); var p = new double[9][]; for (int i = 0; i < 9; i++) p[i] = new[] { -4.3 + r.NextDouble() * 8.6, -2.3 + r.NextDouble() * 4.6, 0.08 + r.NextDouble() * 0.14, (r.NextDouble() < 0.5 ? -1 : 1) * (0.0005 + r.NextDouble() * 0.0007) }; return p; }
+    static double Hash2(int i, int j) { unchecked { int h = i * 374761393 + j * 668265263 + 41 * 1442695041; h = (h ^ (int)((uint)h >> 13)) * 1274126177; return (uint)(h ^ (int)((uint)h >> 16)) / 4294967296.0; } }
+    public static double MicroH(double x, double z) {
+      double u = x / TileS, w = z / TileS; int iu = (int)Math.Floor(u), iw = (int)Math.Floor(w);
+      double h = (Hash2(iu, iw) - 0.5) * 2 * StepH;
+      double du = Math.Min(u - iu, iu + 1 - u) * TileS, dw = Math.Min(w - iw, iw + 1 - w) * TileS, dj = Math.Min(du, dw), hw = JointW / 2;
+      if (dj < hw) h -= Joint * (0.5 + 0.5 * Math.Cos(Math.PI * dj / hw));
+      double k = 2 * Math.PI / Wl; h += Und * (0.6 * Math.Sin(x * k + 1.3) * Math.Sin(z * k / 1.3 + 0.4) + 0.4 * Math.Sin((x + z) * k / 0.7));
+      foreach (var p in Patches) { double d2 = ((x - p[0]) * (x - p[0]) + (z - p[1]) * (z - p[1])) / (p[2] * p[2]); if (d2 < 4) h += p[3] * Math.Exp(-d2 * 2); }
+      return h;
+    }
+
     // contacts for one of the car's two circles: (nx, nz) points back into free space, pen is the overlap
     public void ContactsFor(double cx, double cz, List<(double nx, double nz, double pen)> hits) {
       int i = NearestT(cx, cz, Idx); Idx = i;

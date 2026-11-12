@@ -41,7 +41,7 @@ namespace DriftMaster {
       };
       AddChild(new WorldEnvironment { Environment = env });
       // the tube lights overhead as one soft downward light with a shadow, plus two fills so the walls fall off
-      _sun = new DirectionalLight3D { LightEnergy = 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.5f, ShadowOpacity = 0.85f };
+      _sun = new DirectionalLight3D { LightEnergy = 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.5f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
       _sun.RotationDegrees = new Vector3(-78, 24, 0); AddChild(_sun);
       foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
       // one probe for the whole room: the glossy tiles mirror the ceiling lights

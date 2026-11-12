@@ -18,17 +18,19 @@ namespace DriftMaster {
       var mi = new MeshInstance3D { Mesh = new BoxMesh { Size = size }, Position = pos, MaterialOverride = mat };
       mi.CastShadow = shadow ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off; parent.AddChild(mi); return mi;
     }
-    public static StandardMaterial3D FloorMat() {
-      var m = Mat("ptile_albedo.jpg", null, 1f);
-      m.RoughnessTexture = GD.Load<Texture2D>("res://assets/tex/ptile_rough.jpg"); m.RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Red;
-      m.Uv1Triplanar = true; m.Uv1WorldTriplanar = true; m.Uv1Scale = Vector3.One / Tile; // tiles line up everywhere: floor, slopes and bridge
+    public static ShaderMaterial FloorMat(Track t) {
+      var m = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/floor.gdshader") };
+      Texture2D tx(string f) => GD.Load<Texture2D>("res://assets/tex/" + f);
+      m.SetShaderParameter("tile_albedo", tx("ptile_albedo.jpg")); m.SetShaderParameter("tile_rough", tx("ptile_rough.jpg"));
+      m.SetShaderParameter("wear", tx("floor_wear.png")); m.SetShaderParameter("wear_rough", tx("floor_wear_rough.jpg"));
+      m.SetShaderParameter("hall_half", new Vector2((float)t.HallX, (float)t.HallZ)); m.SetShaderParameter("tile_size", Tile);
       return m;
     }
 
     public static Node3D Build(Track t) {
       var root = new Node3D { Name = "Hall" };
       float hx = (float)t.HallX, hz = (float)t.HallZ;
-      var floorMat = FloorMat();
+      var floorMat = FloorMat(t);
       var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2) }, MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(floor);
 
       // walls: painted plaster, a dark skirting board, and a grey band at driver height

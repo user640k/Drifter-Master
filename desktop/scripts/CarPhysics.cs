@@ -32,7 +32,7 @@ namespace DriftMaster {
     public const double WEIGHTREAR = 0.56, STEERMAX = 1.22, SERVO = 0.06;
 
     public double X, Z, Hd, U, V, Rr, W, Vx, Vz, Steer, Thr, GyroOut, Beta;
-    public double Roll, RollV, Pitch, PitchV, Ax, Ay, Y, Vy, Heave, HeaveV;
+    public double Roll, RollV, Pitch, PitchV, Ax, Ay, Y, Vy, Heave, HeaveV, RoadR, RoadP, RoadH;
     public bool Air, Reversing, Braking, Spinning;
     public double RevHold, Spin, SpinF, AlphaF, AlphaR, Slide, RearSlip, GripF, GripR;
     public readonly double[] Loads = new double[4];
@@ -43,7 +43,7 @@ namespace DriftMaster {
 
     public void Place(double x, double z, double h) {
       X = x; Z = z; Hd = h; U = V = Rr = W = Vx = Vz = Steer = Thr = GyroOut = Beta = 0;
-      Roll = RollV = Pitch = PitchV = Ax = Ay = Vy = Heave = HeaveV = 0; Air = Reversing = Braking = Spinning = false;
+      Roll = RollV = Pitch = PitchV = Ax = Ay = Vy = Heave = HeaveV = RoadR = RoadP = RoadH = 0; Air = Reversing = Braking = Spinning = false;
       RevHold = Spin = SpinF = AlphaF = AlphaR = Slide = RearSlip = 0;
       if (T != null) { T.Idx = T.NearestT(x, z, -1); Y = T.GroundAt(x, z); } else Y = 0;
     }
@@ -139,9 +139,16 @@ namespace DriftMaster {
 
       // suspension: roll, pitch and heave as damped springs driven by the chassis accelerations
       double Cr = 2 * ZETA * Math.Sqrt(Kr * IXX) * cMul, Cp = 2 * ZETA * Math.Sqrt(Kp * IYY) * cMul;
-      { double Kh = 1600 * kMul, Ch = 2 * ZETA * Math.Sqrt(Kh * m) * cMul; HeaveV += ((-Kh * Heave - Ch * HeaveV) / m) * dt; Heave += HeaveV * dt; }
-      RollV += ((m * Ay * (H - HRC) - Kr * Roll - Cr * RollV) / IXX) * dt; Roll += RollV * dt;
-      PitchV += ((m * Ax * (H - HPC) - Kp * Pitch - Cp * PitchV) / IYY) * dt; Pitch += PitchV * dt;
+      // the floor under each wheel (tile joints and steps, undulation, humps): the springs follow it
+      double roadRV, roadPV, roadHV;
+      { double sh0 = Math.Sin(Hd), ch0 = Math.Cos(Hd), hw = TW / 2;
+        double At(double dd, double sdd) => Track.MicroH(X + sh0 * dd + ch0 * sdd * hw, Z + ch0 * dd - sh0 * sdd * hw);
+        double fl = At(a, 1), fr = At(a, -1), rl = At(-b, 1), rrr = At(-b, -1);
+        double rR = ((fl + rl) - (fr + rrr)) / 2 / TW, rP = ((fl + fr) - (rl + rrr)) / 2 / L, rH = (fl + fr + rl + rrr) / 4;
+        roadRV = (rR - RoadR) / dt; roadPV = (rP - RoadP) / dt; roadHV = (rH - RoadH) / dt; RoadR = rR; RoadP = rP; RoadH = rH;
+        double Kh = 1600 * kMul, Ch = 2 * ZETA * Math.Sqrt(Kh * m) * cMul; HeaveV += ((-Kh * (Heave - rH) - Ch * (HeaveV - roadHV)) / m) * dt; Heave += HeaveV * dt; }
+      RollV += ((m * Ay * (H - HRC) - Kr * (Roll - RoadR) - Cr * (RollV - roadRV)) / IXX) * dt; Roll += RollV * dt;
+      PitchV += ((m * Ax * (H - HPC) - Kp * (Pitch - RoadP) - Cp * (PitchV - roadPV)) / IYY) * dt; Pitch += PitchV * dt;
 
       // pose in the world
       Hd += r * dt;
