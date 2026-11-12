@@ -15,6 +15,13 @@ Arrows/WASD drive (hold Down at a stop to reverse), C camera, G car setup, T tel
 ## RC transmitter
 A real RC transmitter works as a controller when it shows up on the computer as a USB joystick (many have a USB / simulator port, or use a USB sim dongle). Its wheel and trigger are axes whose order and range differ by make, so calibrate it once: OPTIONS › TRANSMITTER › CALIBRATE, then follow five steps (let go; wheel full left; full right; trigger full throttle; full brake). Each step finishes when you hold the input steady for a moment, so transmitters with no buttons work. The calibration is saved per device; after that the wheel steers and the trigger throttles and brakes proportionally. Use the keyboard for menus (Esc pause, C camera, R reset).
 
+## Phones and tablets
+On a touch screen the game fills the screen sideways (a "turn your phone sideways" notice shows in portrait) and on-screen controls appear while you drive:
+- Left thumb: STEER, an analog pad. Steering follows how far you slide from where your thumb first touched (with a little expo for fine control near the centre); let go and it centres.
+- Right thumb: GAS, how high your thumb is on the pad sets the throttle (a light touch already rolls on), and BRAKE beside it (hold at a stop to reverse). Steer and gas work at the same time (multi-touch).
+- Top right: CAM, RESET, full screen (and landscape lock where the browser allows it) and pause.
+Menus work by tapping; tapping an option that is already selected changes it. Phones start at a lower render resolution (70 %) and adapt from there. OPTIONS > TOUCH CONTROLS: AUTO (on touch screens only), ON or OFF. Steering by tilting the phone is planned.
+
 ## Gamepad
 Any controller the browser sees with the standard layout (Xbox, PlayStation, most USB pads). Press a button once after plugging in so the browser picks it up.
 Left stick steer, RT/R2 throttle, LT/L2 brake (hold at a stop to reverse), A start, Y camera, X reset, View/Share setup (d-pad to change, B to close), LB telemetry Menu/Options pause menu. Barrier hits rumble.
