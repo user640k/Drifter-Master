@@ -21,6 +21,7 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     z.writestr('index.html', doc)
     z.write(root / 'tools' / 'vendor' / 'three.r128.min.js', 'three.min.js')
     z.write(root / 'tools' / 'vendor' / 'THREE-LICENSE.txt', 'THREE-LICENSE.txt')
+    z.write(root / 'audio' / 'off-road.mp3', 'audio/off-road.mp3')  # the music (loaded when the menu is idle or the race starts)
     z.write(root / 'tools' / 'vendor' / 'Michroma-OFL.txt', 'Michroma-OFL.txt')
     z.write(root / 'tools' / 'vendor' / 'BarlowCondensed-OFL.txt', 'BarlowCondensed-OFL.txt')
     z.write(root / 'tools' / 'vendor' / 'BeVietnamPro-OFL.txt', 'BeVietnamPro-OFL.txt')
