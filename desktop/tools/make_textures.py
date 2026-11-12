@@ -146,7 +146,7 @@ Image.fromarray(((0.5 + ro).clip(0, 1) * 255).astype(np.uint8)).save(f'{out}/flo
 
 # ---- neon sign "Drift Master": glass tube lettering in a single-stroke script (Sacramento, SIL OFL), "Drift" in pink and
 # "Master" in ice blue. neon_tube.png is the lit tube (white-hot down the middle, colour at the glass, a tight halo);
-# neon_glow.jpg is the light it throws on the wall behind, added on top of the wall.
+# neon_glow.png is the wash of colour it throws on the light wall behind (colour + how strongly it tints).
 from PIL import ImageFont
 NW, NH = 2048, 640
 font = ImageFont.truetype(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts', 'Sacramento-Regular.ttf'), 372)
@@ -155,17 +155,18 @@ def word_mask(txt_all, part):
     ox, oy = (NW - (bb[2] - bb[0])) / 2 - bb[0], (NH - (bb[3] - bb[1])) / 2 - bb[1]
     pre = txt_all[:txt_all.index(part)]; d.text((ox + d.textlength(pre, font=font), oy), part, font=font, fill=255)
     return np.asarray(im.filter(ImageFilter.MaxFilter(3))).astype(np.float32) / 255
-tube = np.zeros((NH, NW, 4), np.float32); glow = np.zeros((NH * 2, NW * 2, 3), np.float32)
-for part, col in (('Drift', (1.0, 0.16, 0.55)), ('Master', (0.25, 0.85, 1.0))):
+tube = np.zeros((NH, NW, 4), np.float32); glow = np.zeros((NH * 2, NW * 2, 3), np.float32); gsum = np.zeros((NH * 2, NW * 2), np.float32)
+for part, col in (('Drift', (1.0, 0.05, 0.45)), ('Master', (0.0, 0.62, 0.95))):
     m = word_mask('Drift Master', part); c = np.array(col, np.float32)
-    core = np.clip(gaussian_filter(m, 2.2) * 1.5 - 0.7, 0, 1)                 # hottest along the middle of the tube
+    core = np.clip(gaussian_filter(m, 2.2) * 1.5 - 0.8, 0, 1)                 # hottest along the middle of the tube
     halo = gaussian_filter(m, 7) * 0.9 + gaussian_filter(m, 18) * 0.5
     rgbt = c[None, None, :] * (1 - core[..., None]) + core[..., None] * (0.45 + 0.55 * c[None, None, :]) + core[..., None] * 0.25
     a = np.clip(np.maximum(m, halo * 0.75), 0, 1)
     tube[..., :3] = np.where(a[..., None] > tube[..., 3:4], np.where(m[..., None] > 0.02, rgbt, c[None, None, :]), tube[..., :3]); tube[..., 3] = np.maximum(tube[..., 3], a)
     big = np.zeros((NH * 2, NW * 2), np.float32); big[NH // 2:NH // 2 + NH, NW // 2:NW // 2 + NW] = m
     g = gaussian_filter(big, 45) * 2.2 + gaussian_filter(big, 130) * 3.2
-    glow += g[..., None] * c[None, None, :]
+    glow += g[..., None] * c[None, None, :]; gsum += g
 Image.fromarray((tube.clip(0, 1) * 255).astype(np.uint8), 'RGBA').save(f'{out}/neon_tube.png', optimize=True)
-Image.fromarray((glow.clip(0, 1) * 255).astype(np.uint8)).resize((1024, 320), Image.LANCZOS).save(f'{out}/neon_glow.jpg', quality=90)
+gcol = glow / np.maximum(gsum[..., None], 1e-4); ga = np.clip(gsum * 0.55, 0, 0.8)
+Image.fromarray((np.dstack([gcol.clip(0, 1), ga]) * 255).astype(np.uint8), 'RGBA').resize((1024, 320), Image.LANCZOS).save(f'{out}/neon_glow.png', optimize=True)
 print('ok')

@@ -31,14 +31,13 @@ namespace DriftMaster {
       var root = new Node3D { Name = "Hall" };
       float hx = (float)t.HallX, hz = (float)t.HallZ;
       var floorMat = FloorMat(t);
-      var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2), SubdivideWidth = 17, SubdivideDepth = 9 }, MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(floor);
+      var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2) }, MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(floor);
 
       // walls: painted plaster and a dark skirting board, nothing else
       var wall = Mat("wall.jpg", new Color(0.93f, 0.93f, 0.9f), 0.9f); wall.Uv1Triplanar = true; wall.Uv1WorldTriplanar = true; wall.Uv1Scale = Vector3.One / 2.2f;
       var skirt = Mat(null, new Color(0.13f, 0.14f, 0.15f), 0.6f);
-      var signWall = Mat("wall.jpg", new Color(0.13f, 0.135f, 0.15f), 0.85f); signWall.Uv1Triplanar = true; signWall.Uv1WorldTriplanar = true; signWall.Uv1Scale = Vector3.One / 2.2f;
       foreach (int s in new[] { -1, 1 }) {
-        Box(root, new Vector3(hx * 2, CeilY, 0.06f), new Vector3(0, CeilY / 2, s * (hz + 0.03f)), s < 0 ? signWall : wall); // the wall with the neon sign is painted dark, so the sign reads
+        Box(root, new Vector3(hx * 2, CeilY, 0.06f), new Vector3(0, CeilY / 2, s * (hz + 0.03f)), wall);
         Box(root, new Vector3(0.06f, CeilY, hz * 2), new Vector3(s * (hx + 0.03f), CeilY / 2, 0), wall);
         Box(root, new Vector3(hx * 2, 0.07f, 0.012f), new Vector3(0, 0.035f, s * (hz - 0.006f)), skirt);
         Box(root, new Vector3(0.012f, 0.07f, hz * 2), new Vector3(s * (hx - 0.006f), 0.035f, 0), skirt);
@@ -166,7 +165,7 @@ namespace DriftMaster {
       float hz = (float)t.HallZ, wz = -hz; const float cy = 1.6f, w = 3.0f, h = w * 640f / 2048f;
       Texture2D tx(string f) => GD.Load<Texture2D>("res://assets/tex/" + f);
       // light on the wall behind the tubes
-      var glowM = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = tx("neon_glow.jpg"), BlendMode = BaseMaterial3D.BlendModeEnum.Add, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, AlbedoColor = new Color(0.8f, 0.8f, 0.8f) };
+      var glowM = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = tx("neon_glow.png"), Transparency = BaseMaterial3D.TransparencyEnum.Alpha }; // on a light wall the glow is a wash of colour, not added brightness
       root.AddChild(new MeshInstance3D { Mesh = new QuadMesh { Size = new Vector2(w * 2, h * 2) }, Position = new Vector3(0, cy, wz + 0.004f), MaterialOverride = glowM, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Name = "NeonGlow" });
       // the tubes, standing 3 cm off the wall on small clear posts
       var tubeM = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = tx("neon_tube.png"), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
@@ -177,7 +176,7 @@ namespace DriftMaster {
       root.AddChild(new OmniLight3D { Position = new Vector3(-0.8f, cy, wz + 0.45f), LightColor = new Color(1f, 0.2f, 0.58f), LightEnergy = 0.55f, OmniRange = 3.6f, OmniAttenuation = 1.4f });
       root.AddChild(new OmniLight3D { Position = new Vector3(0.65f, cy, wz + 0.45f), LightColor = new Color(0.3f, 0.85f, 1f), LightEnergy = 0.5f, OmniRange = 3.6f, OmniAttenuation = 1.4f });
       // transformer under the right-hand end, two thin leads up to the tube ends
-      var black = Mat(null, new Color(0.035f, 0.035f, 0.04f), 0.55f); var white = Mat(null, new Color(0.9f, 0.9f, 0.88f), 0.4f); var cord = Mat(null, new Color(0.82f, 0.82f, 0.8f), 0.5f); // white flex and a white transformer, so they show on the dark wall
+      var black = Mat(null, new Color(0.035f, 0.035f, 0.04f), 0.55f); var white = Mat(null, new Color(0.9f, 0.9f, 0.88f), 0.4f); var cord = black; // black flex and transformer against the light wall
       var tr = new Vector3(1.5f, cy - 0.52f, wz + 0.022f); Box(root, new Vector3(0.16f, 0.07f, 0.044f), tr, cord);
       Cable(root, new Vector3(1.4f, cy - 0.13f, wz + 0.03f), new Vector3(1.38f, cy - 0.36f, wz + 0.02f), new Vector3(1.45f, cy - 0.38f, wz + 0.02f), tr + new Vector3(-0.05f, 0.035f, 0), 0.0022f, cord);
       Cable(root, new Vector3(-1.41f, cy - 0.2f, wz + 0.03f), new Vector3(-1.38f, cy - 0.56f, wz + 0.012f), new Vector3(0.4f, cy - 0.5f, wz + 0.012f), tr + new Vector3(-0.08f, 0, 0), 0.0022f, cord);

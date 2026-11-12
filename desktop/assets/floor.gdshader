@@ -6,12 +6,14 @@ uniform sampler2D wear : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D wear_rough : filter_linear_mipmap, repeat_disable;
 uniform vec2 hall_half = vec2(4.5, 2.5);
 uniform float tile_size = 1.2192;
-varying vec3 wpos;
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void vertex() {
+	vec3 wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	UV = wpos.xz / tile_size;                              // tiles
+	UV2 = (wpos.xz + hall_half) / (2.0 * hall_half);       // the wear sheet over the whole hall
+}
 void fragment() {
-	vec2 uv = wpos.xz / tile_size, wuv = (wpos.xz + hall_half) / (2.0 * hall_half);
-	vec4 w = texture(wear, wuv);
-	ALBEDO = mix(texture(tile_albedo, uv).rgb, w.rgb, w.a);
-	ROUGHNESS = clamp(texture(tile_rough, uv).r + (texture(wear_rough, wuv).r - 0.5) * 1.0 + w.a * 0.25, 0.08, 1.0);
+	vec4 w = texture(wear, UV2);
+	ALBEDO = mix(texture(tile_albedo, UV).rgb, w.rgb, w.a);
+	ROUGHNESS = clamp(texture(tile_rough, UV).r + (texture(wear_rough, UV2).r - 0.5) + w.a * 0.25, 0.08, 1.0);
 	SPECULAR = 0.5;
 }

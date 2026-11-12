@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ck7kl6k2gcj6p"
-path="res://.godot/imported/neon_glow.jpg-bc730dec8f0624f8c74ae59d7defc6f6.ctex"
+uid="uid://b38vyq0qggj2w"
+path="res://.godot/imported/neon_glow.png-71e68508eac47349123baabd8ced7a84.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/tex/neon_glow.jpg"
-dest_files=["res://.godot/imported/neon_glow.jpg-bc730dec8f0624f8c74ae59d7defc6f6.ctex"]
+source_file="res://assets/tex/neon_glow.png"
+dest_files=["res://.godot/imported/neon_glow.png-71e68508eac47349123baabd8ced7a84.ctex"]
 
 [params]
 
