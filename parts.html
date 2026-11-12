@@ -664,7 +664,10 @@ function raceBumper(mt) {
 // slammed: below stock height the hubs sit higher in the shell, so the arches are opened just enough round the space
 // each tyre sweeps (camber and, at the front, full steering lock), 1.5 mm clear. The rest of the shell stays as it is
 const _archTabs = {};
-function archTable(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
+// the same tyre, camber, lock and spacer always give the same table: kept (every car build used to redo it)
+const _archMemo = new Map();
+function archTable(T, cam, steer, off = 0) { const k = [T.od, T.w, T.base, T.rimD, cam.toFixed(5), steer, off].join(); let r = _archMemo.get(k); if (!r) _archMemo.set(k, r = archTable0(T, cam, steer, off)); return r; }
+function archTable0(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
   const key = [T.od, T.w, cam.toFixed(4), steer, off].join('|'); if (_archTabs[key]) return _archTabs[key];
   const R = T.od / 2, hw = T.w / 2 + 0.003, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
   const steps = steer ? 47 : 1;
@@ -863,8 +866,34 @@ function buildModelWheel(key, mt) {
 // surface of a shell, found by casting rays at it (works for any shell)
 const _sray = new THREE.Raycaster();
 function shellHit(shell, from, dir) { shell.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(shell.matrixWorld); const o = from.clone().applyMatrix4(inv), d = dir.clone().transformDirection(inv); _sray.set(o, d); const h = _sray.intersectObject(shell.children[0], false)[0]; return h ? shell.worldToLocal(h.point.clone()) : null; }
-function shellTopY(shell, x, z) { const h = shellHit(shell, new THREE.Vector3(x, 0.5, z), new THREE.Vector3(0, -1, 0)); return h ? h.y : 0.05; }
-function shellSideX(shell, side, z, y) { const h = shellHit(shell, new THREE.Vector3(side * 0.5, y, z), new THREE.Vector3(-side, 0, 0)); return h ? Math.abs(h.x) : 0.08; }
+// fast versions for the two straight rays (across the car, straight down): the body's triangles are bucketed once on a
+// 2D grid (in the plane the ray crosses), so each query looks only at the few triangles over that point (stickers, posts
+// and the wide kit used to cast hundreds of rays at the whole body)
+function bodyGrid(mesh, a, b) {
+  const g = mesh.geometry, pa = g.attributes.position, key = 'grid' + a + b, C = 0.004;
+  let G = g.userData[key]; if (G && G.ver === pa.version) return G;
+  const ix = g.index ? g.index.array : null, nt = (ix ? ix.length : pa.count) / 3, cells = new Map(), P = pa.array;
+  for (let t = 0; t < nt; t++) { let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
+    for (let k = 0; k < 3; k++) { const v = ix ? ix[t * 3 + k] : t * 3 + k, A = P[v * 3 + a], B = P[v * 3 + b]; if (A < a0) a0 = A; if (A > a1) a1 = A; if (B < b0) b0 = B; if (B > b1) b1 = B; }
+    for (let i = Math.floor(a0 / C); i <= Math.floor(a1 / C); i++) for (let j = Math.floor(b0 / C); j <= Math.floor(b1 / C); j++) { const k = i * 4096 + j; let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(t); } }
+  return g.userData[key] = G = { ver: pa.version, cells, C, ix, P, a, b };
+}
+// along the remaining axis c: the extreme value where the line through (pa, pb) crosses the body (max, or min if lo)
+function gridCross(G, pa, pb, c, lo) {
+  const l = G.cells.get(Math.floor(pa / G.C) * 4096 + Math.floor(pb / G.C)); if (!l) return null; let best = null;
+  for (const t of l) { const v = [0, 1, 2].map(k => G.ix ? G.ix[t * 3 + k] : t * 3 + k), P = G.P;
+    const ax = P[v[0] * 3 + G.a], ay = P[v[0] * 3 + G.b], bx = P[v[1] * 3 + G.a], by = P[v[1] * 3 + G.b], cx = P[v[2] * 3 + G.a], cy = P[v[2] * 3 + G.b];
+    const d = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy); if (Math.abs(d) < 1e-12) continue;
+    const w0 = ((by - cy) * (pa - cx) + (cx - bx) * (pb - cy)) / d, w1 = ((cy - ay) * (pa - cx) + (ax - cx) * (pb - cy)) / d, w2 = 1 - w0 - w1;
+    if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+    const val = w0 * P[v[0] * 3 + c] + w1 * P[v[1] * 3 + c] + w2 * P[v[2] * 3 + c]; if (best === null || (lo ? val < best : val > best)) best = val; }
+  return best;
+}
+function shellTopY(shell, x, z) { const b = shell.children[0]; if (b.matrix.equals(_I4)) { const y = gridCross(bodyGrid(b, 0, 2), x, z, 1, false); return y === null ? 0.05 : y; }
+  const h = shellHit(shell, new THREE.Vector3(x, 0.5, z), new THREE.Vector3(0, -1, 0)); return h ? h.y : 0.05; }
+function shellSideX(shell, side, z, y) { const b = shell.children[0]; if (b.matrix.equals(_I4)) { const x = gridCross(bodyGrid(b, 1, 2), y, z, 0, side < 0); return x === null ? 0.08 : Math.abs(x); }
+  const h = shellHit(shell, new THREE.Vector3(side * 0.5, y, z), new THREE.Vector3(-side, 0, 0)); return h ? Math.abs(h.x) : 0.08; }
+const _I4 = new THREE.Matrix4();
 // ======== Stage 4: paint schemes, colours and decals ========
 // The paint is worked out per pixel from the shell's own position and normal (a few lines added to the phong shader),
 // so scheme edges stay crisp at any distance. Decals are thin meshes laid onto the body surface, each with its own

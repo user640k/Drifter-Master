@@ -369,8 +369,14 @@ const lam = (o) => new THREE.MeshLambertMaterial(o);
    ceiling height h, solid boxes on the floor (obst), an optional rug (carpet grip), mood-light zones
    and its own lamps. Photo textures (IMG) are CC0 / public domain, shrunk to early-2000s sizes. */
 const FT = 0.3048;
-const hemi = new THREE.HemisphereLight(0xb8b4d8, 0x2a2438, 0.2); scene.add(hemi);
-scene.add(new THREE.AmbientLight(0xffffff, 0.08));
+const hemi = new THREE.HemisphereLight(0xd0d0e2, 0x5a5664, 0.82); scene.add(hemi);
+scene.add(new THREE.AmbientLight(0xffffff, 0.16));
+// performance: one fixed set of lights for the whole game (hemisphere, ambient, the overhead light and the car screen's
+// two studio lights, dark outside it). Point lights cost every lit pixel and every change in the light count recompiles
+// every shader, which on integrated graphics is seconds of waiting. The ceiling cans and wall washes are this overhead
+// light plus their baked glow; the car's headlight and underglow are their glowing lenses, beam and floor pool
+const OVERHEAD = new THREE.DirectionalLight(0xf0f4ff, 0.5); OVERHEAD.position.set(0.6, 4, 0.9); scene.add(OVERHEAD, OVERHEAD.target);
+const OVERHEAD2 = new THREE.DirectionalLight(0xe8eeff, 0.38); OVERHEAD2.position.set(-2.5, 3, -2); scene.add(OVERHEAD2, OVERHEAD2.target); // a second, lower one: highlights along the cars from another angle
 const phong = (o) => new THREE.MeshPhongMaterial({ shininess: 6, specular: 0x111111, ...o });
 function box(w, h, d, mat, x, y, z, parent = scene) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; }
 const _imgs = {};
@@ -460,12 +466,12 @@ function addMoodZones(m, stripY, washH, ceilWash, lightK) {
     box(L - 0.1, 0.012, 0.012, zone.strip, 0, stripY, 0.034, g);
     const wall = new THREE.Mesh(new THREE.PlaneGeometry(L, washH), glowMat(T.washDown, 0.34)); wall.position.set(0, stripY + 0.05 - washH / 2, 0.006); g.add(wall); zone.mats.push(wall.material);
     if (ceilWash) { const cw = new THREE.Mesh(new THREE.PlaneGeometry(L, 0.9), glowMat(T.washUp, 0.3)); cw.rotation.x = Math.PI / 2; cw.position.set(0, m.h - 0.004, 0.45); g.add(cw); zone.mats.push(cw.material); }
-    zone.light = new THREE.PointLight(0xffffff, 0.75 * lightK, L + 2, 1); zone.light.position.copy(wallPt(g, 0, stripY - 0.3, 0.5)); m.group.add(zone.light);
+    zone.light = new THREE.PointLight(0xffffff, 0.75 * lightK, L + 2, 1); zone.light.position.copy(wallPt(g, 0, stripY - 0.3, 0.5)); // not added: the wall glow is baked (performance: fixed light set)
     m.zones.push(zone);
   });
 }
 // a lamp: point light plus glowing materials; bright with LIGHTS ON, dimmed for the party
-function addLamp(m, light, on, party, mats = []) { m.group.add(light); m.lamps.push({ light, on, party, mats }); return light; }
+function addLamp(m, light, on, party, mats = []) { m.lamps.push({ light, on, party, mats }); return light; } // the lamp's light is not added: OVERHEAD stands in for all of them
 
 const MAPS = {};
 function newMap(key, name, hx, hz, h, opts) {
@@ -522,7 +528,7 @@ function edgeBlocks(pts, closed, w, h, len, colors, y0, parent) {
    oil stains, tape left from old layouts, faded paint, fine scratches; paintWear() later adds the polished lanes and
    faint tyre lines along every course on the map. */
 function floorWear(m, poly, G) {
-  const xs = poly.map(q => q[0]), zs = poly.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs), W = x1 - x0, D = z1 - z0, PX = 160;
+  const xs = poly.map(q => q[0]), zs = poly.map(q => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs), W = x1 - x0, D = z1 - z0, PX = 120; // 8 mm a pixel: plenty for scuffs, and quick to paint
   const c = document.createElement('canvas'); c.width = Math.round(W * PX); c.height = Math.round(D * PX); const g = c.getContext('2d');
   const reset = () => g.setTransform(PX, 0, 0, PX, -x0 * PX, -z0 * PX); reset();
   const r = rng(777), rr = (a, b) => a + r() * (b - a);
@@ -582,7 +588,7 @@ T.exitRed = canvasTex(64, 24, (g, w, h) => { g.fillStyle = '#1a0606'; g.fillRect
   const m = newMap('arena', 'RC ARENA', 5.6, 6.4, 6.0, { pov: [-2.6, 2.75, 5.0], pov2: [-0.6, 1.62, -6.2], orbit: [4.4, 2.6], fog: [18, 44], ceilCam: 4.8, surface: 1, markC: [0.2, -0.8], solids: [], bounds: null,
     // the photo's viewpoint (after the mirror): high in the front-right corner over the fence, looking into the far corner
     photoCam: { pos: [-3.7, 2.5, -2.6], look: [1.6, 0.0, 3.0], fov: 84 },
-    hemi: { on: [0xe4eaf8, 0x3a3e48, 0.56] } });
+    hemi: { on: [0xe4eaf8, 0x5c606a, 0.86] } }); // brighter than with the point lights: it stands in for the ceiling cans and wall washes
   const { hx, hz, h, group: G } = m;
   // NOTE: built in "drawn" coordinates, then mirrored in x at the end (see below)
   // floor outside the track: plain grey concrete, a few cm below the track surface
@@ -726,6 +732,7 @@ T.exitRed = canvasTex(64, 24, (g, w, h) => { g.fillStyle = '#1a0606'; g.fillRect
     const bulbM = new THREE.MeshBasicMaterial({ color: 0xf4f8ff, fog: false });
     const disc = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), bulbM); disc.rotation.x = Math.PI / 2; disc.position.set(x, h - 0.9, z); G.add(disc);
     const L = new THREE.PointLight(0xf0f4ff, 0.34, 16, 1); L.position.set(x, h - 1.1, z); addLamp(m, L, 0.32, 0.32, [bulbM]);
+    decal(G, x, z, 4.2, 4.2, 0, T.blob, 0x5c6066, 0.5, true, 0.0045); // its pool of light on the floor, painted on (no light to compute)
   }
   // vertical LED tubes on the grey walls, wired up to the conduit (glow is baked)
   let ph = 0;
@@ -1224,12 +1231,21 @@ function buildEmpty(g) {
     const a0 = rnd(0, Math.PI * 2), col = cols[n % cols.length]; for (let j = 0; j < 2 + (Math.random() < 0.5); j++) plasticChair(g, x + Math.cos(a0) * j * 0.5, z - Math.sin(a0) * j * 0.5, a0 + rnd(-0.2, 0.2), col); }
   for (let k = 0, n = 0; k < 400 && n < 26; k++) { const x = rnd(-3.4, 3.2), z = rnd(-5.3, 3.7); if (!free(x, z, 0.25)) continue; used.push([x, z, 0.1]); n++; cones.push(makeCone(x, z, 'c')); }
 }
-function buildCourse(ci) {
+// built tracks are kept: coming back to one (in the menu or between races) is instant. EMPTY is rebuilt each time (its
+// cones and chairs are random). Cones and the gate marker are made fresh on every visit
+const COURSE_CACHE = {};
+function buildCourse(ci, restore = false) { // restore: bring back this track exactly as it was (EMPTY keeps its layout)
   course = COURSES[ci] || COURSES[0];
-  if (courseGroup) { scene.remove(courseGroup); courseGroup.traverse(o => { if (o.geometry && !Object.values(coneGeo).includes(o.geometry)) o.geometry.dispose(); }); }
-  courseGroup = new THREE.Group(); scene.add(courseGroup);
-  cones.length = 0; 
+  if (courseGroup) { scene.remove(courseGroup); for (const c of cones) courseGroup.remove(c.group); if (gateBar) courseGroup.remove(gateBar);
+    if (!courseGroup.userData.cached) courseGroup.traverse(o => { if (o.geometry && !Object.values(coneGeo).includes(o.geometry)) o.geometry.dispose(); }); }
+  cones.length = 0;
   setMap(course.map || 'warehouse'); OBST = MAP.obst.slice(); RUG = MAP.rug;
+  const C = (!course.empty || restore) && COURSE_CACHE[ci];
+  if (C) {
+    courseGroup = C.group; scene.add(courseGroup); TRACK = C.TRACK; if (TRACK) TRACK.idx = -1; TP.length = 0; TP.push(...C.TP); TN.length = 0; TN.push(...C.TN);
+    RAMPS = C.RAMPS; DRONE = C.DRONE; COURSE_SOLIDS = C.CS; OBST = C.OBST.slice(); RUG = C.RUG; LOW_SOLIDS = C.LOW; if (C.cones) for (const c of C.cones) { cones.push(c); courseGroup.add(c.group); } // EMPTY: its own random cones
+  } else {
+  courseGroup = new THREE.Group(); scene.add(courseGroup);
   TRACK = null; RAMPS = course.ramps || [];
   for (const r of RAMPS) buildRamp(r, courseGroup);
   DRONE = null; if (course.decor) buildCentrepiece(courseGroup, course.decor[0], course.decor[1]);
@@ -1238,6 +1254,8 @@ function buildCourse(ci) {
   if (course.track) { buildTrackRibbon(course.track, courseGroup); course.gates = course.track.gates; course.start = course.track.start; course.line = course.track.raceLine; }
   LOW_SOLIDS = course.lowSolids || []; if (course.empty) buildEmpty(courseGroup);
   mergeStatic(courseGroup); // boards, kerbs, ramps, decor: fixed; cones and the drone are marked dynamic
+  { courseGroup.userData.cached = true; COURSE_CACHE[ci] = { cones: course.empty ? cones.slice() : null, group: courseGroup, TRACK, TP: TP.slice(), TN: TN.slice(), RAMPS, DRONE, CS: COURSE_SOLIDS, OBST: OBST.slice(), RUG, LOW: LOW_SOLIDS }; } // (EMPTY too, but only to restore its current layout)
+  }
   const seen = new Set();
   for (const g of course.gates) for (const [x, z, k] of [[g[0], g[1], g[4]], [g[2], g[3], g[5]]]) {
     const key = x.toFixed(2) + ',' + z.toFixed(2);
@@ -1836,7 +1854,10 @@ function raceBumper(mt) {
 // slammed: below stock height the hubs sit higher in the shell, so the arches are opened just enough round the space
 // each tyre sweeps (camber and, at the front, full steering lock), 1.5 mm clear. The rest of the shell stays as it is
 const _archTabs = {};
-function archTable(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
+// the same tyre, camber, lock and spacer always give the same table: kept (every car build used to redo it)
+const _archMemo = new Map();
+function archTable(T, cam, steer, off = 0) { const k = [T.od, T.w, T.base, T.rimD, cam.toFixed(5), steer, off].join(); let r = _archMemo.get(k); if (!r) _archMemo.set(k, r = archTable0(T, cam, steer, off)); return r; }
+function archTable0(T, cam, steer, off = 0) { // off: spacer, the wheel's centre this far out from its steering pivot // max reach from the hub in the y-z plane, binned by x (0.5 mm, outward +) and angle (4°)
   const key = [T.od, T.w, cam.toFixed(4), steer, off].join('|'); if (_archTabs[key]) return _archTabs[key];
   const R = T.od / 2, hw = T.w / 2 + 0.003, NX = 161, NA = 91, tab = new Float32Array(NX * NA), sc = Math.sin(cam), cc = Math.cos(cam);
   const steps = steer ? 47 : 1;
@@ -2035,8 +2056,34 @@ function buildModelWheel(key, mt) {
 // surface of a shell, found by casting rays at it (works for any shell)
 const _sray = new THREE.Raycaster();
 function shellHit(shell, from, dir) { shell.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(shell.matrixWorld); const o = from.clone().applyMatrix4(inv), d = dir.clone().transformDirection(inv); _sray.set(o, d); const h = _sray.intersectObject(shell.children[0], false)[0]; return h ? shell.worldToLocal(h.point.clone()) : null; }
-function shellTopY(shell, x, z) { const h = shellHit(shell, new THREE.Vector3(x, 0.5, z), new THREE.Vector3(0, -1, 0)); return h ? h.y : 0.05; }
-function shellSideX(shell, side, z, y) { const h = shellHit(shell, new THREE.Vector3(side * 0.5, y, z), new THREE.Vector3(-side, 0, 0)); return h ? Math.abs(h.x) : 0.08; }
+// fast versions for the two straight rays (across the car, straight down): the body's triangles are bucketed once on a
+// 2D grid (in the plane the ray crosses), so each query looks only at the few triangles over that point (stickers, posts
+// and the wide kit used to cast hundreds of rays at the whole body)
+function bodyGrid(mesh, a, b) {
+  const g = mesh.geometry, pa = g.attributes.position, key = 'grid' + a + b, C = 0.004;
+  let G = g.userData[key]; if (G && G.ver === pa.version) return G;
+  const ix = g.index ? g.index.array : null, nt = (ix ? ix.length : pa.count) / 3, cells = new Map(), P = pa.array;
+  for (let t = 0; t < nt; t++) { let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
+    for (let k = 0; k < 3; k++) { const v = ix ? ix[t * 3 + k] : t * 3 + k, A = P[v * 3 + a], B = P[v * 3 + b]; if (A < a0) a0 = A; if (A > a1) a1 = A; if (B < b0) b0 = B; if (B > b1) b1 = B; }
+    for (let i = Math.floor(a0 / C); i <= Math.floor(a1 / C); i++) for (let j = Math.floor(b0 / C); j <= Math.floor(b1 / C); j++) { const k = i * 4096 + j; let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(t); } }
+  return g.userData[key] = G = { ver: pa.version, cells, C, ix, P, a, b };
+}
+// along the remaining axis c: the extreme value where the line through (pa, pb) crosses the body (max, or min if lo)
+function gridCross(G, pa, pb, c, lo) {
+  const l = G.cells.get(Math.floor(pa / G.C) * 4096 + Math.floor(pb / G.C)); if (!l) return null; let best = null;
+  for (const t of l) { const v = [0, 1, 2].map(k => G.ix ? G.ix[t * 3 + k] : t * 3 + k), P = G.P;
+    const ax = P[v[0] * 3 + G.a], ay = P[v[0] * 3 + G.b], bx = P[v[1] * 3 + G.a], by = P[v[1] * 3 + G.b], cx = P[v[2] * 3 + G.a], cy = P[v[2] * 3 + G.b];
+    const d = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy); if (Math.abs(d) < 1e-12) continue;
+    const w0 = ((by - cy) * (pa - cx) + (cx - bx) * (pb - cy)) / d, w1 = ((cy - ay) * (pa - cx) + (ax - cx) * (pb - cy)) / d, w2 = 1 - w0 - w1;
+    if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+    const val = w0 * P[v[0] * 3 + c] + w1 * P[v[1] * 3 + c] + w2 * P[v[2] * 3 + c]; if (best === null || (lo ? val < best : val > best)) best = val; }
+  return best;
+}
+function shellTopY(shell, x, z) { const b = shell.children[0]; if (b.matrix.equals(_I4)) { const y = gridCross(bodyGrid(b, 0, 2), x, z, 1, false); return y === null ? 0.05 : y; }
+  const h = shellHit(shell, new THREE.Vector3(x, 0.5, z), new THREE.Vector3(0, -1, 0)); return h ? h.y : 0.05; }
+function shellSideX(shell, side, z, y) { const b = shell.children[0]; if (b.matrix.equals(_I4)) { const x = gridCross(bodyGrid(b, 1, 2), y, z, 0, side < 0); return x === null ? 0.08 : Math.abs(x); }
+  const h = shellHit(shell, new THREE.Vector3(side * 0.5, y, z), new THREE.Vector3(-side, 0, 0)); return h ? Math.abs(h.x) : 0.08; }
+const _I4 = new THREE.Matrix4();
 // ======== Stage 4: paint schemes, colours and decals ========
 // The paint is worked out per pixel from the shell's own position and normal (a few lines added to the phong shader),
 // so scheme edges stay crisp at any distance. Decals are thin meshes laid onto the body surface, each with its own
@@ -2433,7 +2480,7 @@ function buildCar(S = CAR_STYLE) {
   if (wide) addWideKit(shell, flare.hubs, TY, sp);
   if (S.lights) { // headlights: a soft warm spot from the front lamps onto the floor ahead (kept dim for now), lenses lit
     const SH = PARTS.SHELLS[kind], hl = new THREE.SpotLight(0xffeccc, 0.8, 2.6, 0.5, 0.65, 1.6); hl.position.set(0, SH.lampY || (kind === 'zuk' ? 0.07 : 0.058), SH.z1 - 0.012);
-    hl.target.position.set(0, 0, SH.z1 + 1.1); shell.add(hl, hl.target); shell.userData.headlight = hl;
+    hl.target.position.set(0, 0, SH.z1 + 1.1); shell.userData.headlight = hl; // not added to the scene: the lenses and the beam pool show it
     if (shell.userData.mats.lens) { shell.userData.mats.lens.emissive.setHex(0xb0a890); }
     if (!T.beam) T.beam = canvasTex(64, 128, (g, w, h) => { const im = g.createImageData(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const u = (x - 31.5) / 32, v = y / h, spread = 0.35 + 0.65 * v, a = Math.max(0, 1 - (u / spread) ** 2) * Math.pow(1 - v, 1.4) * Math.min(1, v * 8); im.data.set([255, 255, 255, Math.round(255 * a)], (y * w + x) * 4); } g.putImageData(im, 0, 0); }); // soft beam: brightest just ahead of the car, widening and fading forward
     const pool = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.75), new THREE.MeshBasicMaterial({ map: T.beam, color: 0xffe6c0, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
@@ -2464,7 +2511,7 @@ function buildCar(S = CAR_STYLE) {
     const gm = new THREE.Mesh(new THREE.PlaneGeometry(0.27, 0.52), new THREE.MeshBasicMaterial({ map: T.underglow, color: S.glow, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
     gm.renderOrder = 2; gm.position.set(0, 0, 0.0005); shadow.add(gm);
     for (const sg of [-1, 1]) box(0.22, 0.002, 0.003, new THREE.MeshBasicMaterial({ color: S.glow }), 0, 0.012, sg * 0.044, model); // tucked in under the sills
-    const ul = new THREE.PointLight(S.glow, 2.0, 0.34, 1.4); ul.position.set(0, 0.04, 0); root.add(ul); // sits between the chassis and the roof: lights both
+    // (no point light: the strips and the floor pool show the underglow) // sits between the chassis and the roof: lights both
   }
   const lampM = shell.userData.mats.tail;
   root.userData = {
@@ -2570,7 +2617,10 @@ function carWheel(S, key, mt) {
   if (S.stickers) { const st = tyreStickers(T); st.rotation.y = out; spin.add(st); }
   return { spin, fixed: new THREE.Group() };
 }
-let carObj = buildCar(); scene.add(carObj);
+// the car is not on show behind the main menu, so it is built after the first frames (the first background job) or the
+// moment something needs it (DRIVE, the car screen): the menu comes up sooner
+let carObj = new THREE.Group(); carObj.userData.placeholder = true; scene.add(carObj);
+function ensureCar() { if (!carObj.userData.placeholder) return; scene.remove(carObj); carObj = buildCar(CAR_STYLE); carObj.visible = race.state !== 'menu' || customOpen; scene.add(carObj); markStatic(); }
 // the damage on the player's car (built on demand, cleared on reset)
 function carDamage() { const ud = carObj.userData; return ud.dmg || (ud.dmg = damageInit(ud.shell, ud.chassis, ud.mounts)); }
 function carRepair() { if (carObj.userData.dmg) damageRepair(carObj.userData.dmg); }
@@ -3110,7 +3160,7 @@ function resetRun() {
   loadBest(); ghostLapStart(); idleT = 0; if (ghost.obj) ghost.obj.visible = false; setHudLabels(); driftReset(); updateCamera(0, true);
 }
 function startRace() {
-  closeMenu(); carObj.visible = true;
+  ensureCar(); closeMenu(); carObj.visible = true;
   audio.init();
   resetRun();
   race.state = 'race'; race.paused = false;
@@ -3249,7 +3299,7 @@ function oppActive() { return oppLevel > 0 && opp.obj && opp.obj.visible; }
 function oppSetup() {
   if (opp.obj) { scene.remove(opp.obj); opp.obj.traverse(o => { if (o.geometry) o.geometry.dispose(); }); opp.obj = null; }
   if (!oppLevel || !course.line) return;
-  opp.obj = buildCar(oppStyle()); scene.add(opp.obj);
+  opp.obj = OPP_NEXT && OPP_NEXT.st.a !== CAR_STYLE.a ? OPP_NEXT.obj : buildCar(oppStyle()); OPP_NEXT = null; scene.add(opp.obj); // built ahead in the menu when there was time
   opp.path = buildOppPath(course);
   const [sx, sz] = course.start, i0 = opp.path.nearest(sx, sz);
   Object.assign(opp, { s: i0 * opp.path.ds, prevS: i0 * opp.path.ds, v: 0, laps: 0, slip: 0, spin: 0, off: -0.38, doneT: null, idx: i0, kl: 0, yawV: 0, slipK: 0 });
@@ -3375,11 +3425,12 @@ const STUDIO = new THREE.Group(); STUDIO.position.set(400, 0, 400); STUDIO.visib
   STUDIO.add(back);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(0.2, 64), new THREE.MeshPhongMaterial({ color: 0x2a2e36, specular: 0x333844, shininess: 40 })); floor.rotation.x = -Math.PI / 2; STUDIO.add(floor);
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.205, 64), new THREE.MeshBasicMaterial({ color: 0xffb21e, fog: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.001; STUDIO.add(ring);
-  const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(1.2, 2, 1.5); key.target = floor; STUDIO.add(key);
-  const rim = new THREE.DirectionalLight(0xbfd4ff, 0.5); rim.position.set(-1.5, 1.2, -1.5); rim.target = floor; STUDIO.add(rim);
+  const key = new THREE.DirectionalLight(0xffffff, 0), rim = new THREE.DirectionalLight(0xbfd4ff, 0); // always in the scene (a fixed light set), lit only on the car screen
+  key.position.set(400 + 1.2, 2, 400 + 1.5); key.target.position.set(400, 0, 400); rim.position.set(400 - 1.5, 1.2, 400 - 1.5); rim.target.position.set(400, 0, 400);
+  scene.add(key, key.target, rim, rim.target); STUDIO.userData.lights = [[key, 0.9], [rim, 0.5]];
 }
 function studioOn(on) {
-  STUDIO.visible = on; MAP.group.visible = !on;
+  STUDIO.visible = on; MAP.group.visible = !on; for (const [L, k] of STUDIO.userData.lights) L.intensity = on ? k : 0; OVERHEAD.intensity = on ? 0 : 0.5; OVERHEAD2.intensity = on ? 0 : 0.38;
   if (on) { scene.fog.near = 50; scene.fog.far = 120; } else { scene.fog.near = MAP.fog[0]; scene.fog.far = MAP.fog[1]; }
 }
 let camMode = 0;
@@ -3490,6 +3541,29 @@ function actCamera() { camMode = (camMode + 1) % CAMS.length; $('camname').textC
 function actReset() { if (race.state !== 'race') return; Object.assign(car, { u: 0, v: 0, r: 0, w: 0, vx: 0, vz: 0, rollV: 0, pitchV: 0, steer: 0 }); for (let k = 0; k < 4; k++) for (const [cx, cz] of carCircles()) { const h = []; contactsFor(cx, cz, h); for (const [nx, nz, p] of h) { car.x += nx * p; car.z += nz * p; } } }
 // drive mode: DRIFT (RWD, gyro) or GRIP (regular 4WD touring car)
 function actMode() { setOpt('car', setup.car ? 0 : 1); rebuildCar(); if (garageOpen) buildGarage(); updateModeUI(); loadBest(); $('best').textContent = fmt(best); if (!menu.open) flash((setup.car ? 'GRIP' : 'DRIFT') + ' MODE', 1.2); }
+// background work while the menu sits idle (no input for 1.2 s): compile every shader the race and the car screen use,
+// build the next rival car, build the other tracks. One job at a time, each well under a second; any input pauses it
+let OPP_NEXT = null, lastInput = 0;
+for (const ev of ['keydown', 'pointerdown', 'pointermove', 'wheel']) window.addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true });
+function idleJobs() {
+  const jobs = [ensureCar, () => { if (!OPP_NEXT) { const st = oppStyle(); OPP_NEXT = { st, obj: buildCar(st) }; } }, prewarm];
+  COURSES.forEach((c, i) => { if (!c.empty) jobs.push(() => { if (COURSE_CACHE[i] || setup.layout === i) return; buildCourse(i); buildCourse(setup.layout, true); markStatic(); }); });
+  jobs.push(prewarm);
+  const tick = () => { if (!jobs.length) return;
+    if (race.state === 'menu' && !customOpen && !rc.on && performance.now() - lastInput > 1200 && !document.hidden) jobs.shift()();
+    setTimeout(tick, 250); };
+  setTimeout(tick, 600);
+}
+// compile every shader program now rather than at the first race frame: one draw of everything (car screen, the car,
+// the next rival included, nothing culled) into a 4 x 4 target
+const _warmRT = new THREE.WebGLRenderTarget(4, 4);
+function prewarm() {
+  const vis = [[STUDIO, STUDIO.visible], [carObj, carObj.visible]], culled = [];
+  STUDIO.visible = true; carObj.visible = true; if (OPP_NEXT) scene.add(OPP_NEXT.obj);
+  scene.traverse(o => { if (o.isMesh && o.frustumCulled) { o.frustumCulled = false; culled.push(o); } });
+  renderer.setRenderTarget(_warmRT); renderer.render(scene, camera); renderer.setRenderTarget(null);
+  for (const o of culled) o.frustumCulled = true; for (const [o, v] of vis) o.visible = v; if (OPP_NEXT) scene.remove(OPP_NEXT.obj); markStatic();
+}
 function setCourse(i) { setOpt('layout', (i + COURSES.length) % COURSES.length); }
 function updateModeUI() { $('motorname').textContent = CARS[setup.car].name + ' · ' + MOTORS[setup.motor].short; }
 function setVol(v) { volume = clamp(v, 0, 10); muted = false; try { localStorage.setItem('cc-volume', String(volume)); } catch (e) {} audio.setVolume(); }
@@ -3790,8 +3864,15 @@ const CROWS = [
   ...Object.keys(SETUP_OPTS).map(k => ({ key: k, label: SETUP_OPTS[k].label, kind: 'setup', group: 'setup' })),
 ];
 let customOpen = false, customRow = 0, rebuildTimer = 0;
+// paint, livery and stickers change in place (no rebuild: instant on the car screen)
+function restyleCar() {
+  const sh = carObj.userData.shell; if (!sh) return; markStatic();
+  applyLivery(sh, { scheme: CAR_STYLE.scheme, a: CAR_STYLE.a, b: CAR_STYLE.b, c: CAR_STYLE.c, decalSheet: CAR_DECAL_SHEET }); if (CAR_STYLE.stickers) addStickerKit(sh);
+  if (carObj.userData.dmg) carObj.userData.dmg = null; // decals were remade: damage state starts over
+  try { localStorage.setItem('cc-style9', JSON.stringify(CAR_STYLE)); } catch (e) {}
+}
 function queueRebuild() { if (rebuildTimer) return; rebuildTimer = setTimeout(() => { rebuildTimer = 0; rebuildCar(); }, 90); }
-function setStyle(k, v) { CAR_STYLE[k] = v; queueRebuild(); }
+function setStyle(k, v) { CAR_STYLE[k] = v; if (['a', 'b', 'c', 'scheme', 'stickers'].includes(k) && !rebuildTimer) restyleCar(); else queueRebuild(); }
 const rowHidden = r => (r.key === 'kit' && CAR_STYLE.shell !== 'nk2002') || ((r.key === 'b' || r.key === 'c') && schemeOf(CAR_STYLE.scheme).id === 0); // the wide body kit is for the sedan only
 function renderCustom() {
   const rows = $('crows'); rows.innerHTML = ''; $('csetup').innerHTML = '';
@@ -3855,6 +3936,7 @@ function customNav(dy, dx, ok) {
   else if (ok && r.kind === 'action') { Object.assign(CAR_STYLE, CAR_STYLE_DEFAULT); rebuildCar(); renderCustom(); }
 }
 function toggleCustom(open = !customOpen) {
+  ensureCar();
   customOpen = open; $('custom').hidden = !open; $('overlay').hidden = open || !menu.open; studioOn(open);
   if (!open) { carObj.visible = race.state !== 'menu'; carObj.position.set(car.x, car.y || 0, car.z); carObj.rotation.y = car.h; }
   $('hud').classList.toggle('dim', open || menu.open);
@@ -3903,16 +3985,18 @@ function drawTelemetry() {
 }
 
 /* ---------------- main loop ---------------- */
-rebuildCar(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (race.state === 'menu') rebuildCar(); }); placeCar(); camAng = car.h; setHudLabels(); updateCamera(0, true); $('hud').classList.add('dim'); renderMenu();
+requestAnimationFrame(() => requestAnimationFrame(idleJobs)); // after the first frames are up
+try { localStorage.setItem('cc-style9', JSON.stringify(CAR_STYLE)); } catch (e) {} // the car was built once above; when the fonts arrive only its sticker artwork is redrawn
+if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => restyleCar()); placeCar(); camAng = car.h; setHudLabels(); updateCamera(0, true); $('hud').classList.add('dim'); renderMenu();
 window.__carpetCircuit = { car, setup, keys, input, stepCar, placeCar, VEH, MOTORS }; // debug / test hook
 let acc = 0, last = performance.now(), hudT = 0;
 const DT = 1 / 720; // tire forces are stiff; small steps keep them stable
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (DRONE && !race.paused) droneStep(dt);
+  if (DRONE && !race.paused && race.state !== 'menu') droneStep(dt); // the drone holds still behind the menu (a still frame)
   pollInput(dt);
-  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (customOpen) { carObj.visible = true; carObj.position.set(STUDIO.position.x, 0, STUDIO.position.z); carObj.rotation.y = 0.35; } else if (race.state === 'menu') carObj.visible = false; updateCamera(dt, false); updateMood(performance.now() / 1000); } renderer.render(scene, camera); return; }
+  if (race.paused || garageOpen || customOpen || race.state === 'menu') { if (race.state === 'menu' || customOpen) { if (customOpen) { carObj.visible = true; carObj.position.set(STUDIO.position.x, 0, STUDIO.position.z); carObj.rotation.y = 0.35; } else if (race.state === 'menu') carObj.visible = false; updateCamera(dt, false); updateMood(performance.now() / 1000); } renderStatic(now); return; }
   clock += dt;
   acc += dt;
   if (race.state === 'race' && race.count > 0) {
@@ -3988,6 +4072,17 @@ function frame(now) {
 // adaptive resolution: the frame rate is checked every 2 s; below ~45 fps the game renders at a lower internal
 // resolution (100 % -> 85 % -> 70 % -> 60 %, scaled up to the same screen size), and after 10 s with plenty of headroom it
 // steps back up. On a machine that holds 60 fps nothing changes
+// menus, the car screen and pause show a still scene: it is drawn only when something changes (the camera, the car, the
+// track, the paint, the menu style, a texture finishing loading), plus twice a second as a safety net, so the GPU rests
+let staticDirty = 30, staticSig = '', staticLast = 0;
+function markStatic() { staticDirty = Math.max(staticDirty, 20); }
+THREE.DefaultLoadingManager.onLoad = markStatic;
+function renderStatic(now) {
+  camera.updateMatrixWorld(); const e = camera.matrixWorld.elements, q = camera.projectionMatrix.elements;
+  const sig = [e[12], e[13], e[14], e[8], e[9], e[10], q[0], q[5], q[8], q[9]].map(v => v.toFixed(4)).join() + carObj.uuid + carObj.visible + (courseGroup && courseGroup.uuid) + RES.s + menuStyle;
+  if (sig !== staticSig) { staticSig = sig; markStatic(); }
+  if (staticDirty > 0 || now - staticLast > 500) { if (staticDirty > 0) staticDirty--; staticLast = now; renderer.render(scene, camera); }
+}
 const RES = { s: 1, levels: [1, 0.85, 0.7, 0.6], t0: 0, n: 0, good: 0, lock: 0 };
 try { RES.lock = localStorage.getItem('cc-res') === 'full' ? 1 : 0; } catch (e) {}
 function setResLock(on) { RES.lock = on ? 1 : 0; RES.s = 1; renderer.setSize(1280, 720, false); try { localStorage.setItem('cc-res', on ? 'full' : 'auto'); } catch (e) {} }
