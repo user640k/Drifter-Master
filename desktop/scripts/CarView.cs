@@ -8,6 +8,8 @@ namespace DriftMaster {
     MeshInstance3D _blob; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
     public StandardMaterial3D Paint; StandardMaterial3D _glass;
     public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
+    public Node3D StickCam; Node3D _stick; // a second FPV camera on a short stick: fixed to the roof, reaching back, looking forward over the car
+    public static float StickY = 0.25f, StickZ = -0.46f, StickTilt = 13f;
     public static float FpvX = 0, FpvY = 0.102f, FpvZ = 0.006f, FpvTilt = 5f;
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
 
@@ -27,17 +29,27 @@ namespace DriftMaster {
         _blob = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.27f, 0.5f) }, MaterialOverride = bm, Position = new Vector3(0, 0.003f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; AddChild(_blob); }
       // car paint: a deep colour under a clear coat; glass: dark tint
       Fpv = new Node3D { Name = "Fpv", Position = new Vector3(FpvX, FpvY, FpvZ), Rotation = new Vector3(Mathf.DegToRad(FpvTilt), Mathf.Pi, 0) }; _body.AddChild(Fpv);
+      { // the stick: a little foot on the roof, a thin carbon rod up and back, the camera at its end
+        _stick = new Node3D { Name = "Stick", Visible = false }; _body.AddChild(_stick);
+        var carbon = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.05f, 0.055f), Roughness = 0.45f };
+        Vector3 foot = new Vector3(0, 0.131f, -0.045f), cam = new Vector3(0, StickY, StickZ), end = cam + new Vector3(0, -0.022f, 0.012f), d = end - foot; // the camera sits on top of the rod's tip
+        var y = d.Normalized(); var x = y.Cross(Vector3.Right).Normalized(); var z = x.Cross(y);
+        _stick.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.002f, BottomRadius = 0.002f, Height = d.Length(), RadialSegments = 8, Rings = 1 }, MaterialOverride = carbon, Transform = new Transform3D(new Basis(x, y, z), (foot + end) / 2) });
+        _stick.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.03f, 0.006f, 0.03f) }, MaterialOverride = carbon, Position = foot });
+        StickCam = new Node3D { Name = "StickCam", Position = cam, Rotation = new Vector3(-Mathf.DegToRad(StickTilt), Mathf.Pi, 0) }; _body.AddChild(StickCam); // looking down a little, at the car and the track ahead
+      }
       Paint = new StandardMaterial3D { CullMode = BaseMaterial3D.CullModeEnum.Disabled, AlbedoColor = new Color(0.09f, 0.094f, 0.106f), Roughness = 0.42f, Metallic = 0.25f, ClearcoatEnabled = true, Clearcoat = 0.8f, ClearcoatRoughness = 0.12f };
       var glass = _glass = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.065f, 0.085f, 0.8f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.08f, Metallic = 0.3f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
       foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) {
         var mi = (MeshInstance3D)node; string nm = mi.Name.ToString();
         if (nm.EndsWith("_paint")) mi.MaterialOverride = Paint; else if (nm.Contains("_glass_")) mi.MaterialOverride = glass;
         else if (nm.StartsWith("Shell_") && mi.Mesh != null) for (int si = 0; si < mi.Mesh.GetSurfaceCount(); si++) if (mi.Mesh.SurfaceGetMaterial(si) is BaseMaterial3D bm0) { var d = (BaseMaterial3D)bm0.Duplicate(); d.CullMode = BaseMaterial3D.CullModeEnum.Disabled; mi.SetSurfaceOverrideMaterial(si, d); } // the shell is seen from inside too
-        if (mi != _blob) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        if (mi != _blob && !_stick.IsAncestorOf(mi)) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
       }
     }
 
     // from the driver's seat the tint is light enough to see the track through
+    public void ShowStick(bool on) { _stick.Visible = on; }
     public void SetOnBoard(bool on) { _glass.AlbedoColor = new Color(0.05f, 0.065f, 0.085f, on ? 0.16f : 0.8f); }
 
     public void Pose(CarPhysics c, Track t) {
