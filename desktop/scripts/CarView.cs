@@ -9,7 +9,7 @@ namespace DriftMaster {
     public StandardMaterial3D Paint; StandardMaterial3D _glass;
     public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
     public Node3D StickCam; Node3D _stick; // a second FPV camera on a short stick: fixed to the roof, reaching back, looking forward over the car
-    public static float StickY = 0.25f, StickZ = -0.46f, StickTilt = 13f;
+    public static float StickY = 0.195f, StickZ = -0.5f, StickTilt = 7f; // 19.5 cm up: it has to pass under the bridge (23 cm)
     public static float FpvX = 0, FpvY = 0.102f, FpvZ = 0.006f, FpvTilt = 5f;
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
 
