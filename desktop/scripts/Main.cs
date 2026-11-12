@@ -1,0 +1,145 @@
+// Drift Master, desktop version: first playable. One hall, one layout (HILLSIDE), one car (the sedan).
+// Keys: W/S or arrows drive, A/D steer, R reset, C camera, P paint, F2 shadows, F3 stats, F4 resolution, F11 full screen, Esc pause.
+// Gamepad: right trigger throttle, left trigger brake/reverse, left stick steer, Y reset, X camera.
+using Godot;
+using System;
+
+namespace DriftMaster {
+  public partial class Main : Node3D {
+    Track _t; CarPhysics _car; CarView _view; Camera3D _cam; DirectionalLight3D _sun;
+    Label _hud, _stats, _help, _pause; double _acc; int _camMode; Vector3 _camPos, _camLook; bool _camSnap = true;
+    // lap timing
+    double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
+    // test hooks: --shot=file --frames=n --auto --cam=n --at=index
+    string _shot; int _frames = 90, _frame; bool _auto; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
+    static readonly Color[] Paints = { new Color(0.09f, 0.094f, 0.106f), new Color(0.86f, 0.87f, 0.85f), new Color(0.72f, 0.05f, 0.06f), new Color(0.06f, 0.22f, 0.6f), new Color(0.95f, 0.72f, 0.05f), new Color(0.1f, 0.42f, 0.3f) };
+
+    public override void _Ready() {
+      int at = -1;
+      foreach (var a in OS.GetCmdlineUserArgs()) {
+        if (a.StartsWith("--shot=")) _shot = a.Substring(7); else if (a.StartsWith("--frames=")) _frames = int.Parse(a.Substring(9));
+        else if (a == "--auto") _auto = true; else if (a.StartsWith("--cam=")) _camMode = int.Parse(a.Substring(6)); else if (a.StartsWith("--at=")) at = int.Parse(a.Substring(5));
+        else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
+      }
+      // the layout sat at z = -4.9..-1.9 in the big warehouse; here it is centred in a hall of its own (9.0 x 5.0 m)
+      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/hillside.json"), -3.4, 4.5, 2.5);
+      AddChild(Hall.Build(_t));
+      BuildLights();
+      _car = new CarPhysics { T = _t }; _view = new CarView(); AddChild(_view);
+      _view.Paint.AlbedoColor = Paints[_paintIdx % Paints.Length];
+      if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
+      _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
+      BuildHud();
+      _view.Pose(_car, _t); UpdateCamera(0);
+    }
+
+    void BuildLights() {
+      var env = new Godot.Environment {
+        BackgroundMode = Godot.Environment.BGMode.Color, BackgroundColor = new Color(0.05f, 0.05f, 0.055f),
+        AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.82f, 0.84f, 0.88f), AmbientLightEnergy = 0.4f,
+        TonemapMode = Godot.Environment.ToneMapper.Filmic, TonemapWhite = 1.6f,
+      };
+      AddChild(new WorldEnvironment { Environment = env });
+      // the tube lights overhead as one soft downward light with a shadow, plus two fills so the walls fall off
+      _sun = new DirectionalLight3D { LightEnergy = 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.5f, ShadowOpacity = 0.85f };
+      _sun.RotationDegrees = new Vector3(-78, 24, 0); AddChild(_sun);
+      foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
+      // one probe for the whole room: the glossy tiles mirror the ceiling lights
+      var probe = new ReflectionProbe { Size = new Vector3((float)_t.HallX * 2, Hall.CeilY, (float)_t.HallZ * 2), Position = new Vector3(0, Hall.CeilY / 2, 0), BoxProjection = true, Interior = true, UpdateMode = ReflectionProbe.UpdateModeEnum.Once, AmbientMode = ReflectionProbe.AmbientModeEnum.Disabled, EnableShadows = false, Intensity = 0.45f };
+      AddChild(probe);
+    }
+
+    void BuildHud() {
+      var layer = new CanvasLayer(); AddChild(layer);
+      Label L(Vector2 pos, int size, Color col) { var l = new Label { Position = pos }; l.AddThemeFontSizeOverride("font_size", size); l.AddThemeColorOverride("font_color", col); l.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.75f)); l.AddThemeConstantOverride("outline_size", 6); layer.AddChild(l); return l; }
+      _hud = L(new Vector2(24, 18), 22, Colors.White);
+      _stats = L(new Vector2(24, 150), 15, new Color(0.75f, 0.9f, 1f)); _stats.Visible = false;
+      _help = L(new Vector2(24, 0), 14, new Color(1, 1, 1, 0.8f)); _help.SetAnchorsPreset(Control.LayoutPreset.BottomLeft); _help.Position = new Vector2(24, -40);
+      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
+      _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
+      _pause = L(Vector2.Zero, 34, Colors.White); _pause.Text = "PAUSED\nEsc resume  ·  Q quit"; _pause.HorizontalAlignment = HorizontalAlignment.Center; _pause.VerticalAlignment = VerticalAlignment.Center; _pause.SetAnchorsPreset(Control.LayoutPreset.FullRect); _pause.Visible = false;
+      if (_shot != null) _help.Visible = false;
+    }
+
+    void ResetCar() { _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
+
+    public override void _UnhandledInput(InputEvent e) {
+      bool key(Key k) => e is InputEventKey ek && ek.Pressed && !ek.Echo && ek.Keycode == k;
+      bool pad(JoyButton b) => e is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == b;
+      if (key(Key.Escape) || pad(JoyButton.Start)) _pause.Visible = !_pause.Visible;
+      else if (key(Key.Q) && _pause.Visible) GetTree().Quit();
+      else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
+      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = (_camMode + 1) % 4; _camSnap = true; }
+      else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; _view.Paint.AlbedoColor = Paints[_paintIdx]; }
+      else if (key(Key.F2)) _sun.ShadowEnabled = !_sun.ShadowEnabled;
+      else if (key(Key.F3)) _stats.Visible = !_stats.Visible;
+      else if (key(Key.F4)) { _scaleIdx = (_scaleIdx + 1) % _scales.Length; GetViewport().Scaling3DScale = _scales[_scaleIdx]; }
+      else if (key(Key.F11)) { var w = GetWindow(); w.Mode = w.Mode == Window.ModeEnum.Fullscreen ? Window.ModeEnum.Windowed : Window.ModeEnum.Fullscreen; }
+    }
+
+    CarInput ReadInput() {
+      var inp = new CarInput();
+      if (_auto) { // a simple driver for test shots: aim at the lane ahead, steady throttle
+        int i = (_t.Idx + 22) % _t.N; double dx = _t.X[i] - _car.X, dz = _t.Z[i] - _car.Z, want = Math.Atan2(dx, dz), dh = want - _car.Hd; dh = Math.Atan2(Math.Sin(dh), Math.Cos(dh));
+        inp.Steer = Math.Clamp(dh * 1.6, -1, 1); inp.Thr = 0.34; return inp;
+      }
+      bool up = Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up), dn = Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down);
+      bool lf = Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left), rt = Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right);
+      inp.Thr = up ? 1 : 0; inp.Brk = dn ? 1 : 0; inp.Steer = (lf ? 1 : 0) - (rt ? 1 : 0); inp.ThrDigital = up;
+      if (Input.GetConnectedJoypads().Count > 0) {
+        int j = Input.GetConnectedJoypads()[0]; float gt = Input.GetJoyAxis(j, JoyAxis.TriggerRight), gb = Input.GetJoyAxis(j, JoyAxis.TriggerLeft), gs = Input.GetJoyAxis(j, JoyAxis.LeftX);
+        if (gt > 0.03f && !up) { inp.Thr = gt; inp.ThrDigital = false; }
+        if (gb > 0.03f && !dn) inp.Brk = gb;
+        if (Math.Abs(gs) > 0.06f && !lf && !rt) inp.Steer = -Math.Sign(gs) * Math.Pow((Math.Abs(gs) - 0.06) / 0.94, 1.4);
+      }
+      return inp;
+    }
+
+    public override void _Process(double delta) {
+      if (!_pause.Visible) {
+        var inp = ReadInput(); _acc += Math.Min(delta, 0.05); int idx0 = _t.Idx;
+        while (_acc >= CarPhysics.DT) { _car.Step(CarPhysics.DT, inp, true); _acc -= CarPhysics.DT; }
+        Laps(idx0, Math.Min(delta, 0.05));
+      }
+      _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
+      if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()}"); GetTree().Quit(); }
+    }
+
+    // a lap counts when the car passes the three checkpoints in order and then the line
+    void Laps(int idx0, double dt) {
+      int n = _t.N, i = _t.Idx; if (_timing) _lap += dt;
+      int q = i * 4 / n; // which quarter of the lap
+      if (q == _next && _next != 0) _next = (_next + 1) % 4;
+      bool crossed = idx0 > n * 7 / 8 && i < n / 8;
+      if (crossed) { if (_timing && _next == 0) { _last = _lap; if (_best == 0 || _lap < _best) _best = _lap; } _timing = true; _lap = 0; _next = 1; }
+    }
+
+    void UpdateCamera(float dt) {
+      var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
+      float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
+      if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
+        pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0); fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(0.75f / pos.DistanceTo(look))), 14, 40);
+      } else if (_camMode == 2) { pos = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); look = new Vector3(0, 0, 0); fov = 100; } // from the ceiling
+      else if (_camMode == 3) { // on board
+        var f = new Vector3((float)Math.Sin(_car.Hd), 0, (float)Math.Cos(_car.Hd)); pos = p + f * 0.02f + new Vector3(0, 0.075f, 0); look = pos + f; fov = 78; _camSnap = true;
+      } else { // chase: behind the car, between where it points and where it is going
+        double sp = Math.Sqrt(_car.Vx * _car.Vx + _car.Vz * _car.Vz), ang = _car.Hd;
+        if (sp > 0.8) { double va = Math.Atan2(_car.Vx, _car.Vz), d = va - ang; d = Math.Atan2(Math.Sin(d), Math.Cos(d)); if (Math.Abs(d) < 2.2) ang += d * 0.55; }
+        var f = new Vector3((float)Math.Sin(ang), 0, (float)Math.Cos(ang));
+        pos = p - f * 0.78f + new Vector3(0, 0.3f, 0); look = p + f * 0.25f + new Vector3(0, 0.05f, 0);
+      }
+      pos.X = Mathf.Clamp(pos.X, -hx, hx); pos.Z = Mathf.Clamp(pos.Z, -hz, hz);
+      float k = _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * (_camMode == 0 ? 6 : 12));
+      _camPos = _camPos.Lerp(pos, k); _camLook = _camLook.Lerp(look, _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 14)); _camSnap = false;
+      _cam.Fov = fov; _cam.Position = _camPos;
+      if (_camMode == 2) _cam.LookAt(_camLook, Vector3.Forward); else _cam.LookAt(_camLook, Vector3.Up);
+    }
+
+    static string T(double s) => s <= 0 ? "--:--.--" : $"{(int)(s / 60):00}:{s % 60:00.00}";
+    void UpdateHud() {
+      double sp = Math.Sqrt(_car.U * _car.U + _car.V * _car.V);
+      _hud.Text = $"LAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
+      if (_stats.Visible) _stats.Text = $"{Engine.GetFramesPerSecond()} fps   draw calls {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0}   tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}\nresolution {_scales[_scaleIdx] * 100:0}%   shadows {(_sun.ShadowEnabled ? "on" : "off")}   {RenderingServer.GetVideoAdapterName()}";
+    }
+  }
+}
