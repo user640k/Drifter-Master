@@ -6,7 +6,8 @@
 //  - tick: each hard tyre clicking over each tile joint (a 304.8 mm grid), so the patter speeds up with the car
 //  - hit: into a barrier, or landing
 // Everything is placed at the car and heard from where the pilot stands, whichever camera is showing: the cameras on
-// the car carry no microphone. So the car gets quieter and duller as it drives away, and moves left and right.
+// the car carry no microphone. So the car gets a little quieter and duller as it drives away (less than outdoors:
+// the hall carries it), and moves left and right.
 using Godot;
 using System;
 
@@ -24,7 +25,7 @@ namespace DriftMaster {
       return s;
     }
     AudioStreamPlayer3D Player(string name, bool loop, int poly = 1) {
-      var p = new AudioStreamPlayer3D { Stream = Load(name, loop), Bus = "Car", UnitSize = 4.5f, MaxDb = 3, AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.InverseDistance, AttenuationFilterCutoffHz = 9000, AttenuationFilterDb = -12, PanningStrength = 0.8f, MaxPolyphony = poly, VolumeDb = -80 };
+      var p = new AudioStreamPlayer3D { Stream = Load(name, loop), Bus = "Car", MaxDb = 6, AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.Disabled, AttenuationFilterCutoffHz = 20500, PanningStrength = 0.8f, MaxPolyphony = poly, VolumeDb = -80 };
       AddChild(p); return p; // loops start on the first Step, once they are in place and turned down: no pop at launch
     }
 
@@ -32,9 +33,8 @@ namespace DriftMaster {
       // the room: only a touch. The recorded tyre sounds already carry the room they were recorded in, so more echo on top
       // would be a room inside a room; this only ties the made sounds (shell, ticks, hits, motor) to the same space
       _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master");
-      AudioServer.AddBusEffect(_bus, new AudioEffectLowPassFilter { CutoffHz = 1500, Resonance = 0.25f }, 0); AudioServer.SetBusEffectEnabled(_bus, 0, false); // on only from inside the car
-      AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.5f, Spread = 0.8f, Hipass = 0.2f, PredelayMsec = 10, PredelayFeedback = 0.1f, Dry = 1f, Wet = 0.08f }, 1);
-      AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 2);
+      AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.5f, Spread = 0.8f, Hipass = 0.2f, PredelayMsec = 10, PredelayFeedback = 0.1f, Dry = 1f, Wet = 0.08f }, 0);
+      AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 1);
       _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true);
       _tick = Player("tick", false, 10); _hit = Player("hit", false, 3);
       _ear = new AudioListener3D(); AddChild(_ear); _ear.TopLevel = true; _ear.MakeCurrent();
@@ -48,8 +48,12 @@ namespace DriftMaster {
     public void Step(CarPhysics c, Transform3D car, Transform3D ear, bool paused, float dt) {
       const bool inside = false; const float camGain = 1; // always heard from the pilot's place, never from inside the car
       GlobalPosition = car.Origin + new Vector3(0, 0.05f, 0); _ear.GlobalTransform = ear;
-      AudioServer.SetBusEffectEnabled(_bus, 0, inside);
-      AudioServer.SetBusVolumeDb(_bus, Muted ? -80 : Db(Volume * Volume * camGain));
+      // Distance, as measured on a video of a car on a P-tile track from a fixed camera: in a hall the car does not fade
+      // the way it would outdoors. Much of what reaches you is the room, so nine times the distance was only a bit
+      // over twice as quiet. Loudness goes as distance to the power -0.4 here (outdoors it would be -1). The far car was
+      // also a little duller in the video; that is left out, as the engine's low-pass took far too much of the top off.
+      float dist = Mathf.Max(0.6f, ear.Origin.DistanceTo(GlobalPosition)), far = Mathf.Pow(2f / dist, 0.4f);
+      AudioServer.SetBusVolumeDb(_bus, Muted ? -80 : Db(Volume * Volume * camGain * far * 1.45f));
       float sp = (float)Math.Sqrt(c.U * c.U + c.V * c.V), slide = (float)c.Slide, spin = (float)Math.Abs(c.W - c.U), on = paused || c.Air ? 0 : 1;
       float moving = Smooth(0.08f, 1.6f, sp);
       // how much the car is shaking: speed over the tiles, sliding, and the body rocking on its springs
@@ -60,8 +64,8 @@ namespace DriftMaster {
       _gSlide += (on * Smooth(0.02f, 0.6f, sp + spin) * grind * 0.8f - _gSlide) * k;
       _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
       // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
-      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.048f + 0.11f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
-      _gShell += (on * shake * (inside ? 0.6f : 0.22f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
+      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.043f + 0.1f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
+      _gShell += (on * shake * (inside ? 0.6f : 0.13f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
       if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
       _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((800 + 90 * wsp) / 1000f, 0.8f, 2.2f);
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)

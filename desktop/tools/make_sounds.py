@@ -3,7 +3,8 @@
    usage: make_sounds.py <out dir>
 
    The running sounds are cut from a reference recording (tools/sound_src/reference.wav: the sound of a video of a
-   1/10 drift car sliding on a polished floor in a big room; used with permission for non-commercial use):
+   1/10 drift car on a P-tile drift track, the floor the game has; the parts where the car is near the camera; used
+   with permission for non-commercial use):
      - the recording is split by loudness: its loud quarter is the car sliding, its quiet quarter rolling and coasting
      - the motor's whistle glides up and down in it, which would chirp at random once cut up, so the narrow lines that
        stand well above the noise are taken out of each instant; the game adds its own whistle, pitched by wheel speed
