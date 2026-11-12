@@ -15,7 +15,7 @@ Open the `desktop` folder in Godot 4.6 (.NET edition) and press Play, or export 
 | Throttle / brake, reverse | W / S or arrows | right / left trigger |
 | Steer | A / D or arrows | left stick |
 | Reset to the start | R | Y |
-| Camera (chase, driver's stand, ceiling, on board) | C | X |
+| Camera (chase, driver's stand, ceiling, on board from inside the cabin) | C | X |
 | Paint colour | P | |
 | Shadows on/off | F2 | |
 | Frame rate and draw calls | F3 | |

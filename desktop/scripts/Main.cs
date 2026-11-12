@@ -20,6 +20,7 @@ namespace DriftMaster {
         if (a.StartsWith("--shot=")) _shot = a.Substring(7); else if (a.StartsWith("--frames=")) _frames = int.Parse(a.Substring(9));
         else if (a == "--auto") _auto = true; else if (a.StartsWith("--cam=")) _camMode = int.Parse(a.Substring(6)); else if (a.StartsWith("--at=")) at = int.Parse(a.Substring(5));
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
+        else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
       // the layout sat at z = -4.9..-1.9 in the big warehouse; here it is centred in a hall of its own (9.0 x 5.0 m)
@@ -119,13 +120,14 @@ namespace DriftMaster {
 
     void UpdateCamera(float dt) {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
+      if (_camMode != 3) { _view.SetOnBoard(false); _cam.Near = 0.02f; _cam.Far = 40; }
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
       if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
         pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0); fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(0.75f / pos.DistanceTo(look))), 14, 40);
       } else if (_camMode == 2) { pos = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); look = new Vector3(0, 0, 0); fov = 100; } // from the ceiling
-      else if (_camMode == 3) { // on board
-        var f = new Vector3((float)Math.Sin(_car.Hd), 0, (float)Math.Cos(_car.Hd)); pos = p + f * 0.02f + new Vector3(0, 0.075f, 0); look = pos + f; fov = 78; _camSnap = true;
+      else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
+        _view.SetOnBoard(true); _cam.Near = 0.004f; _cam.Far = 25; _cam.Fov = 82; _cam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
       } else { // chase: behind the car, between where it points and where it is going
         double sp = Math.Sqrt(_car.Vx * _car.Vx + _car.Vz * _car.Vz), ang = _car.Hd;
         if (sp > 0.8) { double va = Math.Atan2(_car.Vx, _car.Vz), d = va - ang; d = Math.Atan2(Math.Sin(d), Math.Cos(d)); if (Math.Abs(d) < 2.2) ang += d * 0.55; }

@@ -1,5 +1,14 @@
 # Drift Master
 
+## Two versions
+
+| Version | Where | What |
+|---|---|---|
+| **Web** | this folder: `index.html` | The browser game (also the itch.io build). |
+| **Desktop** | [`desktop/`](desktop/) | A Godot 4.6 + C# build for PC, in progress: one hall, the HILLSIDE layout, the sedan. See [`desktop/README.md`](desktop/README.md). |
+
+Everything below is about the web version.
+
 Browser RC drift game. The car is the owner's own model of a 1970s two-door saloon (the sedan, supplied as a USDZ), used as-is at true 1/10 scale on an electric RWD drift chassis fitted to it, with paint schemes, ride height, body mounting and damage, in an indoor RC arena after reference photos (dark worn epoxy deck, turf islands with red and white kerbs, curbed C island, driver's stand). Low-res photo textures in an early-2000s style, baked glow and shadows, sampled motor and tire sound, keyboard and gamepad, fixed 1280x720 render.
 
 ## Run

@@ -6,7 +6,9 @@ using System;
 namespace DriftMaster {
   public partial class CarView : Node3D {
     MeshInstance3D _blob; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
-    public StandardMaterial3D Paint;
+    public StandardMaterial3D Paint; StandardMaterial3D _glass;
+    public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
+    public static float FpvX = 0, FpvY = 0.1f, FpvZ = -0.016f, FpvTilt = 6f;
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
 
     public override void _Ready() {
@@ -24,14 +26,19 @@ namespace DriftMaster {
         var bm = new StandardMaterial3D { AlbedoTexture = ImageTexture.CreateFromImage(img), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, NoDepthTest = false, DepthDrawMode = BaseMaterial3D.DepthDrawModeEnum.Disabled, RenderPriority = -1 };
         _blob = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.27f, 0.5f) }, MaterialOverride = bm, Position = new Vector3(0, 0.003f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; AddChild(_blob); }
       // car paint: a deep colour under a clear coat; glass: dark tint
-      Paint = new StandardMaterial3D { AlbedoColor = new Color(0.09f, 0.094f, 0.106f), Roughness = 0.42f, Metallic = 0.25f, ClearcoatEnabled = true, Clearcoat = 0.8f, ClearcoatRoughness = 0.12f };
-      var glass = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.065f, 0.085f, 0.8f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.08f, Metallic = 0.3f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
+      Fpv = new Node3D { Name = "Fpv", Position = new Vector3(FpvX, FpvY, FpvZ), Rotation = new Vector3(Mathf.DegToRad(FpvTilt), Mathf.Pi, 0) }; _body.AddChild(Fpv);
+      Paint = new StandardMaterial3D { CullMode = BaseMaterial3D.CullModeEnum.Disabled, AlbedoColor = new Color(0.09f, 0.094f, 0.106f), Roughness = 0.42f, Metallic = 0.25f, ClearcoatEnabled = true, Clearcoat = 0.8f, ClearcoatRoughness = 0.12f };
+      var glass = _glass = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.065f, 0.085f, 0.8f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.08f, Metallic = 0.3f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
       foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) {
         var mi = (MeshInstance3D)node; string nm = mi.Name.ToString();
         if (nm.EndsWith("_paint")) mi.MaterialOverride = Paint; else if (nm.Contains("_glass_")) mi.MaterialOverride = glass;
+        else if (nm.StartsWith("Shell_") && mi.Mesh != null) for (int si = 0; si < mi.Mesh.GetSurfaceCount(); si++) if (mi.Mesh.SurfaceGetMaterial(si) is BaseMaterial3D bm0) { var d = (BaseMaterial3D)bm0.Duplicate(); d.CullMode = BaseMaterial3D.CullModeEnum.Disabled; mi.SetSurfaceOverrideMaterial(si, d); } // the shell is seen from inside too
         if (mi != _blob) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
       }
     }
+
+    // from the driver's seat the tint is light enough to see the track through
+    public void SetOnBoard(bool on) { _glass.AlbedoColor = new Color(0.05f, 0.065f, 0.085f, on ? 0.16f : 0.8f); }
 
     public void Pose(CarPhysics c, Track t) {
       // nose up or down with the slope under the two axles
