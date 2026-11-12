@@ -109,6 +109,71 @@ canvas#view { width: 100%; height: 100%; display: block; filter: contrast(1.12) 
 .mback { grid-column: 1 / -1; color: #6a707b; font-size: .95cqw; letter-spacing: .1em; }
 .mcontrols kbd { font-family: var(--display); font-size: .95em; color: var(--kerb); font-weight: 700; }
 /* on the main menu the photo grade is lifted: a bright, clean shot of the floor */
+/* ---- menu style options (OPTIONS > MENU STYLE): minimal, technical, straightforward. Same list and keys in each ---- */
+.overlay { --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace; }
+.overlay[class*="ms-"] .mkerb { display: none; }
+.overlay[class*="ms-"] .mitem::before { display: none; }
+.overlay[class*="ms-"] .mcard { clip-path: none; }
+.overlay[class*="ms-"] .mcard::before { display: none; }
+.overlay[class*="ms-"] .mcard .chips span, .overlay[class*="ms-"] .mcard .chips span b { transform: none; }
+/* SPEC: a plain white column, numbered rows ruled off like a spec table, the selected row inverted */
+.ms-spec .mpanel { clip-path: none; width: 26cqw; padding: 3cqw 2.4cqw 2.4cqw; background: rgba(250,250,249,.95); border-right: 1px solid #c9ccd2; }
+.ms-spec .mhead { border-left: 0; padding: 0; }
+.ms-spec .mtitle { font-style: normal; font-weight: 700; font-size: 1.5cqw; letter-spacing: .3em; }
+.ms-spec .mtitle em { display: inline; color: inherit; font-style: normal; font-weight: 500; margin-left: .45em; }
+.ms-spec .mkind { font-family: var(--mono); font-size: .78cqw; letter-spacing: .16em; color: #8a909a; margin-top: .5cqw; }
+.ms-spec .mlist { counter-reset: mi; gap: 0; border-top: 1px solid #d5d8dd; }
+.ms-spec .mitem { counter-increment: mi; justify-content: flex-start; font-style: normal; font-weight: 500; font-size: 1.1cqw; letter-spacing: .16em; padding: .8cqw .7cqw; border-bottom: 1px solid #d5d8dd; color: #1c1f26; }
+.ms-spec .mitem .mlabel { margin-right: auto; }
+.ms-spec .mitem .mlabel::before { content: counter(mi, decimal-leading-zero); font-family: var(--mono); font-size: .78cqw; letter-spacing: 0; color: #9aa0aa; margin-right: 1.1cqw; }
+.ms-spec .mitem.sel { background: #14161c; color: #fff; }
+.ms-spec .mval { font-family: var(--mono); font-size: .95cqw; letter-spacing: .04em; color: #5d636e; }
+.ms-spec .mitem.sel .mval { color: #fff; }
+.ms-spec .mfoot { font-family: var(--mono); letter-spacing: .1em; }
+.ms-spec .mcard { right: 2.4cqw; bottom: 2.4cqw; padding: 1.1cqw 1.4cqw; background: rgba(250,250,249,.95); border: 1px solid #c9ccd2; min-width: 22cqw; }
+.ms-spec .mcard .k { color: #8a909a; font-family: var(--mono); letter-spacing: .16em; font-weight: 500; }
+.ms-spec .mcard .n { font-style: normal; font-size: 1.8cqw; letter-spacing: .12em; }
+.ms-spec .mcard .chips span { background: none; color: #1c1f26; border: 1px solid #1c1f26; font-family: var(--mono); font-weight: 500; letter-spacing: .06em; }
+.ms-spec .mcard .chips span.hot { background: #14161c; color: #fff; }
+/* STRIP: the title small top left; one ruled strip across the bottom, each item a cell (label above, value below) */
+.ms-strip .mpanel { clip-path: none; inset: 0; width: auto; padding: 2.4cqw 0 0; background: none; gap: 0; }
+.ms-strip .mhead { border-left: 0; margin-left: 2.4cqw; padding: .8cqw 1.2cqw; background: rgba(250,250,249,.95); align-self: flex-start; }
+.ms-strip .mtitle { font-style: normal; font-size: 1.3cqw; letter-spacing: .3em; }
+.ms-strip .mtitle em { display: inline; color: inherit; font-style: normal; font-weight: 500; margin-left: .45em; }
+.ms-strip .mkind { font-family: var(--mono); font-size: .72cqw; letter-spacing: .14em; color: #8a909a; margin-top: .3cqw; }
+.ms-strip .mlist { flex-direction: row; gap: 0; background: rgba(250,250,249,.96); border-top: 1px solid #c9ccd2; }
+.ms-strip .mitem { flex: 1 1 0; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .35cqw; padding: 1cqw 1.2cqw 1.2cqw; border-right: 1px solid #d5d8dd; border-top: .3cqw solid transparent; font-style: normal; color: #1c1f26; }
+.ms-strip .mitem .mlabel { font-family: var(--mono); font-size: .72cqw; font-weight: 500; letter-spacing: .16em; color: #8a909a; }
+.ms-strip .mitem.act .mlabel { font-family: var(--display); font-size: 1.25cqw; font-weight: 700; letter-spacing: .14em; color: #1c1f26; margin-top: .9cqw; }
+.ms-strip .mval { font-family: var(--display); font-size: 1.25cqw; font-weight: 700; letter-spacing: .1em; color: #1c1f26; margin-left: -.3cqw; }
+.ms-strip .mitem.sel { border-top-color: #e10600; background: #fff; color: #1c1f26; }
+.ms-strip .mitem.sel .mval { color: #1c1f26; }
+.ms-strip .mitem:not(.sel) .marr { visibility: hidden; }
+.ms-strip .mfoot { display: none; }
+.ms-strip .mcontrols { margin: 0 2.4cqw 2cqw; padding: 1.4cqw; background: rgba(250,250,249,.96); }
+.ms-strip .mcard { right: 2.4cqw; top: 2.4cqw; bottom: auto; padding: .8cqw 1.2cqw; background: rgba(250,250,249,.95); min-width: 0; }
+.ms-strip .mcard .k { color: #8a909a; font-family: var(--mono); letter-spacing: .16em; font-weight: 500; }
+.ms-strip .mcard .n { font-style: normal; font-size: 1.4cqw; letter-spacing: .12em; }
+.ms-strip .mcard .v, .ms-strip .mcard .chips { display: none; }
+/* SHEET: a setup sheet: monospace key / value rows with dotted leaders on a card, a caret on the selected row */
+.ms-sheet .mpanel { clip-path: none; left: 4cqw; top: 50%; bottom: auto; transform: translateY(-50%); width: 30cqw; padding: 1.8cqw 2.2cqw 1.6cqw; background: #fbfbf9; border-top: .4cqw solid #14161c; box-shadow: 0 .3cqw 1.4cqw rgba(0,0,0,.22); gap: .6cqw; }
+.ms-sheet .mhead { border-left: 0; padding: 0 0 .9cqw; border-bottom: 1px dashed #9aa0aa; }
+.ms-sheet .mtitle { font-family: var(--mono); font-style: normal; font-size: 1.3cqw; letter-spacing: .12em; }
+.ms-sheet .mtitle em { display: inline; color: inherit; font-style: normal; margin-left: .5em; }
+.ms-sheet .mkind { font-family: var(--mono); font-size: .78cqw; letter-spacing: .1em; color: #8a909a; margin-top: .4cqw; }
+.ms-sheet .mkind:empty { display: block; }
+.ms-sheet .mkind:empty::after { content: 'SETUP SHEET \00b7  1:10 RC DRIFT'; }
+.ms-sheet .mlist { margin-top: .4cqw !important; gap: .05cqw; }
+.ms-sheet .mitem { justify-content: flex-start; font-family: var(--mono); font-style: normal; font-weight: 500; font-size: 1.02cqw; letter-spacing: .04em; padding: .42cqw .5cqw; color: #1c1f26; }
+.ms-sheet .mitem .mlabel { display: flex; flex: 1; align-items: baseline; }
+.ms-sheet .mitem .mlabel::before { content: '\00a0\00a0'; width: 1.4em; }
+.ms-sheet .mitem.sel .mlabel::before { content: '>'; width: 1.4em; color: #e10600; }
+.ms-sheet .mitem.opt .mlabel::after { content: ''; flex: 1; border-bottom: 1px dotted #9aa0aa; margin: 0 .6cqw; transform: translateY(-.25cqw); }
+.ms-sheet .mitem.sel { background: #eceef1; color: #1c1f26; }
+.ms-sheet .mval { font-family: var(--mono); font-size: 1.02cqw; letter-spacing: .04em; color: #1c1f26; }
+.ms-sheet .mitem.sel .mval { color: #1c1f26; }
+.ms-sheet .mfoot { font-family: var(--mono); letter-spacing: .08em; border-top: 1px dashed #9aa0aa; padding-top: .8cqw; margin-top: .6cqw; }
+.ms-sheet .mcard { display: none; }
 .stage.mmain .grade { opacity: .25; }
 .stage.mmain canvas#view { filter: contrast(1.06) saturate(1.08) brightness(1.1); }
 .hud.dim > :not(.center) { opacity: 0 !important; }
@@ -752,9 +817,58 @@ for (const key in GROUND) {
   for (let z = G.oz + Math.ceil((z0 - G.oz) / G.sz) * G.sz; z < z1; z += G.sz) decal(M.group, cx, z, x1 - x0, G.jw, 0, null, 0x000000, 0.1, false, 0.0035);
   for (const [px, pz, pr] of groundPatches(key)) decal(M.group, px, pz, pr * 2.2, pr * 2.2, 0, T.blob, 0x2a2a2a, 0.12, false, 0.0034);
 }
+// ---- performance: static meshes that share a material are combined into one mesh (one draw call). Used on the venue,
+// the course's fixed pieces and the parked display cars, which never move. Anything that moves or is toggled is marked
+// userData.dynamic (cones, the drone, the gate marker) and left alone, as are lights, decals drawn in a set order and
+// multi-material meshes. Materials stay shared, so colour changes on them (lamp moods, liveries) still apply
+// identical plain materials (same type, colours, maps and flags) are shared first, so their meshes merge too; materials
+// that are changed at runtime (lamp and LED glow) are listed in keep and left alone
+function shareMaterials(root, keep) {
+  const seen = new Map(), P = ['type', 'transparent', 'opacity', 'side', 'blending', 'depthWrite', 'depthTest', 'fog', 'shininess', 'reflectivity', 'polygonOffset', 'polygonOffsetFactor', 'alphaTest', 'wireframe', 'flatShading', 'toneMapped'];
+  const id = t => t ? t.uuid : '', col = c => c ? c.getHexString() : '';
+  root.traverse(o => { if (!o.isMesh || Array.isArray(o.material)) return; const m = o.material;
+    if (keep.has(m) || m.onBeforeCompile.toString() !== THREE.Material.prototype.onBeforeCompile.toString() || m.userData.u) return;
+    const k = P.map(p => m[p]).join('|') + col(m.color) + col(m.emissive) + col(m.specular) + id(m.map) + id(m.emissiveMap) + id(m.alphaMap) + id(m.envMap) + id(m.normalMap) + id(m.bumpMap) + id(m.lightMap) + (m.emissiveIntensity ?? '') + (m.vertexColors ? 'vc' : '');
+    const s = seen.get(k); if (s) o.material = s; else seen.set(k, m); });
+}
+function mergeStatic(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), groups = new Map(), dyn = o => { for (let q = o; q && q !== root; q = q.parent) if (q.userData.dynamic || !q.visible) return true; return false; };
+  root.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.renderOrder || o.morphTargetInfluences || dyn(o)) return;
+    const mat = Array.isArray(o.material) ? (o.material.length === 1 ? o.material[0] : null) : o.material, g = o.geometry;
+    if (!mat || !g.attributes.position || (Array.isArray(o.material) && g.groups.length > 1) || g.attributes.color || g.morphAttributes.position) return;
+    const key = mat.uuid + (g.attributes.normal ? 'n' : '') + (g.attributes.uv ? 'u' : '') + (o.castShadow ? 's' : '');
+    (groups.get(key) || groups.set(key, { mat, list: [] }).get(key)).list.push(o);
+  });
+  let removed = 0;
+  for (const { mat, list } of groups.values()) {
+    if (list.length < 2) continue;
+    let nv = 0, ni = 0; for (const o of list) { const g = o.geometry; nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count; }
+    const hasN = !!list[0].geometry.attributes.normal, hasU = !!list[0].geometry.attributes.uv;
+    const P = new Float32Array(nv * 3), Nn = hasN ? new Float32Array(nv * 3) : null, U = hasU ? new Float32Array(nv * 2) : null, I = new Uint32Array(ni);
+    const v = new THREE.Vector3(), M = new THREE.Matrix4(), NM = new THREE.Matrix3(); let vo = 0, io = 0;
+    for (const o of list) {
+      const g = o.geometry, pa = g.attributes.position, na = g.attributes.normal, ua = g.attributes.uv, n = pa.count;
+      M.multiplyMatrices(inv, o.matrixWorld); NM.getNormalMatrix(M); const flip = M.determinant() < 0;
+      for (let i = 0; i < n; i++) { v.fromBufferAttribute(pa, i).applyMatrix4(M); P.set([v.x, v.y, v.z], (vo + i) * 3);
+        if (Nn) { v.fromBufferAttribute(na, i).applyMatrix3(NM).normalize(); Nn.set([v.x, v.y, v.z], (vo + i) * 3); }
+        if (U) { U[(vo + i) * 2] = ua.getX(i); U[(vo + i) * 2 + 1] = ua.getY(i); } }
+      const idx = g.index ? g.index.array : null, cnt = idx ? g.index.count : n;
+      for (let t = 0; t < cnt; t += 3) { const a = idx ? idx[t] : t, b = idx ? idx[t + 1] : t + 1, c = idx ? idx[t + 2] : t + 2;
+        I[io++] = vo + a; I[io++] = vo + (flip ? c : b); I[io++] = vo + (flip ? b : c); }
+      vo += n; o.parent.remove(o); removed++;
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); if (Nn) geo.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); if (U) geo.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+    geo.setIndex(new THREE.BufferAttribute(I, 1)); geo.computeBoundingSphere();
+    const m = new THREE.Mesh(geo, mat); m.castShadow = list[0].castShadow; m.receiveShadow = list[0].receiveShadow; m.name = 'merged'; root.add(m); removed--;
+  }
+  return removed; // draw calls saved
+}
 function setMap(key) {
   const m = MAPS[key] || MAPS.arena;
   for (const k in MAPS) MAPS[k].group.visible = MAPS[k] === m;
+  if (!m.merged) { const keep = new Set(); for (const L of m.lamps) for (const x of L.mats || []) keep.add(x); for (const x of m.leds || []) [x.core, ...(x.glows || [])].forEach(y => y && y.isMaterial && keep.add(y)); shareMaterials(m.group, keep); m.merged = mergeStatic(m.group) + 1; } // the venue never moves: one draw call per material
   MAP = m; scene.fog.near = m.fog[0]; scene.fog.far = m.fog[1];
 }
 
@@ -827,7 +941,7 @@ function onRug(x, z) { return RUG && x > RUG[0] && x < RUG[2] && z > RUG[1] && z
 const coneGeo = { body: new THREE.CylinderGeometry(0.005, 0.026, 0.085, 14), band: new THREE.CylinderGeometry(0.0158, 0.0196, 0.014, 14), base: new THREE.BoxGeometry(0.066, 0.006, 0.066), dome: new THREE.CylinderGeometry(0.012, 0.03, 0.018, 14) };
 const coneMat = { orange: lam({ color: 0xff5a14 }), white: lam({ color: 0xf4f4f0 }), base: lam({ color: 0xd8480c }), dome: lam({ color: 0xffd21a }) };
 function makeCone(x, z, kind) {
-  const group = new THREE.Group(), pivot = new THREE.Group(); group.add(pivot);
+  const group = new THREE.Group(), pivot = new THREE.Group(); group.add(pivot); group.userData.dynamic = true; // cones get knocked about
   if (kind === 'c') {
     const base = new THREE.Mesh(coneGeo.base, coneMat.base); base.position.y = 0.003;
     const bodyM = new THREE.Mesh(coneGeo.body, coneMat.orange); bodyM.position.y = 0.0485;
@@ -986,7 +1100,7 @@ function buildCentrepiece(g, cx, cz) {
   const P = [[-0.75, 0, 0], [0, 0, 0], [0.75, 0, 0], [1.55, 0.2, -0.35], [2.0, 0.42, -1.05], [1.35, 0.62, -1.6], [0, 0.7, -1.55], [-1.35, 0.55, -1.45], [-2.0, 0.32, -0.9], [-1.55, 0.1, -0.28]]
     .map(([x, y, z]) => new THREE.Vector3(cx + x, hy + y, cz + z));
   const curve = new THREE.CatmullRomCurve3(P, true, 'centripetal');
-  DRONE = { obj: buildDrone(), curve, L: curve.getLength(), s: 0, v: 2.6, props: [] }; DRONE.obj.traverse(o => { if (o.userData.prop) DRONE.props.push(o); }); g.add(DRONE.obj);
+  DRONE = { obj: buildDrone(), curve, L: curve.getLength(), s: 0, v: 2.6, props: [] }; DRONE.obj.traverse(o => { if (o.userData.prop) DRONE.props.push(o); }); DRONE.obj.userData.dynamic = true; g.add(DRONE.obj);
   droneStep(0);
 }
 function buildDrone() {
@@ -1089,7 +1203,7 @@ const DISPLAY_SETS = {
 function buildDisplay(g, set, y = 0) {
   for (const [st, x, z, hd] of DISPLAY_SETS[set] || []) {
     const o = buildCar({ ...CAR_STYLE_DEFAULT, ...st, stickers: 1 }), lights = []; o.traverse(q => { if (q.isLight) lights.push(q); }); lights.forEach(q => q.parent.remove(q)); // baked glow only: no extra lights
-    o.position.set(x, y, z); o.rotation.y = hd; g.add(o);
+    o.position.set(x, y, z); o.rotation.y = hd; mergeStatic(o); g.add(o); // parked for good: merged per material
   }
 }
 // EMPTY: random cones (knockable, a new set each time) and a few groups of full-size plastic chairs; the car fits
@@ -1123,6 +1237,7 @@ function buildCourse(ci) {
   if (course.display) buildDisplay(courseGroup, course.display, course.display === 'club' ? 0.012 : 0);
   if (course.track) { buildTrackRibbon(course.track, courseGroup); course.gates = course.track.gates; course.start = course.track.start; course.line = course.track.raceLine; }
   LOW_SOLIDS = course.lowSolids || []; if (course.empty) buildEmpty(courseGroup);
+  mergeStatic(courseGroup); // boards, kerbs, ramps, decor: fixed; cones and the drone are marked dynamic
   const seen = new Set();
   for (const g of course.gates) for (const [x, z, k] of [[g[0], g[1], g[4]], [g[2], g[3], g[5]]]) {
     const key = x.toFixed(2) + ',' + z.toFixed(2);
@@ -2245,11 +2360,13 @@ function damageRepair(st) {
    so an adapter group turns the parts' own frame (x right, y up, z forward) back inside it. */
 const CAR = { wb: 0.25, track: 0.136, wheelR: 0.0291, wheelW: 0.022 };
 // the car as it loads: satin black, covered rims in black, slammed 10 mm, pink underglow
-const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 0.5, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, shellOn: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 1 / 11, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
+const CAR_STYLE_DEFAULT = { shell: 'nk2002', kit: 'stock', lights: 1, tyreSize: 0.5, tyres: 'wide', rim: 'covered', rimColor: '#18181b', stickers: 1, shellOn: 1, rims: 0, scheme: 'solid', a: '#17181b', b: '#f2f2ee', c: '#141416', ride: 0, camber: 0.125, mount: 'posts', glow: '#ff3fb4', glowOn: 1 };
 const CAR_STYLE = Object.assign({}, CAR_STYLE_DEFAULT);
 try { let st = JSON.parse(localStorage.getItem('cc-style9') || 'null');
   if (!st) { st = JSON.parse(localStorage.getItem('cc-style8') || '{}'); if (typeof st.camber === 'number') st.camber = 0.5 - st.camber / 2; } // old slider: 0 (none) .. 1 (12° negative)
-  for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k]; } catch (e) {}
+  for (const k in CAR_STYLE_DEFAULT) if (st[k] !== undefined && typeof st[k] === typeof CAR_STYLE_DEFAULT[k]) CAR_STYLE[k] = st[k];
+  if (!st.ride8) CAR_STYLE.ride = 0; } catch (e) {} // ride height range changed (-8 .. +10 mm): start saved cars at the new default
+CAR_STYLE.ride8 = 1;
 // solid paint only, and the standard 1/10 drift wheel: 1.9 in (52 mm) rims with 64 x 26 mm tyres
 Object.assign(CAR_STYLE, { scheme: schemeOf(CAR_STYLE.scheme).key, tyres: 'wide', tyreSize: 0.5 });
 // tyres follow the driving mode: hard drift tyres in DRIFT mode, rubber grip tyres in GRIP mode
@@ -2259,7 +2376,7 @@ let CAR_DECAL_SHEET = null;
 // ride height: -15 .. +10 mm from the slider (default -10: slammed, as in the drift video). The chassis can come down
 // 3 mm before the plate touches the floor; lower than that, the shell drops on its posts and the cambered tyres tuck
 // up inside the arches
-const rideMM = v => -12 + clamp(v ?? 0, 0, 1) * 22; // -12 (slammed: tyres tucked, arches opened round them) .. +10 mm; 0 is stock
+const rideMM = v => -8 + clamp(v ?? 0, 0, 1) * 18; // -8 (slammed, the default: tyres tucked, arches opened round them) .. +10 mm
 function carRide(S) { const r = rideMM(S.ride) / 1000, ch = Math.max(r, -0.003); return { chassis: ch, shell: r }; }
 // static camber: the slider runs from 12° negative (tops in) on the left, through 0 in the middle, to 12° positive (tops
 // out) on the right at the front; the rear gets half that. Returned as degrees of NEGATIVE camber (positive = tops in)
@@ -2360,6 +2477,10 @@ function buildCar(S = CAR_STYLE) {
     },
   };
   root.userData.update(0, 0);
+  // performance: the chassis' fixed parts and each wheel's tyre and rim are merged per material (the suspension
+  // corners move with the steering and the springs, so they stay as they are; the shell keeps its parts for damage)
+  if (!S.lite) chassis.userData.corners.forEach(c => { c.g.userData.dynamic = true; }); mergeStatic(chassis); // lite (rival, ghost): its suspension never animates, so all of it merges
+  for (const w of wheels) mergeStatic(w.m);
   return root;
 }
 /* ---------------- sticker kit ----------------
@@ -2924,7 +3045,7 @@ function ghostLoad() { ghost.best = null; try { const g = JSON.parse(localStorag
 function ghostSave() { if (ghost.rec.length < 12) return; ghost.best = ghost.rec; try { localStorage.setItem(ghostKey(), JSON.stringify(ghost.rec)); } catch (e) {} }
 function ghostBuild() {
   if (ghost.obj) return;
-  ghost.obj = buildCar({ ...CAR_STYLE, scheme: 'solid', a: '#cfe4ff', b: '#cfe4ff', c: '#cfe4ff', glowOn: 0, stickers: 0, lights: 0 });
+  ghost.obj = buildCar({ ...CAR_STYLE, lite: 1, scheme: 'solid', a: '#cfe4ff', b: '#cfe4ff', c: '#cfe4ff', glowOn: 0, stickers: 0, lights: 0 });
   ghost.obj.traverse(o => { if (o.material) { const ms = (Array.isArray(o.material) ? o.material : [o.material]).map(mt => { const c = mt.clone(); c.transparent = true; c.opacity = 0.32; c.depthWrite = false; if (c.emissive) c.emissive.setHex(0x203048); return c; }); o.material = Array.isArray(o.material) ? ms : ms[0]; } });
   if (ghost.obj.userData.shadow) ghost.obj.userData.shadow.visible = false;
   ghost.obj.visible = false; scene.add(ghost.obj);
@@ -2954,6 +3075,21 @@ function idleStep(dt, canDrive) {
   idleT += dt;
   if (idleT > 15) { idleT = 0; resetRun(); flash('TRACK RESET', 1.4); }
   else if (idleT > 10) { $('msg').textContent = 'RESET IN ' + Math.ceil(15 - idleT); msgTimer = 0.3; }
+}
+// a car that does not make the jump drops into the gap between the kicker and the landing, among the parked cars, and
+// cannot climb out: after 5 s in the gap it is put back on the run-up before the kicker (and a stalled opponent is moved
+// on past the landing)
+const gapT = { me: 0, opp: 0 };
+function inJumpGap(x, z) { const J = course.jump; return J && Math.abs(x - J.x) < J.w / 2 && z > J.lip - 0.15 && z < J.land - 0.02; } // from the top of the kicker to the landing
+function jumpGapStep(dt, canDrive) {
+  const J = course.jump; if (!J || !canDrive) { gapT.me = gapT.opp = 0; return; }
+  if (inJumpGap(car.x, car.z) && !car.air && Math.hypot(car.vx, car.vz) < 0.35) { // stalled in the gap, on the parked cars or on the lip
+    gapT.me += dt; if (gapT.me > 2 && gapT.me <= 5) { $('msg').textContent = 'RESET IN ' + Math.ceil(5 - gapT.me); msgTimer = 0.3; }
+    if (gapT.me > 5) { gapT.me = 0; Object.assign(car, { x: J.x, z: J.lip - 0.95, h: 0, y: 0, u: 0, v: 0, r: 0, w: 0, vx: 0, vz: 0, vy: 0, rollV: 0, pitchV: 0, steer: 0, air: false });
+      if (TRACK) TRACK.idx = -1; /* find the lane again from scratch after the move */ carObj.position.set(car.x, 0, car.z); carObj.rotation.y = 0; camAng = 0; $('msg').textContent = ''; flash('BACK ON THE RUN-UP', 1.2); }
+  } else gapT.me = 0;
+  if (oppActive() && inJumpGap(opp.x, opp.z) && opp.v < 0.4) { gapT.opp += dt; if (gapT.opp > 5) { gapT.opp = 0; const i = opp.path.nearest(J.x, J.land + 0.3); opp.s = opp.prevS = i * opp.path.ds; opp.v = 1; } }
+  else gapT.opp = 0;
 }
 function loadBest() { best = null; try { const b = parseFloat(localStorage.getItem(bestKey())); if (b > 0) best = b; } catch (e) {} ghostLoad(); }
 function setHudLabels() {
@@ -3092,7 +3228,7 @@ function oppStyle() {
   const shell = pick(Object.keys(BODY_ASSETS)), kit = shell === 'nk2002' && Math.random() < 0.5 ? 'wide' : 'stock';
   const cols = SWATCH.a.filter(([, c]) => c.toLowerCase() !== CAR_STYLE.a.toLowerCase());
   const sch = pick(PARTS.SCHEMES.slice(1).concat([PARTS.SCHEMES[0]])), P = sch.preset;
-  return { ...CAR_STYLE_DEFAULT, shell, kit, shellOn: 1, scheme: sch.key, ...(P ? { b: P[1], c: P[2] } : {}), a: P && Math.random() < 0.6 ? P[0] : pick(cols)[1], rim: pick(['modern', 'covered', 'spoke', 'original']),
+  return { ...CAR_STYLE_DEFAULT, lite: 1, shell, kit, shellOn: 1, scheme: sch.key, ...(P ? { b: P[1], c: P[2] } : {}), a: P && Math.random() < 0.6 ? P[0] : pick(cols)[1], rim: pick(['modern', 'covered', 'spoke', 'original']),
     rimColor: pick(SWATCH.rimColor)[1], stickers: Math.random() < 0.7 ? 1 : 0, glowOn: 0, lights: 0, ride: 0.06 + Math.random() * 0.25, camber: CAR_STYLE.camber };
 }
 function buildOppPath(c) {
@@ -3281,7 +3417,8 @@ function updateCamera(dt, snap) {
     // a still shot of the selected track: high in the corner, looking down across the whole layout, framed to the
     // right of the menu panel (the frame is shifted so the track sits in the open part of the screen)
     const v = menuView(); camera.position.copy(v.pos); camera.up.set(0, 1, 0); camera.lookAt(v.look); camera.fov = v.fov;
-    camera.setViewOffset(1280, 720, -250, -10, 1280, 720); camera.updateProjectionMatrix();
+    const off = [[-250, -10], [-190, -10], [0, -60], [-170, 0]][typeof menuStyle === 'number' ? menuStyle : 0]; // track framed in the open part of each menu style
+    camera.setViewOffset(1280, 720, off[0], off[1], 1280, 720); camera.updateProjectionMatrix();
     tx.visible = false; return;
   }
   // during a drift the chase camera swings toward the direction of travel, so you see the car's angle
@@ -3373,6 +3510,8 @@ function menuItems() {
     opt('CAMERA', CAMS[camMode], () => actCamera()),
     opt('GHOST', ghostOn ? 'ON' : 'OFF', () => { ghostOn = !ghostOn; try { localStorage.setItem('cc-ghost', ghostOn ? '1' : '0'); } catch (e) {} }),
     opt('VOLUME', volLabel(), d => setVol((muted ? volume : volume + d))),
+    opt('MENU STYLE', MENU_STYLES[menuStyle][0], d => setMenuStyle(menuStyle + (d || 1))),
+    opt('RESOLUTION', RES.lock ? 'FULL' : 'AUTO · ' + Math.round(RES.s * 100) + '%', () => setResLock(!RES.lock)),
     act('CONTROLS', () => { menu.controls = true; renderMenu(); }),
     act('TRANSMITTER · ' + (rcPad() && RCAL[rcPad().id] ? 'CALIBRATED' : 'CALIBRATE'), () => rcStart()),
     back,
@@ -3389,12 +3528,17 @@ function menuItems() {
     ? [act('DRIVE', () => startRace()), ...shared]
     : [act('RESUME', () => closeMenu()), act('RESTART', () => { resetRun(); closeMenu(); }), ...shared, act('MAIN MENU', () => openMenu('main'))];
 }
+// menu look: the current pit board or one of the minimal styles (saved)
+const MENU_STYLES = [['PIT BOARD', ''], ['SPEC', 'ms-spec'], ['STRIP', 'ms-strip'], ['SHEET', 'ms-sheet']];
+let menuStyle = 0; try { const v = parseInt(localStorage.getItem('cc-menu'), 10); if (v >= 0 && v < MENU_STYLES.length) menuStyle = v; } catch (e) {}
+function setMenuStyle(i) { menuStyle = (i + MENU_STYLES.length) % MENU_STYLES.length; try { localStorage.setItem('cc-menu', String(menuStyle)); } catch (e) {} }
 function renderMenu() {
+  { const ov = $('overlay'); MENU_STYLES.forEach(([, c]) => c && ov.classList.toggle(c, c === MENU_STYLES[menuStyle][1])); }
   const items = menuItems(); menu.sel = clamp(menu.sel, 0, items.length - 1);
   $('mkind').textContent = menu.sub ? menu.sub.toUpperCase() : menu.kind === 'main' ? '' : 'PAUSED';
   const ul = $('mlist'); ul.innerHTML = '';
   items.forEach((it, i) => {
-    const li = document.createElement('li'); li.className = 'mitem' + (i === menu.sel ? ' sel' : ''); li.id = 'mi-' + i;
+    const li = document.createElement('li'); li.className = 'mitem ' + (it.change ? 'opt' : 'act') + (i === menu.sel ? ' sel' : ''); li.id = 'mi-' + i;
     const lab = document.createElement('span'); lab.className = 'mlabel'; lab.textContent = it.label; li.appendChild(lab);
     if (it.more) { const v = document.createElement('span'); v.className = 'mval'; v.textContent = '›'; li.appendChild(v); }
     if (it.change) {
@@ -3818,7 +3962,7 @@ function frame(now) {
   ud.lampM.color.setHex(car.braking && canDrive ? 0xff6a50 : (car.reversing ? 0xffe8d8 : 0xb81a12));
   if (ud.update) ud.update(car.steer, car.roll);
   if (ud.dmg) damageStep(ud.dmg, dt); if (impactCool > 0) impactCool -= dt;
-  ghostStep(dt); idleStep(dt, canDrive);
+  ghostStep(dt); idleStep(dt, canDrive); jumpGapStep(dt, canDrive);
   updateCamera(dt, false);
   audio.update(car.wheelSurf / MOTORS[setup.motor].vFree, car.thr, car.slide, race.state !== 'menu', MOTORS[setup.motor], setup.esc ?? 0);
   audio.setPose(car.x, car.y + 0.05, car.z, camera);
@@ -3838,7 +3982,24 @@ function frame(now) {
     if (race.state === 'race') { $('lap').textContent = timed() ? `${Math.min(race.lap, raceLapsN())}/${raceLapsN()}` : String(race.lap); $('cur').textContent = race.lap > 0 ? fmt(clock - race.lapStart + race.pen) : fmt(0); $('gate').textContent = `${race.next}/${course.gates.length}`; }
     raceHud();
   }
+  adaptRes(now);
   renderer.render(scene, camera);
+}
+// adaptive resolution: the frame rate is checked every 2 s; below ~45 fps the game renders at a lower internal
+// resolution (100 % -> 85 % -> 70 % -> 60 %, scaled up to the same screen size), and after 10 s with plenty of headroom it
+// steps back up. On a machine that holds 60 fps nothing changes
+const RES = { s: 1, levels: [1, 0.85, 0.7, 0.6], t0: 0, n: 0, good: 0, lock: 0 };
+try { RES.lock = localStorage.getItem('cc-res') === 'full' ? 1 : 0; } catch (e) {}
+function setResLock(on) { RES.lock = on ? 1 : 0; RES.s = 1; renderer.setSize(1280, 720, false); try { localStorage.setItem('cc-res', on ? 'full' : 'auto'); } catch (e) {} }
+function adaptRes(now) {
+  if (RES.lock) return; if (!RES.t0) { RES.t0 = now; RES.n = 0; return; } RES.n++;
+  const span = now - RES.t0; if (span < 2000) return;
+  const ms = span / RES.n, i = RES.levels.indexOf(RES.s); RES.t0 = now; RES.n = 0;
+  if (document.hidden || ms > 500) return; // a background tab or a stall, not the game's own speed
+  let j = i;
+  if (ms > 22 && i < RES.levels.length - 1) { j = i + 1; RES.good = 0; }
+  else if (ms < 15 && i > 0) { if ((RES.good += 2) >= 10) { j = i - 1; RES.good = 0; } } else RES.good = 0;
+  if (j !== i) { RES.s = RES.levels[j]; renderer.setSize(Math.round(1280 * RES.s), Math.round(720 * RES.s), false); }
 }
 requestAnimationFrame(frame);
 })();
