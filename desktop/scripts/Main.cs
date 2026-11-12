@@ -12,7 +12,7 @@ namespace DriftMaster {
     // lap timing
     double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
     // test hooks: --shot=file --frames=n --auto --cam=n --at=index
-    float[] _view6; string _shot; int _frames = 90, _frame; bool _auto, _autoDrift; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
+    float[] _view6; bool _bare; double _poseSteer = double.NaN; /* test and icon shots: the car alone on a clear background, wheels turned */ string _shot; int _frames = 90, _frame; bool _auto, _autoDrift; int _paintIdx; float[] _scales = { 1f, 0.85f, 0.7f }; int _scaleIdx;
     static readonly Color[] Paints = { new Color(0.09f, 0.094f, 0.106f), new Color(0.86f, 0.87f, 0.85f), new Color(0.72f, 0.05f, 0.06f), new Color(0.06f, 0.22f, 0.6f), new Color(0.95f, 0.72f, 0.05f), new Color(0.1f, 0.42f, 0.3f) };
 
     public override void _Ready() {
@@ -24,11 +24,13 @@ namespace DriftMaster {
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
+        else if (a == "--bare") _bare = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
+        else if (a.StartsWith("--orbit=")) { _view6 = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 8; }
         else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
       // the layout sat at z = -4.9..-1.9 in the big warehouse; here it is centred in a hall of its own (9.0 x 5.0 m)
       _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/hillside.json"), -3.4, 4.5, 2.5);
-      AddChild(Hall.Build(_t));
+      if (!_bare) AddChild(Hall.Build(_t)); else { GetViewport().TransparentBg = true; }
       BuildLights();
       _car = new CarPhysics { T = _t }; _view = new CarView(); AddChild(_view);
       _view.Paint.AlbedoColor = Paints[_paintIdx % Paints.Length];
@@ -42,7 +44,7 @@ namespace DriftMaster {
 
     void BuildLights() {
       var env = new Godot.Environment {
-        BackgroundMode = Godot.Environment.BGMode.Color, BackgroundColor = new Color(0.05f, 0.05f, 0.055f),
+        BackgroundMode = _bare ? Godot.Environment.BGMode.ClearColor : Godot.Environment.BGMode.Color, BackgroundColor = new Color(0.05f, 0.05f, 0.055f),
         AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.82f, 0.84f, 0.88f), AmbientLightEnergy = 0.4f,
         TonemapMode = Godot.Environment.ToneMapper.Filmic, TonemapWhite = 1.6f,
       };
@@ -133,7 +135,8 @@ namespace DriftMaster {
         while (_acc >= CarPhysics.DT) { _car.Step(CarPhysics.DT, inp, true); _acc -= CarPhysics.DT; }
         Laps(idx0, Math.Min(delta, 0.05));
       }
-      _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
+      if (!double.IsNaN(_poseSteer)) { _car.Steer = _poseSteer; _car.Roll = -0.035 * Math.Sign(_poseSteer); }
+      _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud(); if (_bare) { _hud.Visible = false; }
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
         var earXf = new Transform3D(Basis.Identity, new Vector3(0, 1.45f, (float)_t.HallZ - 0.15f)); // looking along -z, across the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
@@ -153,6 +156,10 @@ namespace DriftMaster {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
       if (_camMode != 3 && _camMode != 4) { OnBoard(false); _view.ShowStick(false); }
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
+      if (_camMode == 8) { // test view round the car: degrees round from its nose, degrees up, distance, lens
+        float az = Mathf.DegToRad(_view6[0]) + (float)_car.Hd, el = Mathf.DegToRad(_view6[1]), d = _view6[2];
+        look = p + new Vector3(0, 0.055f, 0); pos = look + new Vector3(Mathf.Sin(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Cos(az) * Mathf.Cos(el)) * d; fov = _view6[3]; _camSnap = true;
+        _cam.Fov = fov; _cam.Position = pos; _cam.LookAt(look, Vector3.Up); return; }
       if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
         pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0); fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(0.75f / pos.DistanceTo(look))), 14, 40);

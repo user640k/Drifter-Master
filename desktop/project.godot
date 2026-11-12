@@ -5,6 +5,8 @@ config_version=5
 
 config/name="Drift Master"
 run/main_scene="res://Main.tscn"
+config/icon="res://icon_256.png"
+config/windows_native_icon="res://icon.ico"
 config/features=PackedStringArray("4.6", "C#", "GL Compatibility")
 run/max_fps=0
 boot_splash/show_image=false
