@@ -14,7 +14,8 @@ namespace DriftMaster {
   public partial class CarAudio : Node3D {
     AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit, _whine; float _gWhine; AudioListener3D _ear;
     float _gRoll, _gSlide, _gScrub, _gShell; bool _started; int _bus; readonly int[] _cellX = new int[4], _cellZ = new int[4]; bool _cells; double _tickWait; float _pendHit;
-    public float Volume = 0.8f; public bool Muted, Motor = true; // Motor: the whistle can be switched off (N) public static string Solo; // test: hear one layer only
+    public float Volume = 0.8f; public bool Muted, Motor = true; // Motor: the whistle can be switched off (N)
+    public static string Solo; // test: hear one layer only
     const float TileS = 0.3048f;
 
     static AudioStreamWav Load(string name, bool loop) {
@@ -30,7 +31,7 @@ namespace DriftMaster {
     public override void _Ready() {
       // the room, as it sounds in the reference: hard floor, bare walls, nothing soft. The sound hangs on for well over a second
       _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master");
-      AudioServer.AddBusEffect(_bus, new AudioEffectLowPassFilter { CutoffHz = 2600, Resonance = 0.6f }, 0); AudioServer.SetBusEffectEnabled(_bus, 0, false); // on only from inside the car
+      AudioServer.AddBusEffect(_bus, new AudioEffectLowPassFilter { CutoffHz = 1500, Resonance = 0.25f }, 0); AudioServer.SetBusEffectEnabled(_bus, 0, false); // on only from inside the car
       AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.82f, Damping = 0.28f, Spread = 1f, Hipass = 0.15f, PredelayMsec = 24, PredelayFeedback = 0.3f, Dry = 0.85f, Wet = 0.4f }, 1);
       AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 2);
       _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true);
@@ -58,7 +59,7 @@ namespace DriftMaster {
       _gSlide += (on * Smooth(0.02f, 0.6f, sp + spin) * grind * 0.8f - _gSlide) * k;
       _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
       // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
-      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.028f + 0.06f * (float)c.Thr) * (inside ? 0.5f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
+      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.028f + 0.06f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
       _gShell += (on * shake * (inside ? 0.6f : 0.22f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
       if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
       _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((850 + 135 * wsp) / 1000f, 0.85f, 2.6f);
