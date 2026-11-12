@@ -6,7 +6,7 @@ using System;
 
 namespace DriftMaster {
   public partial class Main : Node3D {
-    Track _t; CarPhysics _car; CarView _view; Camera3D _cam; DirectionalLight3D _sun;
+    Track _t; CarPhysics _car; CarView _view; Camera3D _cam; DirectionalLight3D _sun; CarAudio _audio;
     SubViewport _fpvView; Camera3D _fpvCam; Control _fpvScreen; // the on-board picture: its own 720 x 480 frame, shown as 4:3
     Label _hud, _stats, _help, _pause; double _acc; int _camMode; Vector3 _camPos, _camLook; bool _camSnap = true;
     // lap timing
@@ -23,6 +23,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
+        else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
         else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
       // the layout sat at z = -4.9..-1.9 in the big warehouse; here it is centred in a hall of its own (9.0 x 5.0 m)
@@ -34,6 +35,7 @@ namespace DriftMaster {
       if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
       _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
       BuildOnBoard();
+      _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => _audio.Bump(k);
       BuildHud();
       _view.Pose(_car, _t); UpdateCamera(0);
     }
@@ -81,7 +83,7 @@ namespace DriftMaster {
       _hud = L(new Vector2(24, 18), 22, Colors.White);
       _stats = L(new Vector2(24, 150), 15, new Color(0.75f, 0.9f, 1f)); _stats.Visible = false;
       _help = L(new Vector2(24, 0), 14, new Color(1, 1, 1, 0.8f)); _help.SetAnchorsPreset(Control.LayoutPreset.BottomLeft); _help.Position = new Vector2(24, -40);
-      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
+      _help.Text = "W/S drive · A/D steer · R reset · C camera · P paint · M mute · - = volume · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc pause";
       _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
       _pause = L(Vector2.Zero, 34, Colors.White); _pause.Text = "PAUSED\nEsc resume  ·  Q quit"; _pause.HorizontalAlignment = HorizontalAlignment.Center; _pause.VerticalAlignment = VerticalAlignment.Center; _pause.SetAnchorsPreset(Control.LayoutPreset.FullRect); _pause.Visible = false;
       if (_shot != null) _help.Visible = false;
@@ -98,6 +100,9 @@ namespace DriftMaster {
       else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 0 : _camMode + 1; _camSnap = true; }
       else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; _view.Paint.AlbedoColor = Paints[_paintIdx]; }
       else if (key(Key.F2)) _sun.ShadowEnabled = !_sun.ShadowEnabled;
+      else if (key(Key.M)) _audio.Muted = !_audio.Muted;
+      else if (key(Key.Minus)) _audio.Volume = Math.Max(0, _audio.Volume - 0.1f);
+      else if (key(Key.Equal)) _audio.Volume = Math.Min(1, _audio.Volume + 0.1f);
       else if (key(Key.F3)) _stats.Visible = !_stats.Visible;
       else if (key(Key.F4)) { _scaleIdx = (_scaleIdx + 1) % _scales.Length; GetViewport().Scaling3DScale = _scales[_scaleIdx]; }
       else if (key(Key.F11)) { var w = GetWindow(); w.Mode = w.Mode == Window.ModeEnum.Fullscreen ? Window.ModeEnum.Windowed : Window.ModeEnum.Fullscreen; }
@@ -128,6 +133,7 @@ namespace DriftMaster {
         Laps(idx0, Math.Min(delta, 0.05));
       }
       _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
+      { bool ob = _camMode == 3 || _camMode == 4; _audio.Step(_car, _view.GlobalTransform, ob ? _fpvCam.GlobalTransform : _cam.GlobalTransform, _camMode == 3, _pause.Visible, (float)Math.Min(delta, 0.05), _camMode == 3 ? 0.6f : _camMode == 4 ? 0.65f : 1f); }
       if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()}"); GetTree().Quit(); }
     }
 
