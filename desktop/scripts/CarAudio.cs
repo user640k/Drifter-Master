@@ -5,8 +5,8 @@
 //  - shell: the thin body buzzing and ticking on the chassis, louder the more the car shakes and leans
 //  - tick: each hard tyre clicking over each tile joint (a 304.8 mm grid), so the patter speeds up with the car
 //  - hit: into a barrier, or landing
-// Everything is placed at the car and heard from the camera, through a "Car" bus that holds the room: early echoes off
-// the tiles and hard walls and a short tail. From inside the car the outside is muffled and the shell is close.
+// Everything is placed at the car and heard from where the pilot stands, whichever camera is showing: the cameras on
+// the car carry no microphone. So the car gets quieter and duller as it drives away, and moves left and right.
 using Godot;
 using System;
 
@@ -24,7 +24,7 @@ namespace DriftMaster {
       return s;
     }
     AudioStreamPlayer3D Player(string name, bool loop, int poly = 1) {
-      var p = new AudioStreamPlayer3D { Stream = Load(name, loop), Bus = "Car", UnitSize = 1.6f, MaxDb = 3, AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.InverseDistance, AttenuationFilterCutoffHz = 9000, AttenuationFilterDb = -12, PanningStrength = 0.8f, MaxPolyphony = poly, VolumeDb = -80 };
+      var p = new AudioStreamPlayer3D { Stream = Load(name, loop), Bus = "Car", UnitSize = 4.5f, MaxDb = 3, AttenuationModel = AudioStreamPlayer3D.AttenuationModelEnum.InverseDistance, AttenuationFilterCutoffHz = 9000, AttenuationFilterDb = -12, PanningStrength = 0.8f, MaxPolyphony = poly, VolumeDb = -80 };
       AddChild(p); return p; // loops start on the first Step, once they are in place and turned down: no pop at launch
     }
 
@@ -44,9 +44,9 @@ namespace DriftMaster {
     static float Db(float g) => g <= 0.0005f ? -80 : Mathf.LinearToDb(g);
     static float Smooth(float a, float b, float x) { float t = Mathf.Clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
 
-    // camGain evens out the cameras: the on-board and stick cameras sit much closer to the car than the others
-    // ear: where the camera is; inside: the on-board camera (under the shell); paused: everything fades out
-    public void Step(CarPhysics c, Transform3D car, Transform3D ear, bool inside, bool paused, float dt, float camGain = 1) {
+    // ear: where the pilot stands (the same whichever camera is showing); paused: everything fades out
+    public void Step(CarPhysics c, Transform3D car, Transform3D ear, bool paused, float dt) {
+      const bool inside = false; const float camGain = 1; // always heard from the pilot's place, never from inside the car
       GlobalPosition = car.Origin + new Vector3(0, 0.05f, 0); _ear.GlobalTransform = ear;
       AudioServer.SetBusEffectEnabled(_bus, 0, inside);
       AudioServer.SetBusVolumeDb(_bus, Muted ? -80 : Db(Volume * Volume * camGain));

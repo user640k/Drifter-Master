@@ -1,5 +1,5 @@
 // Drift Master, desktop version: first playable. One hall, one layout (HILLSIDE), one car (the sedan).
-// Keys: W/S or arrows drive, A/D steer, R reset, C camera, P paint, F2 shadows, F3 stats, F4 resolution, F11 full screen, Esc pause.
+// Keys: W/S or arrows drive, A/D steer, R reset, C camera (pilot's stand, ceiling, on board, stick), P paint, F2 shadows, F3 stats, F4 resolution, F11 full screen, Esc pause.
 // Gamepad: right trigger throttle, left trigger brake/reverse, left stick steer, Y reset, X camera.
 using Godot;
 using System;
@@ -8,7 +8,7 @@ namespace DriftMaster {
   public partial class Main : Node3D {
     Track _t; CarPhysics _car; CarView _view; Camera3D _cam; DirectionalLight3D _sun; CarAudio _audio;
     SubViewport _fpvView; Camera3D _fpvCam; Control _fpvScreen; // the on-board picture: its own 720 x 480 frame, shown as 4:3
-    Label _hud, _stats, _help, _pause; double _acc; int _camMode; Vector3 _camPos, _camLook; bool _camSnap = true;
+    Label _hud, _stats, _help, _pause; double _acc; int _camMode = 1; /* 1 the pilot's stand, 2 ceiling, 3 on board, 4 stick */ Vector3 _camPos, _camLook; bool _camSnap = true;
     // lap timing
     double _lap, _last, _best; int _next = 1; bool _timing; double _driftScore;
     // test hooks: --shot=file --frames=n --auto --cam=n --at=index
@@ -97,7 +97,7 @@ namespace DriftMaster {
       if (key(Key.Escape) || pad(JoyButton.Start)) _pause.Visible = !_pause.Visible;
       else if (key(Key.Q) && _pause.Visible) GetTree().Quit();
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
-      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 0 : _camMode + 1; _camSnap = true; }
+      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 1 : _camMode + 1; _camSnap = true; }
       else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; _view.Paint.AlbedoColor = Paints[_paintIdx]; }
       else if (key(Key.F2)) _sun.ShadowEnabled = !_sun.ShadowEnabled;
       else if (key(Key.M)) _audio.Muted = !_audio.Muted;
@@ -134,7 +134,9 @@ namespace DriftMaster {
         Laps(idx0, Math.Min(delta, 0.05));
       }
       _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
-      { bool ob = _camMode == 3 || _camMode == 4; _audio.Step(_car, _view.GlobalTransform, ob ? _fpvCam.GlobalTransform : _cam.GlobalTransform, _camMode == 3, _pause.Visible, (float)Math.Min(delta, 0.05), _camMode == 3 ? 0.6f : _camMode == 4 ? 0.65f : 1f); }
+      { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
+        var earXf = new Transform3D(Basis.Identity, new Vector3(0, 1.45f, (float)_t.HallZ - 0.15f)); // looking along -z, across the hall
+        _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
       if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()}"); GetTree().Quit(); }
     }
 
@@ -160,18 +162,9 @@ namespace DriftMaster {
       }
       else if (_camMode == 4) { // the stick camera: fixed to the roof on a short stick, behind and above the car, looking forward
         OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(true); _fpvCam.GlobalTransform = _view.StickCam.GlobalTransform; _camSnap = true; return;
-      } else { // chase: behind the car, between where it points and where it is going
-        double sp = Math.Sqrt(_car.Vx * _car.Vx + _car.Vz * _car.Vz), ang = _car.Hd;
-        if (sp > 0.8) { double va = Math.Atan2(_car.Vx, _car.Vz), d = va - ang; d = Math.Atan2(Math.Sin(d), Math.Cos(d)); if (Math.Abs(d) < 2.2) ang += d * 0.55; }
-        var f = new Vector3((float)Math.Sin(ang), 0, (float)Math.Cos(ang));
-        pos = p - f * 0.78f + new Vector3(0, 0.3f, 0); look = p + f * 0.25f + new Vector3(0, 0.05f, 0);
-      }
-      if (_camMode == 0 && _car.Y < 0.06) { // following the car under the bridge: duck below the deck instead of sitting inside it
-        double deck = 0; for (int q = 0; q < _t.N; q++) if (_t.E[q] > 0.12) { double dx = pos.X - _t.X[q], dz = pos.Z - _t.Z[q]; if (dx * dx + dz * dz < (_t.Hw + 0.1) * (_t.Hw + 0.1)) { deck = _t.E[q]; break; } }
-        if (deck > 0) pos.Y = Math.Min(pos.Y, (float)deck - 0.075f);
-      }
+      } else { pos = new Vector3(0, 1.45f, hz); look = p; }
       pos.X = Mathf.Clamp(pos.X, -hx, hx); pos.Z = Mathf.Clamp(pos.Z, -hz, hz);
-      float k = _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * (_camMode == 0 ? 6 : 12));
+      float k = _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 12);
       _camPos = _camPos.Lerp(pos, k); _camLook = _camLook.Lerp(look, _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 14)); _camSnap = false;
       _cam.Fov = fov; _cam.Position = _camPos;
       if (_camMode == 2) _cam.LookAt(_camLook, Vector3.Forward); else _cam.LookAt(_camLook, Vector3.Up);
