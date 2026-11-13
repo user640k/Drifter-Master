@@ -185,7 +185,7 @@ namespace DriftMaster {
     readonly int[] _setup = (int[])SetupDefault.Clone();
     void ApplySetup() {
       var S = _car.S; int[] u = _setup;
-      S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; S.TireMul = new[] { 1.12, 1, 0.88 }[u[1]]; S.GyroGain = new[] { 0, 0.4, 0.7, 0.9 }[u[2]];
+      S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; if (_audio != null) { _audio.MotorVFree = S.VFree; _audio.MotorFreeRev = new[] { 518.0, 382, 790, 382 }[u[0]]; } /* free speed in turns a second: 4200, 3100 and 6400 kV at 7.4 V */ S.TireMul = new[] { 1.12, 1, 0.88 }[u[1]]; S.GyroGain = new[] { 0, 0.4, 0.7, 0.9 }[u[2]];
       S.KMul = new[] { 0.65, 1, 1.5 }[u[3]]; S.CMul = new[] { 0.6, 0.78, 1, 1.22 }[u[4]]; S.FFront = new[] { 0.4, 0.5, 0.6 }[u[5]]; S.AckK = new[] { 0, 0.5, 1 }[u[6]];
       S.CasterDeg = new[] { 7.0, 9, 12 }[u[7]]; S.GearDiff = u[8] == 1; S.EscV = new[] { 1, 1.12, 1.25 }[u[9]]; S.EscF = new[] { 1, 0.98, 0.95 }[u[9]]; S.Assist = u[10] == 0; S.CamberF = CamberDeg[u[11]]; S.CamberR = CamberDeg[u[12]];
     }
