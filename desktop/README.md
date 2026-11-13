@@ -68,4 +68,4 @@ Wall, foam, ceiling and board textures are from ambientCG.com (CC0 1.0): Painted
 
 ## Not in yet
 
-Rivals, damage, the other two bodies, more tracks; from the web car menu: ride height, wheels and tyres, stickers, body mounts.
+Damage, the other two bodies, more tracks; from the web car menu: ride height, wheels and tyres, stickers, body mounts.
