@@ -17,6 +17,22 @@ namespace DriftMaster {
     static readonly (string name, Color col)[] Paints = { ("BLACK", new Color(0.09f, 0.094f, 0.106f)), ("WHITE", new Color(0.86f, 0.87f, 0.85f)), ("RED", new Color(0.72f, 0.05f, 0.06f)), ("BLUE", new Color(0.06f, 0.22f, 0.6f)), ("YELLOW", new Color(0.95f, 0.72f, 0.05f)), ("GREEN", new Color(0.1f, 0.42f, 0.3f)),
       ("HOT PINK", new Color(0.93f, 0.12f, 0.62f)), ("PURPLE", new Color(0.36f, 0.14f, 0.7f)), ("TEAL", new Color(0.03f, 0.5f, 0.48f)), ("LIME", new Color(0.62f, 0.88f, 0.1f)), ("ORANGE", new Color(0.95f, 0.38f, 0.05f)), ("GREY", new Color(0.36f, 0.38f, 0.4f)) };
     int _paintB = 1, _livery, _body; /* second colour, livery, body shell */
+    // Livery and colour pairs taken out after review of all 672 (livery, colour, second colour): they cannot be chosen
+    static readonly HashSet<(int, int, int)> Removed = new() { (1, 0, 11), (1, 1, 3), (1, 1, 4), (1, 1, 5), (1, 1, 8), (1, 1, 11), (1, 4, 1), (1, 4, 2), (1, 4, 3), (1, 4, 5), (1, 4, 6), (1, 4, 8), (1, 4, 10), (1, 4, 11),
+      (1, 5, 1), (1, 5, 3), (1, 5, 4), (1, 5, 6), (1, 5, 7), (1, 5, 8), (1, 5, 9), (1, 5, 10), (1, 5, 11), (2, 10, 11), (2, 11, 0), (2, 11, 1), (2, 11, 2), (2, 11, 3), (2, 11, 4), (2, 11, 5), (2, 11, 6), (2, 11, 7), (2, 11, 8),
+      (2, 11, 9), (2, 11, 10), (3, 11, 0), (3, 11, 1), (3, 11, 2), (3, 11, 3), (3, 11, 5), (3, 11, 7), (3, 11, 8), (3, 11, 10), (5, 11, 1), (5, 11, 2), (5, 11, 3), (5, 11, 4), (5, 11, 5), (5, 11, 7), (5, 11, 8), (5, 11, 10) };
+    /// can this livery be had in these two colours? (a livery in one colour twice is just the solid colour)
+    public static bool Offered(int livery, int a, int b) => livery == 0 || (a != b && !Removed.Contains((livery, a, b)));
+    // Step the livery, colour or second colour by one, passing over what is not offered. Changing the colour or the livery
+    // keeps the second colour if it can, else takes the next one that goes with it; a colour with none left is skipped.
+    void Pick(int dl, int da, int db) {
+      int nl = CarView.Liveries.Length, nc = Paints.Length; int Cyc(int v, int d, int n) => ((v + d) % n + n) % n;
+      bool FitB(int l, int a, ref int b) { for (int k = 0; k < nc; k++) { int t = Cyc(b, k, nc); if (Offered(l, a, t)) { b = t; return true; } } return false; }
+      if (db != 0) { for (int k = 0; k < nc; k++) { _paintB = Cyc(_paintB, db, nc); if (Offered(_livery, _paintIdx, _paintB)) break; } }
+      if (da != 0) { for (int k = 0; k < nc; k++) { _paintIdx = Cyc(_paintIdx, da, nc); if (FitB(_livery, _paintIdx, ref _paintB)) break; } }
+      if (dl != 0) { for (int k = 0; k < nl; k++) { _livery = Cyc(_livery, dl, nl); if (FitB(_livery, _paintIdx, ref _paintB)) break; } }
+      if (!Offered(_livery, _paintIdx, _paintB) && !FitB(_livery, _paintIdx, ref _paintB)) _livery = 0; // (a saved choice that has since been removed)
+    }
     /// the tracks: name, data file, how far the layout is moved along z, floor sheet, white boards all round?
     public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };
     static bool _trackChosen; public static int TrackIdx; /* kept across a change of track: the scene is loaded again */
@@ -184,9 +200,9 @@ namespace DriftMaster {
       int Cyc(int v, int d, int n) => ((v + d) % n + n) % n;
       var car = new List<Menu.Row> {
         R("BODY", () => CarView.Bodies[_body].name, d => { _body = Cyc(_body, d, CarView.Bodies.Length); SwapBody(); ApplyOptions(true); }, "Three shells on the same chassis. A taller, heavier shell rolls a little more."),
-        R("COLOUR", () => Paints[_paintIdx].name, d => { _paintIdx = Cyc(_paintIdx, d, Paints.Length); ApplyOptions(true); }),
-        R("SECOND COLOUR", () => Paints[_paintB].name, d => { _paintB = Cyc(_paintB, d, Paints.Length); ApplyOptions(true); }, "Used by every livery but SOLID."),
-        R("LIVERY", () => CarView.Liveries[_livery], d => { _livery = Cyc(_livery, d, CarView.Liveries.Length); ApplyOptions(true); }),
+        R("COLOUR", () => Paints[_paintIdx].name, d => { Pick(0, d, 0); ApplyOptions(true); }),
+        R("SECOND COLOUR", () => _livery == 0 ? "-" : Paints[_paintB].name, d => { Pick(0, 0, d); ApplyOptions(true); }, "Used by every livery but SOLID. Pairs that were taken out are passed over."),
+        R("LIVERY", () => CarView.Liveries[_livery], d => { Pick(d, 0, 0); ApplyOptions(true); }),
         R("SHELL", () => _shellOn ? "ON" : "OFF", d => { _shellOn = !_shellOn; ApplyOptions(true); }, "Off: the bare chassis, as on a setup stand."),
         R("WINDOWS", () => _clearGlass ? "CLEAR" : "TINTED", d => { _clearGlass = !_clearGlass; ApplyOptions(true); }),
         R("NEON", () => CarView.Neons[_neonIdx].name, d => { _neonIdx = Cyc(_neonIdx, d, CarView.Neons.Length); ApplyOptions(true); }, "Lit tubes under the chassis."),
@@ -226,6 +242,7 @@ namespace DriftMaster {
     }
 
     void ApplyOptions(bool save = false) {
+      Pick(0, 0, 0);
       var ca = Paints[_paintIdx % Paints.Length].col; var cb = Paints[_paintB % Paints.Length].col;
       var cc = _livery == 4 ? ca.Lerp(cb, 0.5f).Darkened(0.35f) : (ca.Luminance + cb.Luminance > 0.9f ? new Color(0.04f, 0.04f, 0.05f) : new Color(0.92f, 0.92f, 0.9f)); // camo's third tone; else an edge colour that shows on both
       _view.SetPaint(ca, cb, cc, _livery);
@@ -255,9 +272,9 @@ namespace DriftMaster {
       if (false) { }
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
       else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 1 : _camMode + 1; _camSnap = true; }
-      else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; ApplyOptions(true); Say("COLOUR " + Paints[_paintIdx].name); }
-      else if (key(Key.O)) { _paintB = (_paintB + 1) % Paints.Length; ApplyOptions(true); Say("SECOND COLOUR " + Paints[_paintB].name); }
-      else if (key(Key.L)) { _livery = (_livery + 1) % CarView.Liveries.Length; ApplyOptions(true); Say("LIVERY " + CarView.Liveries[_livery]); }
+      else if (key(Key.P)) { Pick(0, 1, 0); ApplyOptions(true); Say("COLOUR " + Paints[_paintIdx].name); }
+      else if (key(Key.O)) { Pick(0, 0, 1); ApplyOptions(true); Say("SECOND COLOUR " + Paints[_paintB].name); }
+      else if (key(Key.L)) { Pick(1, 0, 0); ApplyOptions(true); Say("LIVERY " + CarView.Liveries[_livery]); }
       else if (key(Key.F1)) { TrackIdx = (TrackIdx + 1) % Tracks.Length; _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); } // another track: the hall is built again
       else if (key(Key.T)) { _body = (_body + 1) % CarView.Bodies.Length; SwapBody(); ApplyOptions(true); Say("BODY " + CarView.Bodies[_body].name); }
       else if (key(Key.B)) { _shellOn = !_shellOn; ApplyOptions(true); Say(_shellOn ? "SHELL ON" : "SHELL OFF"); }
@@ -299,7 +316,7 @@ namespace DriftMaster {
       }
       if (!double.IsNaN(_poseSteer)) { _car.Steer = _poseSteer; _car.Roll = -0.035 * Math.Sign(_poseSteer); }
       if (_sheetDir != null) { // test: every livery and colour pair, one picture each, numbered from 1 (see tools/make_livery_sheet.py)
-        if (_combos == null) { _combos = new(); for (int a = 0; a < Paints.Length; a++) _combos.Add((0, a, a)); for (int l = 1; l < CarView.Liveries.Length; l++) for (int a = 0; a < Paints.Length; a++) for (int b = 0; b < Paints.Length; b++) if (a != b) _combos.Add((l, a, b)); }
+        if (_combos == null) { _combos = new(); for (int a = 0; a < Paints.Length; a++) _combos.Add((0, a, a)); for (int l = 1; l < CarView.Liveries.Length; l++) for (int a = 0; a < Paints.Length; a++) for (int b = 0; b < Paints.Length; b++) if (Offered(l, a, b)) _combos.Add((l, a, b)); }
         int k = _sheetF / 2;
         if (_sheetF % 2 == 1 && k < _combos.Count) GetViewport().GetTexture().GetImage().SavePng($"{_sheetDir}/{k + 1:0000}.png");
         _sheetF++; k = _sheetF / 2; if (k >= _combos.Count) { var f = FileAccess.Open(_sheetDir + "/index.txt", FileAccess.ModeFlags.Write); for (int i = 0; i < _combos.Count; i++) f.StoreLine($"{i + 1}\t{CarView.Liveries[_combos[i].l]}\t{Paints[_combos[i].a].name}\t{Paints[_combos[i].b].name}"); f.Close(); GetTree().Quit(); return; }
