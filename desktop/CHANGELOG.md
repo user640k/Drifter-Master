@@ -2,6 +2,9 @@
 
 ## Changelog (this build)
 
+- Competition: judged qualifying run and tandem battles against a rival car, with clipping points, outer zones, deductions and one-more-time rematches (COMPETE page).
+- Parking bay on each track (K).
+- Driver's stand camera zoomed out and looking ahead of the car.
 - Real RC radio support: CONTROLLER page to pick the device, find the steering and throttle channels, calibrate and reverse them.
 - A transmitter on screen whose wheel and trigger move with your inputs (radio, gamepad or keys).
 - Paint: one livery template. Body colour (12), bonnet in the body colour or in carbon weave, rim colour (12). The six earlier liveries and the second colour are gone.
@@ -24,9 +27,15 @@
 - Keyboard, gamepad or a real RC transmitter over USB. Optional driving assist.
 - On-screen transmitter that mirrors your steering and trigger.
 
+**Competition**
+- Qualifying: one judged lap scored on line, angle, style and speed.
+- Tandem battle: two runs against the game's driver, swapping lead and chase; near ties are run again.
+- Cones mark inner clipping points, yellow dashes mark outer zones; score card after each run.
+
 **Tracks**
 - One hall, black P-tile floor with wear, two layouts: HILLSIDE (with a raised section and bridge) and INFIELD (oval with a twisty infield, turf and kerbs).
 - Lap timer with last and best lap, speed and drift angle.
+- A parking bay beside each layout.
 
 **Car**
 - Five bodies on one chassis: SEDAN, COUPE, PICKUP, TUNER, VAN.

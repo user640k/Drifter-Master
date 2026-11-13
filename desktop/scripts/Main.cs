@@ -34,7 +34,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
-        else if (a == "--full") _full = true; else if (a == "--tx") _txShot = true; else if (a.StartsWith("--fakeaxis=")) { _radio.Fake = new float[Radio.Axes]; var q = a.Substring(11).Split(','); for (int k = 0; k < q.Length && k < Radio.Axes; k++) _radio.Fake[k] = float.Parse(q[k], System.Globalization.CultureInfo.InvariantCulture); _radio.On = true; _txShot = true; }
+        else if (a == "--full") _full = true; else if (a.StartsWith("--comp=")) CompTest = a.Substring(7); else if (a == "--tx") _txShot = true; else if (a.StartsWith("--fakeaxis=")) { _radio.Fake = new float[Radio.Axes]; var q = a.Substring(11).Split(','); for (int k = 0; k < q.Length && k < Radio.Axes; k++) _radio.Fake[k] = float.Parse(q[k], System.Globalization.CultureInfo.InvariantCulture); _radio.On = true; _txShot = true; }
         else if (a.StartsWith("--menu=")) _menuAt = Array.ConvertAll(a.Substring(7).Split(','), int.Parse);
         else if (a.StartsWith("--track=")) { TrackIdx = int.Parse(a.Substring(8)); _trackChosen = true; }
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--rims=")) _rimIdx = int.Parse(a.Substring(7));
@@ -59,8 +59,9 @@ namespace DriftMaster {
       if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
       _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
       BuildOnBoard();
-      _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => _audio.Bump(k); _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
-      BuildHud();
+      _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
+      BuildHud(); BuildCompetition();
+      if (CompTest == "solo") StartSolo(); else if (CompTest == "tandem") StartTandem(); else if (CompTest == "park") Park();
       if (_menuAt != null) { _pause.Open(true); _pause.Goto(_menuAt[0], _menuAt[1]); }
       _view.Pose(_car, _t); UpdateCamera(0);
     }
@@ -156,6 +157,7 @@ namespace DriftMaster {
       var layer = new CanvasLayer(); AddChild(layer);
       Label L(Vector2 pos, int size, Color col) { var l = new Label { Position = pos }; l.AddThemeFontSizeOverride("font_size", size); l.AddThemeColorOverride("font_color", col); l.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.75f)); l.AddThemeConstantOverride("outline_size", 6); layer.AddChild(l); return l; }
       _hud = L(new Vector2(24, 18), 22, Colors.White);
+      _card = L(new Vector2(60, 250), 19, Colors.White); _card.Visible = false; { var bg = new StyleBoxFlat { BgColor = new Color(0.02f, 0.02f, 0.03f, 0.82f), ContentMarginLeft = 22, ContentMarginRight = 22, ContentMarginTop = 16, ContentMarginBottom = 16 }; _card.AddThemeStyleboxOverride("normal", bg); }   /* the judges' score card */
       _stats = L(new Vector2(24, 150), 15, new Color(0.75f, 0.9f, 1f)); _stats.Visible = false;
       _help = L(new Vector2(24, 0), 14, new Color(1, 1, 1, 0.8f)); _help.SetAnchorsPreset(Control.LayoutPreset.BottomLeft); _help.Position = new Vector2(24, -40);
       _help.Text = "ESC  menu and all keys     W / S  drive     A / D  steer     R  reset     C  camera"; // short, so it fits any window; the rest are in the menu
@@ -228,7 +230,7 @@ namespace DriftMaster {
       };
       var keys = new List<Menu.Row>();
       foreach (var (k, what) in new[] { ("W / S  or  UP / DOWN", "drive; brake, then reverse"), ("A / D  or  LEFT / RIGHT", "steer"), ("R", "back to the start line"), ("C", "next camera"), ("ESC", "this menu"),
-        ("F1", "next track"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("M   N   - / =", "mute, motor sound, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
+        ("F1", "next track"), ("K", "park the car in its bay"), ("ENTER", "next run, when the score card is up"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("M   N   - / =", "mute, motor sound, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
         ("GAMEPAD", "triggers drive and brake, left stick steers, Y reset, X camera, Start menu"), ("RC RADIO", "wheel steers, trigger drives, brakes and reverses: set it up on the CONTROLLER page") }) { string w = what; keys.Add(R(k, () => w, null)); }
       var ctl = new List<Menu.Row> {
         R("DRIVE WITH", () => _radio.On ? "RC RADIO" : "KEYS / GAMEPAD", d => { _radio.On = !_radio.On; ApplyOptions(true); }, "RC RADIO: a real pistol-grip transmitter plugged into the PC (its own USB port, or a simulator dongle on its receiver). Wheel and trigger act one to one, as on the car."),
@@ -241,7 +243,14 @@ namespace DriftMaster {
         R("NOW", () => !_radio.On ? "-" : $"STEER {_radio.Steer * 100:+0;-0;0}%    TRIGGER {_radio.Trigger * 100:+0;-0;0}%", null, "What the game reads from the radio at this moment: 0 at rest, 100 at the ends."),
         R("TRANSMITTER ON SCREEN", () => _txOn ? "ON" : "OFF", d => { _txOn = !_txOn; ApplyOptions(true); }, "A transmitter in the corner whose wheel and trigger move with your inputs, to train the hands. It works with the keys and a gamepad too, with no radio plugged in."),
       };
-      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("CONTROLLER", ctl)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
+      var comp = new List<Menu.Row> {
+        R("QUALIFYING (SOLO RUN)", () => "START", d => { _pause.Open(false); StartSolo(); }, "One judged lap from the start line. Line 35: nose to the cones (inner clipping points), tail to the yellow dashes (outer zones), while sliding. Angle 30. Style 25: one continuous, fluid drift. Speed 10. Deductions for straightening up in a bend and for tapping the barriers; a spin or a stop scores zero."),
+        R("TANDEM BATTLE", () => "START", d => { _pause.Open(false); StartTandem(); }, "Two runs against the game's driver. Run 1 you lead and are judged as in qualifying. Run 2 you chase: stay close (40), mirror the lead's angle (30), change direction when it does (20), keep the line (10); contact with the lead costs 10. Totals within 3 points: one more time."),
+        R("BACK TO FREE PRACTICE", () => _comp == 0 ? "-" : "STOP", d => { StopComp(); ResetCar(); }),
+        R("LAST RESULT", () => _lastResult, null),
+        R("PARK THE CAR", null, d => { _pause.Open(false); Park(); }, "Takes the car off the track into the marked bay by the driver's stand. R puts it back on the start line."),
+      };
+      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("COMPETE", comp)); _pause.Pages.Add(("CONTROLLER", ctl)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
     }
 
     void ApplyOptions(bool save = false) {
@@ -262,7 +271,7 @@ namespace DriftMaster {
     float _vol0 = 0.8f; bool _motor0 = true; double _sayT; string _sayText = "";
     void Say(string s) { _sayText = s; _sayT = 1.6; }
 
-    void ResetCar() { _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
+    void ResetCar() { _parked = false; if (_comp != 0) { Grid(); return; } _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
 
     public override void _UnhandledInput(InputEvent e) {
       bool key(Key k) => e is InputEventKey ek && ek.Pressed && !ek.Echo && ek.Keycode == k;
@@ -270,7 +279,9 @@ namespace DriftMaster {
       if (key(Key.Escape) || pad(JoyButton.Start)) { _pause.Open(!_pause.Visible); _help.Visible = !_pause.Visible && !Quiet; return; }
       if (_pause.Visible) { _pause.Handle(e); return; } // the menu has the keys while it is open
       if (false) { }
+      else if (_comp != 0 && _phase == 2 && (key(Key.Enter) || key(Key.Space) || pad(JoyButton.A))) NextRun();
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
+      else if (key(Key.K)) Park();
       else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 1 : _camMode + 1; _camSnap = true; }
       else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; ApplyOptions(true); Say("COLOUR " + Paints[_paintIdx].name); }
       else if (key(Key.O)) { _rimIdx = (_rimIdx + 1) % Rims.Length; ApplyOptions(true); Say("RIMS " + Rims[_rimIdx].name); }
@@ -312,7 +323,7 @@ namespace DriftMaster {
     public override void _Process(double delta) {
       if (!_pause.Visible) {
         var inp = ReadInput(); _acc += Math.Min(delta, 0.05); int idx0 = _t.Idx;
-        while (_acc >= CarPhysics.DT) { _car.Step(CarPhysics.DT, inp, true); _acc -= CarPhysics.DT; }
+        while (_acc >= CarPhysics.DT) { StepWorld(inp); _acc -= CarPhysics.DT; }
         Laps(idx0, Math.Min(delta, 0.05));
       }
       if (!double.IsNaN(_poseSteer)) { _car.Steer = _poseSteer; _car.Roll = -0.035 * Math.Sign(_poseSteer); }
@@ -321,7 +332,7 @@ namespace DriftMaster {
         var show = ReadInput(); var vs = GetViewport().GetVisibleRect().Size; _tx.Visible = _txOn && !_bare && _splash == null && (_shot == null || _txShot) && !(_fpvScreen.Visible && vs.X < 900);
         _tx.Position = new Vector2(vs.X - _tx.Size.X - 14, vs.Y - _tx.Size.Y - 44); _tx.Show(show.Steer, show.Thr, show.Brk, Input.GetConnectedJoypads().Count > 0 || _radio.Fake != null); }
       StepSplash(delta); StepMusic(delta);
-      _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
+      StepCompetition(delta); _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
         var earXf = new Transform3D(Basis.Identity, new Vector3(0, 1.45f, (float)_t.HallZ - 0.15f)); // looking along -z, across the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
@@ -347,7 +358,8 @@ namespace DriftMaster {
         _cam.Fov = fov; _cam.Position = pos; _cam.LookAt(look, Vector3.Up); return; }
       if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
-        pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0); fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(0.75f / pos.DistanceTo(look))), 14, 40);
+        var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.14f).LimitLength(0.35f);   // where the car is going
+        pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(1.3f / pos.DistanceTo(look))), 22, 58);   // a 2.6 m wide patch of track round the car (it was 1.5 m)
       } else if (_camMode == 2) { pos = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); look = new Vector3(0, 0, 0); fov = 100; } // from the ceiling
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
         OnBoard(true); _view.ShowStick(false); _fpvCam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
@@ -368,6 +380,7 @@ namespace DriftMaster {
       _hud.Text = $"{_t.Name}\nLAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
       _hud.Visible = !_pause.Visible && !_bare && _splash == null; if (_splash != null) _help.Visible = false; else if (!_pause.Visible && !Quiet) _help.Visible = true;
       { var vs = GetViewport().GetVisibleRect().Size; _help.SetAnchorsPreset(Control.LayoutPreset.TopLeft); _help.Position = new Vector2(24, vs.Y - 40); _help.Size = new Vector2(vs.X - 48, 24); _help.ClipText = true; } // along the bottom edge, never wider than the window
+      _hud.Text += CompHud();
       if (_sayT > 0) { _sayT -= GetProcessDeltaTime(); _hud.Text += "\n\n" + _sayText; }
       if (_stats.Visible) _stats.Text = $"{Engine.GetFramesPerSecond()} fps   draw calls {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0}   tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}\nresolution {_scales[_scaleIdx] * 100:0}%   shadows {(_sun.ShadowEnabled ? "on" : "off")}   {RenderingServer.GetVideoAdapterName()}";
     }
