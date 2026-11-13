@@ -57,4 +57,8 @@ TW, TH = 640, 72; ty = Image.new('RGBA', (TW, TH), (0, 0, 0, 0)); td = ImageDraw
 td.rounded_rectangle((14, 8, TW - 14, TH - 8), 6, fill=(16, 150, 222, 255)); td.polygon([(14, 8), (96, 8), (78, TH - 8), (14, TH - 8)], fill=(250, 208, 20, 255))
 for k in range(3): td.polygon([(26 + k * 18, TH - 16), (38 + k * 18, 16), (46 + k * 18, 16), (34 + k * 18, TH - 16)], fill=(20, 20, 24, 255))
 f, bb = fit('DRIFTMASTER', saira, 500, 60, td); td.text((104 + (510 - (bb[2] - bb[0])) // 2 - bb[0], (TH - (bb[3] - bb[1])) // 2 - bb[1]), 'DRIFTMASTER', font=f, fill=(255, 255, 255, 255))
-ty.transpose(Image.FLIP_TOP_BOTTOM).save(os.path.join(out, 'tyre_letter.png'), optimize=True); print('ok')
+ty.transpose(Image.FLIP_TOP_BOTTOM).save(os.path.join(out, 'tyre_letter.png'), optimize=True)
+# the rear window sticker: SEND IT, two lines of block capitals
+RW, RH = 512, 152; rm = Image.new('L', (RW, RH), 0); rd = ImageDraw.Draw(rm); f, bb = fit('SEND IT', saira, 470, 120, rd)
+rd.text(((RW - (bb[2] - bb[0])) // 2 - bb[0], (RH - (bb[3] - bb[1])) // 2 - bb[1]), 'SEND IT', font=f, fill=255)
+rr = Image.new('RGBA', (RW, RH), (255, 255, 255, 0)); rr.putalpha(rm.filter(ImageFilter.GaussianBlur(0.6))); rr.transpose(Image.FLIP_TOP_BOTTOM).save(os.path.join(out, 'rear_sticker.png'), optimize=True)   # (stored upside down, as the model's own was); print('ok')

@@ -70,6 +70,10 @@ namespace DriftMaster {
         // on the door they sat, and how the door leans there, then hide them
         if (nm.StartsWith("Shell_m_ffffff_t") && mi.Mesh != null) { var sb = mi.GetAabb(); if (sb.Size.Y > 0.025f && sb.Size.Z < 0.014f) {
             foreach (var v in (Vector3[])mi.Mesh.SurfaceGetArrays(0)[(int)Mesh.ArrayType.Vertex]) _oldStick.Add(mi.Transform * v); mi.Visible = false; continue; } }
+        // the rear window sticker: the web version's logo gives way to SEND IT, on the same patch
+        if (nm.StartsWith("Shell_m_ffffff_t") && mi.Mesh != null) { var rb = mi.GetAabb(); var rc = rb.GetCenter(); if (rc.Z < -0.05f && Mathf.Abs(rc.X) < 0.01f && rb.Size.X > 0.05f && rb.Size.X < 0.09f && rb.Size.Y < 0.03f) {
+            mi.MaterialOverride = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/rear_sticker.png"), AlbedoColor = new Color(0.98f, 0.96f, 0.9f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.42f,
+              EmissionEnabled = true, Emission = new Color(0.98f, 0.96f, 0.9f), EmissionEnergyMultiplier = 0.5f, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic }; continue; } }
         if (nm.EndsWith("_paint")) { mi.MaterialOverride = Paint; if (van) { Paint.SetShaderParameter("detail", GD.Load<Texture2D>("res://assets/tex/van_detail.png")); Paint.SetShaderParameter("use_detail", 1f); }
           // the painted shell's size: the livery is laid out on it, and the cameras and the handling take the roof height
           var bb = mi.GetAabb(); Paint.SetShaderParameter("dim", new Vector3(bb.Size.X / 2, bb.Size.Y, bb.Size.Z / 2)); Paint.SetShaderParameter("origin", new Vector3(bb.Position.X + bb.Size.X / 2, bb.Position.Y, bb.Position.Z + bb.Size.Z / 2));

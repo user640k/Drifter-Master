@@ -11,6 +11,7 @@
 - Windscreen: sun strip across the top, with the DRIFT MASTER banner on it.
 - Door stickers: a small stack under the driver's mirror, milky white with a thin dark contour, satin with raised edges. DRIFT MASTER, Send it, 640kFPV, SEND IT.
 - Tyres: sidewall lettering now reads DRIFTMASTER.
+- Rear window: the sticker now reads SEND IT.
 - Keys: O now changes the rims, L the bonnet.
 
 ## Features
