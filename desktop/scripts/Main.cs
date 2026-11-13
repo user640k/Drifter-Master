@@ -218,7 +218,7 @@ namespace DriftMaster {
       var setup = new List<Menu.Row>();
       for (int k = 0; k < labels.Length; k++) { int q = k; setup.Add(R(labels[q], () => SetupNames[q][_setup[q]], d => { _setup[q] = Cyc(_setup[q], d, SetupNames[q].Length); ApplySetup(); ApplyOptions(true); }, notes[q])); }
       setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The middle of the baseline: 13.5T, -7 and -2 camber, 8 caster, 2 toe each end, 200 cSt, 7 mm, 55% gyro, 1.2 mm springs, spool, 40 / 60."));
-      string[] cams = { "", "PILOT'S STAND", "CEILING", "ON BOARD", "ROOF STICK" };
+      string[] cams = { "", "DRIVER (CORNER)", "CEILING", "ON BOARD", "ROOF STICK" };
       var game = new List<Menu.Row> {
         R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Changing track builds the hall again and puts the car on the start line."),
         R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = 1 + Cyc(_camMode - 1, d, 4); _camSnap = true; }),
@@ -340,7 +340,7 @@ namespace DriftMaster {
       StepSplash(delta); StepMusic(delta);
       StepCompetition(delta); _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
-        var earXf = new Transform3D(Basis.Identity, new Vector3(0, 1.45f, (float)_t.HallZ - 0.15f)); // looking along -z, across the hall
+        var earXf = new Transform3D(Basis.Identity, new Vector3((float)_t.HallX - 0.15f, 1.6f, (float)_t.HallZ - 0.15f)).LookingAt(new Vector3(0, 0.5f, 0), Vector3.Up); // the driver's place: the same corner as the camera, facing the middle of the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
       if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()}"); GetTree().Quit(); }
     }
@@ -370,7 +370,7 @@ namespace DriftMaster {
       if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
         var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.14f).LimitLength(0.35f);   // where the car is going
-        pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(1.3f / pos.DistanceTo(look))), 22, 58);   // a 2.6 m wide patch of track round the car (it was 1.5 m)
+        pos = new Vector3(hx, 1.6f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(1.3f / pos.DistanceTo(look))), 13, 58);   // from a corner of the hall, a little higher: the whole track lies in front of it and less of it hides behind its own barriers   // a 2.6 m wide patch of track round the car (it was 1.5 m)
       } else if (_camMode == 2) { // from the ceiling: an analog camera too, fixed up there looking straight down
         OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); _fpvCam.LookAt(Vector3.Zero, Vector3.Forward); _camSnap = true; return; }
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
