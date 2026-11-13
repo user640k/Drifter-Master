@@ -2,9 +2,8 @@
 """Builds the desktop version's sounds into assets/snd (24 kHz mono WAV).
    usage: make_sounds.py <out dir>
 
-   The running sounds are cut from a reference recording (tools/sound_src/reference.wav: the sound of a video of a
-   1/10 drift car on a P-tile drift track, the floor the game has; the parts where the car is near the camera; used
-   with permission for non-commercial use):
+   The running sounds are cut from a reference recording (tools/sound_src/reference.wav: the sound of the owner's video of
+   1/10 drift cars on a P-tile track, the floor the game has; for non-commercial use):
      - the recording is split by loudness: its loud quarter is the car sliding, its quiet quarter rolling and coasting
      - the motor's whistle glides up and down in it, which would chirp at random once cut up, so the narrow lines that
        stand well above the noise are taken out of each instant; the game adds its own whistle, pitched by wheel speed
@@ -35,10 +34,10 @@ gain = np.minimum(1, 2.0 * floor / (mag + 1e-9)); gain[f < 700] = 1             
 _, clean = istft(Z * gain, SR, nperseg=1024, noverlap=768); clean = clean[:len(ref)]
 # loudness, a tenth of a second at a time
 hop = SR // 10; lv = np.sqrt((clean[:len(clean) // hop * hop].reshape(-1, hop) ** 2).mean(1)); q1, q3 = np.percentile(lv, [30, 70])
-def texture(pick, secs=5.0, grain=0.2):
+def texture(pick, secs=6.0, grain=0.4):   # long grains, eight deep: a smooth, even rush with nothing of the cutting left in it
     starts = [i * hop for i in range(len(lv) - 3) if all(pick(lv[i + k]) for k in range(3))]   # places where 0.3 s in a row is of this kind
     n = int(secs * SR); g = int(grain * SR); win = np.hanning(g); y = np.zeros(n + g); ws = np.zeros(n + g)
-    for pos in range(0, n, g // 4):
+    for pos in range(0, n, g // 8):
         s0 = starts[rng.integers(0, len(starts))] + rng.integers(0, hop); seg = clean[s0:s0 + g]
         seg = seg / (np.sqrt((seg ** 2).mean()) + 1e-9)                                  # even loudness: the game sets the level
         y[pos:pos + g] += seg * win; ws[pos:pos + g] += win
@@ -62,10 +61,10 @@ def resonate(x, modes=MODES, weights=None):
         y += lfilter(b, a_, x) * (weights[i] if weights else 1 / (1 + i * 0.25))
     return y
 # buzz: the body shivering on the chassis: noise whose loudness wanders, plus small sharp knocks against the posts
-n = 4 * SR; x = rng.normal(0, 1, n) * (0.35 + 0.65 * np.clip(np.cumsum(rng.normal(0, 1, n)) % 3000 / 3000, 0, 1) ** 0.3)
-env = np.interp(np.arange(n), np.linspace(0, n, 90), rng.uniform(0.25, 1, 90)); x *= env
-for _ in range(110):
-    p = rng.integers(0, n - 400); x[p:p + 40] += rng.normal(0, 1, 40) * rng.uniform(3, 14) * np.hanning(40)
+n = 4 * SR; x = rng.normal(0, 1, n)
+env = np.interp(np.arange(n), np.linspace(0, n, 14), rng.uniform(0.75, 1, 14)); x *= env
+for _ in range(24):      # a few soft knocks against the posts (it was a constant rattle, far rougher than a real car sounds from the stand)
+    p = rng.integers(0, n - 400); x[p:p + 60] += rng.normal(0, 1, 60) * rng.uniform(1.5, 4) * np.hanning(60)
 sh = resonate(band(x, 80, 4000)); sh = np.concatenate([sh[SR // 2:], sh[:SR // 2]])
 fade = 2400; sh[:fade] = sh[:fade] * np.linspace(0, 1, fade) + sh[-fade:] * np.linspace(1, 0, fade); save('shell', sh[:-fade])
 
@@ -74,7 +73,7 @@ def knock(dur, click_hz, body, decay):
     m = int(dur * SR); t = np.arange(m) / SR; x = np.zeros(m); x[:24] = rng.normal(0, 1, 24) * np.hanning(24)
     y = band(x, click_hz, None) * 0.9 + resonate(x) * body
     return y * np.exp(-t / decay)
-save('tick', knock(0.11, 2500, 4.0, 0.035), 0.9)
+save('tick', knock(0.09, 2500, 2.2, 0.022), 0.9)
 # hit: the car into foam or a board: a dull thud from the barrier, the shell clacking and ringing on
 m = int(0.45 * SR); t = np.arange(m) / SR
 thud = np.sin(2 * np.pi * (150 * np.exp(-t * 9) + 55) * t) * np.exp(-t / 0.06)

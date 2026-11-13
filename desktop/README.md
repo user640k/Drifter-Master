@@ -73,7 +73,6 @@ The list, in order:
 2. The room: one side extended for stairs going up; basement windows on the opposite side; posts; the ceiling.
 3. Left-over texture and shell fitting issues.
 4. An exit from every layout to a parking area (replaces the K parking bay).
-5. Sound: smoother, less rough.
-6. Better textures for the walls and the artificial grass.
+5. Better textures for the walls and the artificial grass.
 
 Later, maybe: damage, the other two bodies, more tracks; from the web car menu: ride height, wheels and tyres, stickers, body mounts.

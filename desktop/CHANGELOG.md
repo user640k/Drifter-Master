@@ -2,6 +2,7 @@
 
 ## Changelog (this build)
 
+- Sound reworked from the owner's new P-tile clip: tyre sounds rebuilt from it with smoother textures; the shell rattle and tile ticks, which were what made it rough, are much calmer and quieter.
 - Judged run rescored after the solo qualifying format: line 40, angle 40 (depth and consistency), style 20 (fluidity, commitment, initiation), up to 5 bonus for an early initiation. Speed no longer scores by itself. The card shows the breakdown.
 - CAR page: the car is shown still on the right half of the screen while you customise it.
 - On-screen transmitter: a soft shadow under it and shading on itself, so it no longer floats.

@@ -66,7 +66,7 @@ namespace DriftMaster {
       _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
       // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
       float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.043f + 0.1f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
-      _gShell += (on * shake * (inside ? 0.6f : 0.13f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
+      _gShell += (on * shake * (inside ? 0.35f : 0.07f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
       if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
       _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((800 + 90 * wsp) / 1000f, 0.8f, 2.2f);
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)
@@ -82,7 +82,7 @@ namespace DriftMaster {
       }
       _cells = true;
       if (crossed && on > 0 && sp > 0.25f && _tickWait <= 0 && (Solo == null || Solo == "tick")) {
-        _tickWait = 0.03; _tick.VolumeDb = Db(Mathf.Clamp(0.18f + 0.15f * sp, 0, 0.7f) * (inside ? 1.4f : 1f) * (float)GD.RandRange(0.6, 1.0)); _tick.PitchScale = (float)GD.RandRange(0.85, 1.2); _tick.Play();
+        _tickWait = 0.03; _tick.VolumeDb = Db(Mathf.Clamp(0.1f + 0.09f * sp, 0, 0.42f) * (inside ? 1.4f : 1f) * (float)GD.RandRange(0.6, 1.0)); _tick.PitchScale = (float)GD.RandRange(0.85, 1.2); _tick.Play();
       }
       if (_pendHit > 0) { if (!paused && (Solo == null || Solo == "hit")) { _hit.VolumeDb = Db(0.25f + 0.75f * Mathf.Min(1, _pendHit)); _hit.PitchScale = (float)GD.RandRange(0.9, 1.1) * (1.1f - 0.2f * Mathf.Min(1, _pendHit)); _hit.Play(); } _pendHit = 0; }
     }
