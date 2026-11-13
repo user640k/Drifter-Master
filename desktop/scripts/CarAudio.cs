@@ -53,8 +53,8 @@ namespace DriftMaster {
       // the way it would outdoors. Much of what reaches you is the room, so nine times the distance was only a bit
       // over twice as quiet. Loudness goes as distance to the power -0.4 here (outdoors it would be -1). The far car was
       // also a little duller in the video; that is left out, as the engine's low-pass took far too much of the top off.
-      float dist = Mathf.Max(0.6f, ear.Origin.DistanceTo(GlobalPosition)), far = Mathf.Pow(2f / dist, 0.4f);
-      AudioServer.SetBusVolumeDb(_bus, Muted ? -80 : Db(Volume * Volume * camGain * far * 1.45f));
+      float dist = Mathf.Max(0.6f, ear.Origin.DistanceTo(GlobalPosition)), far = Mathf.Pow(2f / dist, 0.7f);   /* (0.4 at first: with the second clip as the guide the car swells more as it comes close and falls away further off) */
+      AudioServer.SetBusVolumeDb(_bus, Muted ? -80 : Db(Volume * Volume * camGain * far * 0.75f));
       float sp = (float)Math.Sqrt(c.U * c.U + c.V * c.V), slide = (float)c.Slide, spin = (float)Math.Abs(c.W - c.U), on = paused || c.Air ? 0 : 1;
       float moving = Smooth(0.08f, 1.6f, sp);
       // how much the car is shaking: speed over the tiles, sliding, and the body rocking on its springs
@@ -65,8 +65,8 @@ namespace DriftMaster {
       _gSlide += (on * Smooth(0.02f, 0.6f, sp + spin) * grind * 0.8f - _gSlide) * k;
       _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
       // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
-      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.043f + 0.1f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
-      _gShell += (on * shake * (inside ? 0.35f : 0.07f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
+      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.015f + 0.035f * (float)c.Thr) * (inside ? 0.3f : 1f)   /* the recording carries the motor's own note now: the added whistle only helps it follow the throttle */ - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
+      _gShell += (on * shake * (inside ? 0.2f : 0.03f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
       if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
       _roll.VolumeDb = Db(_gRoll); _slide.VolumeDb = Db(_gSlide); _scrub.VolumeDb = Db(_gScrub); _shell.VolumeDb = Db(_gShell); _whine.VolumeDb = Db(Motor ? _gWhine : 0); _whine.PitchScale = Mathf.Clamp((800 + 90 * wsp) / 1000f, 0.8f, 2.2f);
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)

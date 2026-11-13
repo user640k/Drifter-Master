@@ -14,7 +14,7 @@
 import sys, os, wave, numpy as np
 from scipy.signal import stft, istft, butter, sosfilt, lfilter
 from scipy.ndimage import median_filter, uniform_filter1d
-out = sys.argv[1]; here = os.path.dirname(os.path.abspath(__file__)); SR = 24000
+out = sys.argv[1]; here = os.path.dirname(os.path.abspath(__file__)); SR = 44100
 rng = np.random.default_rng(11)
 def save(name, a, peak=0.7):
     a = a / (np.abs(a).max() + 1e-9) * peak
@@ -25,26 +25,18 @@ def band(a, lo, hi, order=2):
     else: sos = butter(order, hi, 'lowpass', fs=SR, output='sos')
     return sosfilt(sos, a)
 
-w = wave.open(os.path.join(here, 'sound_src', 'reference.wav')); assert w.getframerate() == SR
+w = wave.open(os.path.join(here, 'sound_src', 'reference.wav')); assert w.getframerate() == SR and w.getnchannels() == 1
 ref = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
-# take the motor's lines out, instant by instant
-f, t, Z = stft(ref, SR, nperseg=1024, noverlap=768); mag = np.abs(Z)
-floor = median_filter(uniform_filter1d(mag, 5, axis=1), (31, 1), mode='nearest')
-gain = np.minimum(1, 2.0 * floor / (mag + 1e-9)); gain[f < 700] = 1                     # only lines well above the noise, and only where the motor sings
-_, clean = istft(Z * gain, SR, nperseg=1024, noverlap=768); clean = clean[:len(ref)]
-# loudness, a tenth of a second at a time
-hop = SR // 10; lv = np.sqrt((clean[:len(clean) // hop * hop].reshape(-1, hop) ** 2).mean(1)); q1, q3 = np.percentile(lv, [30, 70])
-def texture(pick, secs=6.0, grain=0.4):   # long grains, eight deep: a smooth, even rush with nothing of the cutting left in it
-    starts = [i * hop for i in range(len(lv) - 3) if all(pick(lv[i + k]) for k in range(3))]   # places where 0.3 s in a row is of this kind
-    n = int(secs * SR); g = int(grain * SR); win = np.hanning(g); y = np.zeros(n + g); ws = np.zeros(n + g)
-    for pos in range(0, n, g // 8):
-        s0 = starts[rng.integers(0, len(starts))] + rng.integers(0, hop); seg = clean[s0:s0 + g]
-        seg = seg / (np.sqrt((seg ** 2).mean()) + 1e-9)                                  # even loudness: the game sets the level
-        y[pos:pos + g] += seg * win; ws[pos:pos + g] += win
-    y[:g] += y[n:n + g]; ws[:g] += ws[n:n + g]; return y[:n] / np.maximum(ws[:n], 1e-3)
-roar = texture(lambda v: v >= q3)
-save('roar', roar)                                           # sliding
-save('roll', texture(lambda v: v <= q1))                     # rolling and coasting
+# The running sounds are long, unbroken stretches of the recording, played as they are: nothing is cut into grains and
+# nothing is filtered out, so the tyres' own texture and the motor's own note stay exactly as recorded. (Cutting it
+# into shuffled pieces and removing the motor's lines measured the same but sounded rough.) Only the slow swell of the
+# car coming and going is levelled, as the game sets the loudness by distance itself, and the ends are cross-faded.
+def stretch(t0, t1, xf=0.6):
+    seg = ref[int(t0 * SR):int(t1 * SR)]; env = np.sqrt(uniform_filter1d(seg ** 2, int(0.35 * SR))) + 1e-5; seg = seg / env
+    k = int(xf * SR); n = len(seg) - k; th = np.linspace(0, np.pi / 2, k); out = seg[:n].copy(); out[:k] = seg[:k] * np.sin(th) + seg[n:n + k] * np.cos(th); return out
+roar = stretch(5.7, 9.3)
+save('roar', roar)                                           # a car passing close, sliding
+save('roll', stretch(10.2, 15.2))                            # steady running further off
 save('hiss', band(roar, 2000, None))                         # wheelspin: the top of the slide
 
 # the motor's whistle: one second at 1 kHz with a little second harmonic and a slight waver; the game sets its pitch
