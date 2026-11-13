@@ -34,7 +34,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
-        else if (a == "--full") _full = true;
+        else if (a == "--full") _full = true; else if (a == "--tx") _txShot = true; else if (a.StartsWith("--fakeaxis=")) { _radio.Fake = new float[Radio.Axes]; var q = a.Substring(11).Split(','); for (int k = 0; k < q.Length && k < Radio.Axes; k++) _radio.Fake[k] = float.Parse(q[k], System.Globalization.CultureInfo.InvariantCulture); _radio.On = true; _txShot = true; }
         else if (a.StartsWith("--menu=")) _menuAt = Array.ConvertAll(a.Substring(7).Split(','), int.Parse);
         else if (a.StartsWith("--track=")) { TrackIdx = int.Parse(a.Substring(8)); _trackChosen = true; }
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--rims=")) _rimIdx = int.Parse(a.Substring(7));
@@ -106,7 +106,8 @@ namespace DriftMaster {
     // (the engine's own start-up picture is the same icon, the same way). After two seconds it fades and the window becomes
     // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
     // the icon simply shows on black.
-    bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
+    readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
+    bool _txShot; bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
     static bool _splashShown; TextureRect _splash; double _splashT;
     void BuildSplash(CanvasLayer layer) {
       if (_splashShown || Quiet) { if (!_splashShown) GameWindow(); _splashShown = true; return; } // once a run, not at every change of track
@@ -160,6 +161,7 @@ namespace DriftMaster {
       _help.Text = "ESC  menu and all keys     W / S  drive     A / D  steer     R  reset     C  camera"; // short, so it fits any window; the rest are in the menu
       _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
       _pause = new Menu { Visible = false }; BuildMenu(); layer.AddChild(_pause);
+      { var top = new CanvasLayer { Layer = 3 }; AddChild(top); _tx = new Transmitter(); top.AddChild(_tx); }   // above the menu's shade, so it can be watched while setting the radio up
       BuildSplash(layer); BuildMusic(layer);
       if (Quiet) _help.Visible = false;
     }
@@ -227,8 +229,19 @@ namespace DriftMaster {
       var keys = new List<Menu.Row>();
       foreach (var (k, what) in new[] { ("W / S  or  UP / DOWN", "drive; brake, then reverse"), ("A / D  or  LEFT / RIGHT", "steer"), ("R", "back to the start line"), ("C", "next camera"), ("ESC", "this menu"),
         ("F1", "next track"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("M   N   - / =", "mute, motor sound, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
-        ("GAMEPAD", "triggers drive and brake, left stick steers, Y reset, X camera, Start menu") }) { string w = what; keys.Add(R(k, () => w, null)); }
-      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
+        ("GAMEPAD", "triggers drive and brake, left stick steers, Y reset, X camera, Start menu"), ("RC RADIO", "wheel steers, trigger drives, brakes and reverses: set it up on the CONTROLLER page") }) { string w = what; keys.Add(R(k, () => w, null)); }
+      var ctl = new List<Menu.Row> {
+        R("DRIVE WITH", () => _radio.On ? "RC RADIO" : "KEYS / GAMEPAD", d => { _radio.On = !_radio.On; ApplyOptions(true); }, "RC RADIO: a real pistol-grip transmitter plugged into the PC (its own USB port, or a simulator dongle on its receiver). Wheel and trigger act one to one, as on the car."),
+        R("DEVICE", () => _radio.DeviceName, d => { _radio.NextDevice(d); }, "The radio as the PC sees it. Left and right step through what is plugged in."),
+        R("FIND STEERING", () => _radio.Learning == 1 ? _radio.Status : $"CHANNEL {_radio.SteerAxis + 1}", d => { _radio.Learn(1); }, "Press right, then turn the wheel: the channel that moves is taken as steering."),
+        R("FIND THROTTLE", () => _radio.Learning == 2 ? _radio.Status : $"CHANNEL {_radio.ThrAxis + 1}", d => { _radio.Learn(2); }, "Press right, then pull the trigger."),
+        R("CALIBRATE", () => _radio.Learning == 3 ? _radio.Status : (_radio.Status.StartsWith("CALIB") || _radio.Status.StartsWith("NOTHING") || _radio.Status.StartsWith("PLUG") ? _radio.Status : "START"), d => { _radio.Learn(3); }, "Hands off the wheel and trigger, press right, then move both to their ends a few times within six seconds. Centre and end points are remembered."),
+        R("REVERSE STEERING", () => _radio.SteerRev ? "ON" : "OFF", d => { _radio.SteerRev = !_radio.SteerRev; ApplyOptions(true); }, "If the car turns the wrong way."),
+        R("REVERSE THROTTLE", () => _radio.ThrRev ? "ON" : "OFF", d => { _radio.ThrRev = !_radio.ThrRev; ApplyOptions(true); }, "If pulling the trigger brakes."),
+        R("NOW", () => !_radio.On ? "-" : $"STEER {_radio.Steer * 100:+0;-0;0}%    TRIGGER {_radio.Trigger * 100:+0;-0;0}%", null, "What the game reads from the radio at this moment: 0 at rest, 100 at the ends."),
+        R("TRANSMITTER ON SCREEN", () => _txOn ? "ON" : "OFF", d => { _txOn = !_txOn; ApplyOptions(true); }, "A transmitter in the corner whose wheel and trigger move with your inputs, to train the hands. It works with the keys and a gamepad too, with no radio plugged in."),
+      };
+      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("CONTROLLER", ctl)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
     }
 
     void ApplyOptions(bool save = false) {
@@ -236,13 +249,13 @@ namespace DriftMaster {
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
       _view.SetCamber((float)CamberDeg[_setup[11]], (float)CamberDeg[_setup[12]]);
       _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
-      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
+      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
     }
@@ -253,7 +266,7 @@ namespace DriftMaster {
 
     public override void _UnhandledInput(InputEvent e) {
       bool key(Key k) => e is InputEventKey ek && ek.Pressed && !ek.Echo && ek.Keycode == k;
-      bool pad(JoyButton b) => e is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == b;
+      bool pad(JoyButton b) => !_radio.On && e is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == b;   // (a radio's switches are not a gamepad's buttons)
       if (key(Key.Escape) || pad(JoyButton.Start)) { _pause.Open(!_pause.Visible); _help.Visible = !_pause.Visible && !Quiet; return; }
       if (_pause.Visible) { _pause.Handle(e); return; } // the menu has the keys while it is open
       if (false) { }
@@ -286,12 +299,13 @@ namespace DriftMaster {
       bool up = Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up), dn = Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down);
       bool lf = Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left), rt = Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right);
       inp.Thr = up ? 1 : 0; inp.Brk = dn ? 1 : 0; inp.Steer = (lf ? 1 : 0) - (rt ? 1 : 0); inp.ThrDigital = up;
-      if (Input.GetConnectedJoypads().Count > 0) {
+      if (!_radio.On && Input.GetConnectedJoypads().Count > 0) {
         int j = Input.GetConnectedJoypads()[0]; float gt = Input.GetJoyAxis(j, JoyAxis.TriggerRight), gb = Input.GetJoyAxis(j, JoyAxis.TriggerLeft), gs = Input.GetJoyAxis(j, JoyAxis.LeftX);
         if (gt > 0.03f && !up) { inp.Thr = gt; inp.ThrDigital = false; }
         if (gb > 0.03f && !dn) inp.Brk = gb;
         if (Math.Abs(gs) > 0.06f && !lf && !rt) inp.Steer = -Math.Sign(gs) * Math.Pow((Math.Abs(gs) - 0.06) / 0.94, 1.4);
       }
+      if (_radio.On && !up && !dn && !lf && !rt) { inp = new CarInput(); _radio.Read(ref inp); }   // the radio drives; the keys still work if touched
       return inp;
     }
 
@@ -302,6 +316,10 @@ namespace DriftMaster {
         Laps(idx0, Math.Min(delta, 0.05));
       }
       if (!double.IsNaN(_poseSteer)) { _car.Steer = _poseSteer; _car.Roll = -0.035 * Math.Sign(_poseSteer); }
+      { // the transmitter in the corner follows whatever is driving; the radio's learning steps show in the menu as they go
+        if (_radio.Step(delta) || (_pause.Visible && _radio.On)) _pause.Refresh();
+        var show = ReadInput(); var vs = GetViewport().GetVisibleRect().Size; _tx.Visible = _txOn && !_bare && _splash == null && (_shot == null || _txShot) && !(_fpvScreen.Visible && vs.X < 900);
+        _tx.Position = new Vector2(vs.X - _tx.Size.X - 14, vs.Y - _tx.Size.Y - 44); _tx.Show(show.Steer, show.Thr, show.Brk, Input.GetConnectedJoypads().Count > 0 || _radio.Fake != null); }
       StepSplash(delta); StepMusic(delta);
       _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone

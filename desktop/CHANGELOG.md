@@ -2,6 +2,8 @@
 
 ## Changelog (this build)
 
+- Real RC radio support: CONTROLLER page to pick the device, find the steering and throttle channels, calibrate and reverse them.
+- A transmitter on screen whose wheel and trigger move with your inputs (radio, gamepad or keys).
 - Paint: one livery template. Body colour (12), bonnet in the body colour or in carbon weave, rim colour (12). The six earlier liveries and the second colour are gone.
 - Shell material: made to look like a real RC drift shell, clear polycarbonate sprayed on the inside. Glossy outside, flat paint inside. Colours retuned.
 - New bodies: TUNER (1990s two-door coupe, no badges) and VAN (lamps and grille over clean paint). Five bodies in all.
@@ -18,7 +20,8 @@
 - Each body has its own weight and centre of gravity, so taller, heavier shells roll more.
 - Bump map on both tracks (tile joints, humps, lifted corners, kerbs); the shell shivers over them.
 - Foam barriers and hard boards that bounce differently.
-- Keyboard and gamepad. Optional driving assist.
+- Keyboard, gamepad or a real RC transmitter over USB. Optional driving assist.
+- On-screen transmitter that mirrors your steering and trigger.
 
 **Tracks**
 - One hall, black P-tile floor with wear, two layouts: HILLSIDE (with a raised section and bridge) and INFIELD (oval with a twisty infield, turf and kerbs).
