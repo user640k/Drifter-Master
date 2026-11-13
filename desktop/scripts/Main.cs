@@ -109,6 +109,7 @@ namespace DriftMaster {
     // (the engine's own start-up picture is the same icon, the same way). After two seconds it fades and the window becomes
     // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
     // the icon simply shows on black.
+    float _eyeFov = 50;
     readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
     bool _txShot; bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
     static bool _splashShown; TextureRect _splash; double _splashT;
@@ -369,8 +370,13 @@ namespace DriftMaster {
         _cam.Fov = fov; _cam.Position = pos; _cam.LookAt(look, Vector3.Up); return; }
       if (_camMode == 9) { pos = new Vector3(_view6[0], _view6[1], _view6[2]); look = new Vector3(_view6[3], _view6[4], _view6[5]); fov = _view6.Length > 6 ? _view6[6] : 50; _camSnap = true; } // test view
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
-        var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.14f).LimitLength(0.35f);   // where the car is going
-        pos = new Vector3(hx, 1.6f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(1.3f / pos.DistanceTo(look))), 13, 58);   // from a corner of the hall, a little higher: the whole track lies in front of it and less of it hides behind its own barriers   // a 2.6 m wide patch of track round the car (it was 1.5 m)
+        // Like a person standing there. The eyes do not zoom: the field of view is a steady, natural one, and only narrows a
+        // little when the car is far off (attention, not a lens: a car twice as far still looks a good deal smaller).
+        // The gaze runs ahead of the car to where it will be in about half a second, so the track coming up is in view,
+        // and it follows smoothly, the way eyes and head track something moving.
+        var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.5f).LimitLength(1.0f);
+        pos = new Vector3(hx, 1.6f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; float dEye = pos.DistanceTo(look);
+        _eyeFov += (Mathf.Clamp(58f * Mathf.Pow(2.5f / dEye, 0.4f), 34, 58) - _eyeFov) * (_camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 3)); fov = _eyeFov;
       } else if (_camMode == 2) { // from the ceiling: an analog camera too, fixed up there looking straight down
         OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); _fpvCam.LookAt(Vector3.Zero, Vector3.Forward); _camSnap = true; return; }
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
@@ -381,7 +387,7 @@ namespace DriftMaster {
       } else { pos = new Vector3(0, 1.45f, hz); look = p; }
       pos.X = Mathf.Clamp(pos.X, -hx, hx); pos.Z = Mathf.Clamp(pos.Z, -hz, hz);
       float k = _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 12);
-      _camPos = _camPos.Lerp(pos, k); _camLook = _camLook.Lerp(look, _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 14)); _camSnap = false;
+      _camPos = _camPos.Lerp(pos, k); _camLook = _camLook.Lerp(look, _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * (_camMode == 1 ? 9 : 14))); _camSnap = false;
       _cam.Fov = fov; _cam.Position = _camPos;
       if (_camMode == 2) _cam.LookAt(_camLook, Vector3.Forward); else _cam.LookAt(_camLook, Vector3.Up);
     }
