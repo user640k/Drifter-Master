@@ -37,11 +37,19 @@ CFG = {
     'pickup': dict(wb=2.921, fwd='-x', decimate=0.4, wheel=dict(mats=['Wheel']),
                    mats={'Front': 'tex', 'Back': 'tex', 'Glass': 'glass', 'Bottom': None, 'Inside': None, 'Wheel': None},
                    atlas=[('Front', 'T_Front_C.tga.png'), ('Back', 'T_Back_C.tga.png')]),
+    # a 1990s two-door sports coupe, detailed, with engine and interior (left out) and badges (left out)
+    'tuner': dict(wb=2.525, fwd='-y', decimate=0.6,
+                  wheel=dict(objects=['M_Rim_Main_Max', 'M_Rim_Main_Max1', 'M_Rim_Main_Max2', 'S14:M_Rim_Main_Max', 'wheela:polySurface1', 'wheela:polySurface163', 'wheela:polySurface325', 'wheela:polySurface484']),
+                  drop_objects=['M_RimBadge_Max', 'M_RimBadge_Max1', 'M_RimBadge_Max2', 'S14:M_RimBadge_Max', 'S14:M_Badge_Max', 'S14:M_Chassis_Max', 'S14:M_Engine_Max', 'S14:M_Interior_Max',
+                                'S14:M_LicensePlate_Max', 'S14:M_Opaque_ChromeRough_Max', 'wheela:polySurface485', 'wheela:polySurface510', 'wheela:polySurface535', 'wheela:polySurface558'],
+                  mats={'S14:phong2SG1': 'paint', 'S14:phong17SG1': 'paint', 'S14:phong10SG1': 'satin', 'S14:phong12SG1': 'black', 'S14:phong16SG1': 'satin', 'S14:phong3SG1': 'glass', 'S14:phong4SG1': 'glass',
+                        'S14:phong18SG1': 'black', 'S14:phong7SG1': 'lamp', 'S14:phong8SG1': 'amber', 'S14:phong9SG1': 'redlight', 'S14:phong13SG1': 'satin', 'S14:phong5SG1': 'black'}),
 }
 
 args = [a for a in sys.argv[sys.argv.index('--') + 1:]] if '--' in sys.argv else sys.argv[1:]
 key, src = args[0], args[1]; texdir = pathlib.Path(args[2]) if len(args) > 2 else None
 C = CFG[key]; root = pathlib.Path(__file__).resolve().parent.parent
+html_path = pathlib.Path(os.environ.get('SHELL_HTML') or root / 'index.html')   # (SHELL_HTML: write the asset into a copy)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=src)
@@ -266,10 +274,10 @@ if P_src:
                                                                  float(Pp[:, 0].max() - Pp[:, 0].min()), float(Pp[:, 1].max() - Pp[:, 1].min())]
 name = key.upper() + '_ASSET'
 line = f'const {name} = ' + json.dumps(asset, separators=(',', ':')) + ';'
-html = (root / 'index.html').read_text()
+html = html_path.read_text()
 if re.search(rf'^const {name} = .*;$', html, flags=re.M): html = re.sub(rf'^const {name} = .*;$', lambda m: line, html, count=1, flags=re.M)
 else: html = html.replace('/* ======== PARTS:', line + '\n/* ======== PARTS:', 1)
-(root / 'index.html').write_text(html)
+html_path.write_text(html)
 print(f'{key}: {sum(len(b[4]) for b in built)} triangles, {under} underbody dropped, {len(line) // 1024} KB, scale {s:.5f}')
 print(' meshes', {b[0]: (b[1], len(b[4])) for b in built})
 print(' hubs', hubs, 'R', round(R, 4)); print(' bounds', lo.round(4).tolist(), hi.round(4).tolist())
