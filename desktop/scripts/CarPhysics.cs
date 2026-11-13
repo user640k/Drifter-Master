@@ -17,6 +17,7 @@ namespace DriftMaster {
     public double AckK = 0.5, CasterDeg = 9;
     public bool GearDiff = false, Assist = true;
     public double EscV = 1.12, EscF = 0.98;       // BOOST
+    public double CamberF = 0, CamberR = 0;       // degrees; 0 = wheels upright, negative = tops lean in
   }
 
   public sealed class CarPhysics {
@@ -62,6 +63,10 @@ namespace DriftMaster {
 
     static double Clamp(double v, double a, double b) => v < a ? a : v > b ? b : v;
     static double TireCurve(double a) => Math.Sin(TC * Math.Atan(TB * a));
+    /// What camber does to an axle's grip. A little negative camber lets the loaded outside tyre sit flat as the car leans,
+    /// so grip rises slightly (best near -3 degrees, about +2%); more than that and the tyre rides on its inner edge and
+    /// grip falls (-9: about 7% less). Positive camber only ever tips the outside tyre onto its outer edge (+6: about 15% less).
+    public static double CamberGrip(double deg) => Math.Max(0.6, 1 - 0.012 * deg - 0.0022 * deg * deg);
     static double MuAt(double n, double mu0, double nref) => mu0 * Math.Max(0.5, 1 - LOADSENS * (n / nref - 1));
     static void Tire(double kap, double tn, double d, out double fx, out double fy) {
       double sg = Math.Sqrt(kap * kap + tn * tn); if (sg < 1e-6 || d < 1e-6) { fx = fy = 0; return; }
@@ -119,8 +124,8 @@ namespace DriftMaster {
       double grip = Air ? 0 : 1;
       double lockF = Math.Min(1, Math.Abs(Steer) / 1.0);
       double geoF = 1 - 0.1 * S.AckK * lockF + 0.045 * (S.CasterDeg - 9) / 3 * lockF;
-      double Df = grip * geoF * (MuAt(FL, mu0, Nref) * FL + MuAt(FR, mu0, Nref) * FR);
-      double Dr = grip * (MuAt(RL, mu0, Nref) * RL + MuAt(RRl, mu0, Nref) * RRl);
+      double Df = grip * geoF * CamberGrip(S.CamberF) * (MuAt(FL, mu0, Nref) * FL + MuAt(FR, mu0, Nref) * FR);
+      double Dr = grip * CamberGrip(S.CamberR) * (MuAt(RL, mu0, Nref) * RL + MuAt(RRl, mu0, Nref) * RRl);
       if (S.GearDiff) { double Din = grip * MuAt(Math.Min(RL, RRl), mu0, Nref) * Math.Min(RL, RRl), Dout = Dr - Din; Fdrive = Math.Min(Fdrive, 2 * Din + 0.3 * Math.Max(0, Dout - Din)); }
       Loads[0] = FL; Loads[1] = FR; Loads[2] = RL; Loads[3] = RRl;
 

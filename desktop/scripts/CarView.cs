@@ -5,7 +5,7 @@ using System;
 
 namespace DriftMaster {
   public partial class CarView : Node3D {
-    MeshInstance3D _blob, _neonFloorNode; Node3D _body; Transform3D? _shellHome; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
+    MeshInstance3D _blob, _neonFloorNode; Node3D _body; Transform3D? _shellHome; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly float[] _leanIn = new float[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
     public ShaderMaterial Paint; StandardMaterial3D _glass;
     /// the shells: name, model, its mass (kg) and how high its own centre of gravity sits (m), and where the cabin is (z)
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
@@ -27,7 +27,7 @@ namespace DriftMaster {
       foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; }
       for (int i = 0; i < 4; i++) {
         _wheel[i] = model.FindChild(Names[i], true, false) as Node3D; _spin[i] = model.FindChild(Names[i] + "_Spin", true, false) as Node3D;
-        if (_spin[i] != null) _camber[i] = _spin[i].Quaternion;
+        if (_spin[i] != null) { _camber[i] = _spin[i].Quaternion; _leanIn[i] = Mathf.Sign(_camber[i].X) == 0 ? 1 : Mathf.Sign(_camber[i].X); _camber[i] = Quaternion.Identity; } // the model came with 9 degrees of negative camber: which way is 'in' for this wheel is taken from it, then the wheel is stood upright
         if (_wheel[i] != null) { _wheelBase[i] = _wheel[i].Transform; _spinSign[i] = Mathf.Sign(_wheelBase[i].Basis.Z.X); } // the wheel's own z is its axle
       }
       // a soft dark patch under the car: cheap contact shadow that reads on any graphics card
@@ -83,6 +83,8 @@ namespace DriftMaster {
 
     // from the driver's seat the tint is light enough to see the track through
     public void SetPaint(Color a, Color b, Color c, int scheme) { Paint.SetShaderParameter("col_a", a); Paint.SetShaderParameter("col_b", b); Paint.SetShaderParameter("col_c", c); Paint.SetShaderParameter("scheme", scheme); }
+    /// camber in degrees, front and rear: 0 upright, negative leans the tops of the wheels in, positive out
+    public void SetCamber(float front, float rear) { for (int i = 0; i < 4; i++) _camber[i] = new Quaternion(Vector3.Right, _leanIn[i] * Mathf.DegToRad(-(i < 2 ? front : rear))); }
     public void ShowStick(bool on) { _stick.Visible = on; }
     public void SetOnBoard(bool on) { _onBoard = on; Glass(); }
     // tinted: dark, as on most shells; clear: the chassis and the cabin show through

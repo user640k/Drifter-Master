@@ -33,6 +33,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--menu=")) _menuAt = Array.ConvertAll(a.Substring(7).Split(','), int.Parse);
         else if (a.StartsWith("--track=")) { TrackIdx = int.Parse(a.Substring(8)); _trackChosen = true; }
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--paintb=")) _paintB = int.Parse(a.Substring(9));
+        else if (a.StartsWith("--camber=")) { var q = a.Substring(9).Split(','); _setup[11] = int.Parse(q[0]); _setup[12] = int.Parse(q[1]); }
         else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
         else if (a == "--bare") _bare = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
@@ -161,18 +162,20 @@ namespace DriftMaster {
 
     // ---- car setup, as in the web version: each a short list to pick from (index kept in user://settings.cfg)
     static readonly (string name, double vFree, double fStall)[] Motors = { ("10.5T DRIFT", 12.0, 30), ("13.5T STOCK", 15.6, 52), ("6.5T MOD", 24, 85), ("13.5T DRIFT, HIGH FDR", 10.5, 24) };
-    static readonly string[] SetupKeys = { "motor", "tyre", "gyro", "spring", "oil", "arb", "ack", "caster", "diff", "esc", "assist" };
-    static readonly int[] SetupDefault = { 3, 2, 3, 1, 2, 1, 1, 1, 0, 1, 0 };
+    static readonly string[] SetupKeys = { "motor", "tyre", "gyro", "spring", "oil", "arb", "ack", "caster", "diff", "esc", "assist", "camber_f", "camber_r" };
+    static readonly double[] CamberDeg = { -9, -6, -3, 0, 3, 6 };
+    static readonly int[] SetupDefault = { 3, 2, 3, 1, 2, 1, 1, 1, 0, 1, 0, 3, 3 }; // camber: straight wheels
     static readonly string[][] SetupNames = {
       new[] { "10.5T DRIFT", "13.5T STOCK", "6.5T MOD", "13.5T DRIFT, HIGH FDR" }, new[] { "SOFT", "MEDIUM", "HARD" }, new[] { "OFF", "40%", "70%", "90%" },
       new[] { "SOFT", "MEDIUM", "HARD" }, new[] { "10WT", "15WT", "20WT", "25WT" }, new[] { "FRONT SOFT", "BALANCED", "FRONT STIFF" }, new[] { "PARALLEL", "MILD", "FULL" },
-      new[] { "7 DEG", "9 DEG", "12 DEG" }, new[] { "SPOOL", "GEAR DIFF" }, new[] { "BLINKY", "BOOST", "BOOST + TURBO" }, new[] { "ON", "OFF" } };
+      new[] { "7 DEG", "9 DEG", "12 DEG" }, new[] { "SPOOL", "GEAR DIFF" }, new[] { "BLINKY", "BOOST", "BOOST + TURBO" }, new[] { "ON", "OFF" },
+      new[] { "-9 DEG", "-6 DEG", "-3 DEG", "0 (STRAIGHT)", "+3 DEG", "+6 DEG" }, new[] { "-9 DEG", "-6 DEG", "-3 DEG", "0 (STRAIGHT)", "+3 DEG", "+6 DEG" } };
     readonly int[] _setup = (int[])SetupDefault.Clone();
     void ApplySetup() {
       var S = _car.S; int[] u = _setup;
       S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; S.TireMul = new[] { 1.12, 1, 0.88 }[u[1]]; S.GyroGain = new[] { 0, 0.4, 0.7, 0.9 }[u[2]];
       S.KMul = new[] { 0.65, 1, 1.5 }[u[3]]; S.CMul = new[] { 0.6, 0.78, 1, 1.22 }[u[4]]; S.FFront = new[] { 0.4, 0.5, 0.6 }[u[5]]; S.AckK = new[] { 0, 0.5, 1 }[u[6]];
-      S.CasterDeg = new[] { 7.0, 9, 12 }[u[7]]; S.GearDiff = u[8] == 1; S.EscV = new[] { 1, 1.12, 1.25 }[u[9]]; S.EscF = new[] { 1, 0.98, 0.95 }[u[9]]; S.Assist = u[10] == 0;
+      S.CasterDeg = new[] { 7.0, 9, 12 }[u[7]]; S.GearDiff = u[8] == 1; S.EscV = new[] { 1, 1.12, 1.25 }[u[9]]; S.EscF = new[] { 1, 0.98, 0.95 }[u[9]]; S.Assist = u[10] == 0; S.CamberF = CamberDeg[u[11]]; S.CamberR = CamberDeg[u[12]];
     }
 
     void BuildMenu() {
@@ -187,14 +190,16 @@ namespace DriftMaster {
         R("WINDOWS", () => _clearGlass ? "CLEAR" : "TINTED", d => { _clearGlass = !_clearGlass; ApplyOptions(true); }),
         R("NEON", () => CarView.Neons[_neonIdx].name, d => { _neonIdx = Cyc(_neonIdx, d, CarView.Neons.Length); ApplyOptions(true); }, "Lit tubes under the chassis."),
       };
-      string[] labels = { "MOTOR", "TYRES", "GYRO GAIN", "SPRINGS", "SHOCK OIL", "ROLL BARS", "ACKERMANN", "CASTER", "DIFF", "ESC TIMING", "DRIVING ASSIST" };
+      string[] labels = { "MOTOR", "TYRES", "GYRO GAIN", "SPRINGS", "SHOCK OIL", "ROLL BARS", "ACKERMANN", "CASTER", "DIFF", "ESC TIMING", "DRIVING ASSIST", "FRONT CAMBER", "REAR CAMBER" };
       string[] notes = {
         "Free speed and pull. The high-FDR drift motor is the easiest to hold in a slide; the 6.5T is far too much for this hall.",
         "Harder tyres slide sooner and hold a drift at lower speed.", "How much the gyro counter-steers for you. Off: all the catching is yours.",
         "Stiffer springs: less roll and pitch, quicker to react.", "Thicker oil damps the body more: calmer, slower to settle into a slide.",
         "Which end carries more of the roll. Front stiff: more push; front soft: more bite at the front.", "Parallel steering keeps more front grip at big angles.",
         "More caster: the outside front tyre bites harder at full lock.", "A spool drives both rear wheels together. A gear diff lets the inside one spin up.",
-        "Boost and turbo: more top speed for a little less pull from rest.", "On a key: holds the wheelspin for a drift. On a trigger: eases the throttle past the angle the gyro can catch." };
+        "Boost and turbo: more top speed for a little less pull from rest.", "On a key: holds the wheelspin for a drift. On a trigger: eases the throttle past the angle the gyro can catch.",
+        "Negative leans the tops of the front wheels in. About -3 gives the most front grip; -9 rides the inner edge and gives it away. Positive loses grip.",
+        "The same for the rear wheels. Less rear grip lets the tail go sooner and slide further; a little negative holds it." };
       var setup = new List<Menu.Row>();
       for (int k = 0; k < labels.Length; k++) { int q = k; setup.Add(R(labels[q], () => SetupNames[q][_setup[q]], d => { _setup[q] = Cyc(_setup[q], d, SetupNames[q].Length); ApplySetup(); ApplyOptions(true); }, notes[q])); }
       setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The setup the car came with: drift motor, hard tyres, 90% gyro."));
@@ -224,6 +229,7 @@ namespace DriftMaster {
       var cc = _livery == 4 ? ca.Lerp(cb, 0.5f).Darkened(0.35f) : (ca.Luminance + cb.Luminance > 0.9f ? new Color(0.04f, 0.04f, 0.05f) : new Color(0.92f, 0.92f, 0.9f)); // camo's third tone; else an edge colour that shows on both
       _view.SetPaint(ca, cb, cc, _livery);
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
+      _view.SetCamber((float)CamberDeg[_setup[11]], (float)CamberDeg[_setup[12]]);
       _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
       if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "paint_b", _paintB); cf.SetValue("car", "livery", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
     }
