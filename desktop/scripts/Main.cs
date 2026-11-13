@@ -114,8 +114,8 @@ namespace DriftMaster {
     // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
     // the icon simply shows on black.
     float _eyeFov = 50;
-    /// where the driver stands: on a low stand in the corner of the clear floor behind the track, eyes 1.9 m up
-    Vector3 DriverEye => new Vector3((float)_t.HallX - 0.7f, 1.9f, (float)_t.HallZ - 0.55f);
+    /// where the driver stands: on a low stand at the back of the clear floor, in front of the middle of the track, eyes 1.9 m up
+    Vector3 DriverEye => new Vector3(0, 1.9f, (float)_t.HallZ - 0.55f);   // in the middle of the long side, facing the layout
     readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
     bool _txShot; bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
     static bool _splashShown; TextureRect _splash; double _splashT;
@@ -225,7 +225,7 @@ namespace DriftMaster {
       var setup = new List<Menu.Row>();
       for (int k = 0; k < labels.Length; k++) { int q = k; setup.Add(R(labels[q], () => SetupNames[q][_setup[q]], d => { _setup[q] = Cyc(_setup[q], d, SetupNames[q].Length); ApplySetup(); ApplyOptions(true); }, notes[q])); }
       setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The middle of the baseline: 13.5T, -7 and -2 camber, 8 caster, 2 toe each end, 200 cSt, 7 mm, 55% gyro, 1.2 mm springs, spool, 40 / 60."));
-      string[] cams = { "", "DRIVER (CORNER)", "CEILING", "ON BOARD", "ROOF STICK" };
+      string[] cams = { "", "DRIVER", "CEILING", "ON BOARD", "ROOF STICK" };
       var game = new List<Menu.Row> {
         R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Changing track builds the hall again and puts the car on the start line."),
         R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = 1 + Cyc(_camMode - 1, d, 4); _camSnap = true; }),
