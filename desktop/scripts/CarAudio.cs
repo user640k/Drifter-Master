@@ -18,6 +18,7 @@ namespace DriftMaster {
     /// six times a turn, and that is the whine heard from the car. The motor's speed is the wheels' speed as a share of
     /// the car's free-running speed, times the motor's own free speed (its kV at 7.4 V). So a 13.5T at 2.5 m/s on the
     /// drift gearing sings at about 550 Hz, a 10.5T at about 650 Hz, and both rise in step with the wheels.
+    public const bool Silent = true;   // the car makes no sound at all for now: its sound is to be built again from nothing
     public double MotorVFree = 10.5, MotorFreeRev = 382; public bool WhineOnly = true;
     float _gRoll, _gSlide, _gScrub, _gShell; bool _started; int _bus; readonly int[] _cellX = new int[4], _cellZ = new int[4]; bool _cells; double _tickWait; float _pendHit;
     public float Volume = 0.8f; public bool Muted, Motor = true; // Motor: the whistle can be switched off (N)
@@ -59,7 +60,7 @@ namespace DriftMaster {
       // over twice as quiet. Loudness goes as distance to the power -0.4 here (outdoors it would be -1). The far car was
       // also a little duller in the video; that is left out, as the engine's low-pass took far too much of the top off.
       float dist = Mathf.Max(0.6f, ear.Origin.DistanceTo(GlobalPosition)), far = Mathf.Pow(2f / dist, 0.8f);   /* close by it is clearly louder, across the hall clearly quieter: about 2.6 times at arm's length, half at 5 m */   /* (0.4 at first: with the second clip as the guide the car swells more as it comes close and falls away further off) */
-      AudioServer.SetBusVolumeDb(_bus, Muted ? -80 : Db(Volume * Volume * camGain * far * 1.45f));
+      AudioServer.SetBusVolumeDb(_bus, Muted || Silent ? -80 : Db(Volume * Volume * camGain * far * 1.45f));
       float sp = (float)Math.Sqrt(c.U * c.U + c.V * c.V), slide = (float)c.Slide, spin = (float)Math.Abs(c.W - c.U), on = paused || c.Air ? 0 : 1;
       float moving = Smooth(0.08f, 1.6f, sp);
       // how much the car is shaking: speed over the tiles, sliding, and the body rocking on its springs

@@ -2,9 +2,9 @@
 
 ## Changelog (this build)
 
-- Camber: -11 (negative), 0 (zero) and +11 (positive) added to both ends alongside the baseline values; the wheels lean to match.
+- Camber: every degree from -11 to +11 at both ends. Negative: bottoms of the wheels out, tops in. Positive: bottoms in, tops out.
 - SETUP rebuilt as the 1/10 RWD drift baseline and nothing else: 10.5T or 13.5T, cambers, caster, front and rear toe (new), shock oil in cSt, ride height (new), gyro 40 to 65%, spring wire, spool or tight diff, weight bias (new). Tyres, Ackermann, ESC timing and servo are fixed to the baseline. Driving assist moved to the CONTROLLER page.
-- Sound is being rebuilt one layer at a time. So far: the motor whine (pitched from the chosen motor, with a natural waver, harmonics that swell and fade, and a little switching hiss), a stronger near-and-far effect, a light rolling rumble, and barrier hits. Tyre, shell and tile sounds are still silent.
+- The car's sound is removed entirely, to be built again from scratch. Music is unchanged.
 - Judged run rescored after the solo qualifying format: line 40, angle 40 (depth and consistency), style 20 (fluidity, commitment, initiation), up to 5 bonus for an early initiation. Speed no longer scores by itself. The card shows the breakdown.
 - CAR and SETUP pages: the car is shown still on the right half of the screen while you change things (from lower and further forward on SETUP, so camber and ride height show).
 - On-screen transmitter: a soft shadow under it and shading on itself, so it no longer floats.
@@ -56,8 +56,7 @@
 - Pilot's stand, ceiling, on-board (analog FPV look, 4:3) and a roof stick camera.
 
 **Sound**
-- Tyre, shell and motor sound heard from the pilot's stand, with tile-joint ticks and barrier hits; motor whine can be switched off.
-- Music with its own volume.
+- Music with its own volume. The car's own sound is being rebuilt and is silent in this build.
 
 **Other**
 - Pause menu (CAR, SETUP, GAME, KEYS); settings kept between runs.
