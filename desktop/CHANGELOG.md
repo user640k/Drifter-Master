@@ -2,6 +2,7 @@
 
 ## Changelog (this build)
 
+- Camber: -11 (negative), 0 (zero) and +11 (positive) added to both ends alongside the baseline values; the wheels lean to match.
 - SETUP rebuilt as the 1/10 RWD drift baseline and nothing else: 10.5T or 13.5T, cambers, caster, front and rear toe (new), shock oil in cSt, ride height (new), gyro 40 to 65%, spring wire, spool or tight diff, weight bias (new). Tyres, Ackermann, ESC timing and servo are fixed to the baseline. Driving assist moved to the CONTROLLER page.
 - Sound is being rebuilt one layer at a time. So far: the motor whine (pitched from the chosen motor, with a natural waver, harmonics that swell and fade, and a little switching hiss), a stronger near-and-far effect, a light rolling rumble, and barrier hits. Tyre, shell and tile sounds are still silent.
 - Judged run rescored after the solo qualifying format: line 40, angle 40 (depth and consistency), style 20 (fluidity, commitment, initiation), up to 5 bonus for an early initiation. Speed no longer scores by itself. The card shows the breakdown.
