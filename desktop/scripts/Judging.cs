@@ -12,7 +12,7 @@ using System.Collections.Generic;
 namespace DriftMaster {
   public sealed class Course {
     public struct Mark { public int I, I0, I1; public bool Outer; public double X, Z, Y, Side; }
-    public readonly List<Mark> Marks = new(); public bool[] Bend;   // Bend[i]: the track is turning here
+    public readonly List<Mark> Marks = new(); public readonly List<(int a, int apex, int b, double side, int mark)> Bends = new(); /* every bend: where it starts, its tightest point, where it ends, which way its inside lies, its mark (-1: none) */ public bool[] Bend;   // Bend[i]: the track is turning here
     public const double ClipIn = 0.03, ZoneHalf = 0.4;
 
     public static Course Build(Track t) {
@@ -24,7 +24,8 @@ namespace DriftMaster {
         if (!c.Bend[i]) { i++; continue; } int j = i, best = i; double sg = Math.Sign(k[i]);
         while (j < n && c.Bend[j] && Math.Sign(k[j]) == sg) { if (Math.Abs(k[j]) > Math.Abs(k[best])) best = j; j++; }
         int fromStart = ((best - s0) % n + n) % n;
-        if ((j - i) * t.Ds >= 0.5 && fromStart > skip && fromStart < n - skip / 2) bends.Add((best, k[best]));   // not in the launch, not at the line
+        if ((j - i) * t.Ds >= 0.5) { int pa = ((best - 1) % n + n) % n, pb = (best + 1) % n; double sd = Math.Sign((t.TX[pb] - t.TX[pa]) * t.NX[best] + (t.TZ[pb] - t.TZ[pa]) * t.NZ[best]); if (sd == 0) sd = 1;
+          c.Bends.Add((i, best, j, sd, -1)); if (fromStart > skip && fromStart < n - skip / 2) bends.Add((best, k[best])); }   // marks: not in the launch, not at the line
         i = j;
       }
       bends.Sort((a, b) => (((a.apex - s0) % n + n) % n).CompareTo(((b.apex - s0) % n + n) % n));
@@ -32,6 +33,7 @@ namespace DriftMaster {
         int i = bends[q].apex; bool outer = q % 2 == 1; int a = ((i - 1) % n + n) % n, b = (i + 1) % n;
         double side = Math.Sign((t.TX[b] - t.TX[a]) * t.NX[i] + (t.TZ[b] - t.TZ[a]) * t.NZ[i]); if (side == 0) side = 1;   // which way the inside of the bend lies along the normal
         double off = outer ? -side * t.Hw : side * (t.Hw - ClipIn); int zh = (int)Math.Round(ZoneHalf / t.Ds);
+        for (int bq = 0; bq < c.Bends.Count; bq++) if (c.Bends[bq].apex == i) { var bb = c.Bends[bq]; c.Bends[bq] = (bb.a, bb.apex, bb.b, bb.side, c.Marks.Count); }
         c.Marks.Add(new Mark { I = i, I0 = i - zh, I1 = i + zh, Outer = outer, Side = side, X = t.X[i] + t.NX[i] * off, Z = t.Z[i] + t.NZ[i] * off, Y = t.E[i] });
       }
       return c;
@@ -108,16 +110,26 @@ namespace DriftMaster {
   /// each inner clipping point and out to each outer zone, taken at a speed that suits each bend, the tail held out at an
   /// angle that grows with the bend and swaps side smoothly between bends. It runs this line whatever any other car does.
   public sealed class LineCar {
-    public readonly double[] Off, K;       // the line as a sideways offset from the middle of the lane, and the lane's curvature, at each point of the lap
-    public double MaxAngle = 0.72, VMax = 2.3, VMin = 1.4, ALat = 3.8, Accel = 2.4, Brake = 3.0, Swap = 0.3, Pace = 1;   // 41 degrees; m/s; m/s2; seconds to swap the tail over
+    public readonly double[] Off, K, KA;       // the line as a sideways offset from the middle of the lane, and the lane's curvature, at each point of the lap
+    public double MaxAngle = 0.72, VMax = 2.3, VMin = 1.4, ALat = 3.8, Accel = 2.4, Brake = 3.0, Swap = 0.45, Pace = 1, Early = 0.75;   /* Early: how far before a bend it throws the tail out (m) */   // 41 degrees; m/s; m/s2; seconds to swap the tail over
     public double S, Speed, Angle; readonly Track _t; readonly double[] _vt;
     public LineCar(Track t, Course c, double inset = 0.25, double outset = 0.27, double reach = 0.6) {
-      _t = t; int n = t.N; Off = new double[n]; K = new double[n]; _vt = new double[n]; var wsum = new double[n];
-      foreach (var m in c.Marks) { double target = m.Outer ? -m.Side * (t.Hw - outset) : m.Side * (t.Hw - inset); int span = (int)(reach * 2.5 / t.Ds);
-        for (int d = -span; d <= span; d++) { int i = ((m.I + d) % n + n) % n; double w = Math.Exp(-(d * t.Ds / reach) * (d * t.Ds / reach)); Off[i] += w * target; wsum[i] += w; } }
-      for (int i = 0; i < n; i++) if (wsum[i] > 1) Off[i] /= wsum[i];
+      _t = t; int n = t.N; Off = new double[n]; K = new double[n]; _vt = new double[n];
+      // Every bend is set up, not dived into: the car comes in from the outside of the lane, crosses to the inside by the
+      // middle of the bend (to the cone, where there is one) and lets the slide carry it wide again on the way out. A bend
+      // with an outer zone is taken wide all the way round, tail to the barrier.
+      void Lobe(int at, double amp, double sigma) { int span = (int)(sigma * 3 / t.Ds); for (int d = -span; d <= span; d++) { int q = ((at + d) % n + n) % n; double x = d * t.Ds / sigma; Off[q] += amp * Math.Exp(-x * x); } }
+      foreach (var b in c.Bends) { double len = (b.b - b.a) * t.Ds, wide = t.Hw - outset, tight = t.Hw - inset; bool outer = b.mark >= 0 && c.Marks[b.mark].Outer;
+        if (outer) Lobe(b.apex, -b.side * wide, Math.Max(0.45, len / 2.2));
+        else { Lobe(b.apex, b.side * (tight + 0.35 * wide), Math.Max(0.32, len / 3.2) * reach / 0.6);                // in to the clip (the wide lobes either side pull it back a little)
+          if (b.mark < 0) { Lobe(b.apex, -b.side * (tight + 0.35 * wide) * 0.45, Math.Max(0.32, len / 3.2) * reach / 0.6); }   // (no cone to reach for: it need not go right in)
+          int lead = (int)((len / 2 + 0.55) / t.Ds); Lobe(b.apex - lead, -b.side * 0.75 * wide, 0.5); Lobe(b.apex + lead, -b.side * 0.6 * wide, 0.5); } }
+      double lim = t.Hw - Math.Min(inset, outset) + 0.02; for (int q = 0; q < n; q++) Off[q] = Math.Clamp(Off[q], -lim, lim);
+      for (int pass = 0; pass < 2; pass++) { var sm = new double[n]; int r = Math.Max(1, (int)(0.18 / t.Ds)); for (int q = 0; q < n; q++) { double a = 0; for (int d = -r; d <= r; d++) a += Off[((q + d) % n + n) % n]; sm[q] = a / (2 * r + 1); } Array.Copy(sm, Off, n); }
       int w2 = Math.Max(2, (int)Math.Round(0.3 / t.Ds));
       for (int i = 0; i < n; i++) { int a = ((i - w2) % n + n) % n, b = (i + w2) % n; double h = Math.Atan2(t.TX[b], t.TZ[b]) - Math.Atan2(t.TX[a], t.TZ[a]); K[i] = Math.Atan2(Math.Sin(h), Math.Cos(h)) / (2 * w2 * t.Ds); }
+      // the bend as the driver reads it for the slide: smoothed over a car's length or two, so a wiggle in the lane does not flick the tail from side to side
+      KA = (double[])K.Clone(); for (int pass = 0; pass < 2; pass++) { var sm = new double[n]; int r = Math.Max(1, (int)(0.45 / t.Ds)); for (int q = 0; q < n; q++) { double a = 0; for (int d = -r; d <= r; d++) a += KA[((q + d) % n + n) % n]; sm[q] = a / (2 * r + 1); } KA = sm; }
       // the speed each point can be taken at, then eased so the car can brake down to it in time
       for (int i = 0; i < n; i++) _vt[i] = Math.Clamp(Math.Sqrt(ALat / Math.Max(Math.Abs(K[i]), 0.05)), VMin, VMax);
       for (int pass = 0; pass < 2; pass++) for (int i = n - 1; i >= 0; i--) { int b = (i + 1) % n; _vt[i] = Math.Min(_vt[i], Math.Sqrt(_vt[b] * _vt[b] + 2 * Brake * t.Ds)); }
@@ -129,7 +141,7 @@ namespace DriftMaster {
     public void Step(CarPhysics car, double dt, bool go) {
       int n = _t.N, i = ((int)Math.Floor(S) % n + n) % n; double vt = go ? _vt[i] * Pace : 0;
       Speed += Math.Clamp(vt - Speed, -Brake * dt, Accel * dt); S += Speed * dt / _t.Ds;
-      int la = (i + (int)Math.Round(0.3 / _t.Ds)) % n; double want = Math.Clamp(K[la] / 1.1, -1, 1) * MaxAngle * Math.Clamp((Speed - 0.5) / 1.0, 0, 1);   // the tail goes out as the bend comes, and only once it is moving
+      int la = (i + (int)Math.Round(Early / _t.Ds)) % n; double ka = Math.Abs(KA[la]) < 0.3 ? 0 : KA[la], want = Math.Clamp(ka / 0.8, -1, 1) * MaxAngle * Math.Clamp((Speed - 0.5) / 1.0, 0, 1);   // the tail goes out as the bend comes, and only once it is moving
       Angle += Math.Clamp(want - Angle, -2 * MaxAngle / Swap * dt, 2 * MaxAngle / Swap * dt); Put(car, dt);
     }
     void Put(CarPhysics car, double dt) {
