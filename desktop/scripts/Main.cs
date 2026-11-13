@@ -38,7 +38,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--menu=")) _menuAt = Array.ConvertAll(a.Substring(7).Split(','), int.Parse);
         else if (a.StartsWith("--track=")) { TrackIdx = int.Parse(a.Substring(8)); _trackChosen = true; }
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--rims=")) _rimIdx = int.Parse(a.Substring(7));
-        else if (a.StartsWith("--camber=")) { var q = a.Substring(9).Split(','); _setup[11] = int.Parse(q[0]); _setup[12] = int.Parse(q[1]); }
+        else if (a.StartsWith("--camber=")) { var q = a.Substring(9).Split(','); _setup[1] = int.Parse(q[0]); _setup[2] = int.Parse(q[1]); }
         else if (a.StartsWith("--hide=")) CarView.HideTest = a.Substring(7);
         else if (a.StartsWith("--stk=")) { var q = a.Substring(6).Split(','); CarView.StickSide = int.Parse(q[0]); CarView.StickUp = float.Parse(q[1], System.Globalization.CultureInfo.InvariantCulture); CarView.StickFwd = float.Parse(q[2], System.Globalization.CultureInfo.InvariantCulture); }
         else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
@@ -172,22 +172,25 @@ namespace DriftMaster {
     // another shell: the car on screen is rebuilt; where it is and how it is moving stay
     void SwapBody() { _view.QueueFree(); _view = new CarView { Body = _body }; AddChild(_view); _view.Pose(_car, _t); }
 
-    // ---- car setup, as in the web version: each a short list to pick from (index kept in user://settings.cfg)
-    static readonly (string name, double vFree, double fStall)[] Motors = { ("10.5T DRIFT", 12.0, 30), ("13.5T STOCK", 15.6, 52), ("6.5T MOD", 24, 85), ("13.5T DRIFT, HIGH FDR", 10.5, 24) };
-    static readonly string[] SetupKeys = { "motor", "tyre", "gyro", "spring", "oil", "arb", "ack", "caster", "diff", "esc", "assist", "camber_f", "camber_r" };
-    static readonly double[] CamberDeg = { -9, -6, -3, 0, 3, 6 };
-    static readonly int[] SetupDefault = { 3, 2, 3, 1, 2, 1, 1, 1, 0, 1, 0, 3, 3 }; // camber: straight wheels
+    // ---- car setup: the 1/10 RWD drift baseline, and only that. Each setting is a short list inside the baseline's range
+    // (index kept in user://settings.cfg). Fixed, as the baseline has them: hard plastic tyres for P-tile, near-parallel
+    // Ackermann, a 2S pack with boost and turbo timing, a 0.06 s servo.
+    static readonly (string name, double vFree, double fStall, double freeRev)[] Motors = { ("10.5T SENSORED", 12.0, 30, 518), ("13.5T SENSORED", 10.5, 24, 382) };   // free speed (m/s at the tyre), pull at rest (N), motor turns a second at 7.4 V
+    static readonly string[] SetupKeys = { "motor", "camber_f", "camber_r", "caster", "toe_f", "toe_r", "oil", "ride", "gyro", "spring", "diff", "weight" };
+    static readonly double[] CamberFDeg = { -9, -8, -7, -6 }, CamberRDeg = { -3, -2, -1 };
+    static readonly int[] SetupDefault = { 1, 2, 1, 1, 1, 1, 1, 1, 3, 1, 0, 0 };
     static readonly string[][] SetupNames = {
-      new[] { "10.5T DRIFT", "13.5T STOCK", "6.5T MOD", "13.5T DRIFT, HIGH FDR" }, new[] { "SOFT", "MEDIUM", "HARD" }, new[] { "OFF", "40%", "70%", "90%" },
-      new[] { "SOFT", "MEDIUM", "HARD" }, new[] { "10WT", "15WT", "20WT", "25WT" }, new[] { "FRONT SOFT", "BALANCED", "FRONT STIFF" }, new[] { "PARALLEL", "MILD", "FULL" },
-      new[] { "7 DEG", "9 DEG", "12 DEG" }, new[] { "SPOOL", "GEAR DIFF" }, new[] { "BLINKY", "BOOST", "BOOST + TURBO" }, new[] { "ON", "OFF" },
-      new[] { "-9 DEG", "-6 DEG", "-3 DEG", "0 (STRAIGHT)", "+3 DEG", "+6 DEG" }, new[] { "-9 DEG", "-6 DEG", "-3 DEG", "0 (STRAIGHT)", "+3 DEG", "+6 DEG" } };
-    readonly int[] _setup = (int[])SetupDefault.Clone();
+      new[] { "10.5T SENSORED", "13.5T SENSORED" }, new[] { "-9 DEG", "-8 DEG", "-7 DEG", "-6 DEG" }, new[] { "-3 DEG", "-2 DEG", "-1 DEG" }, new[] { "6 DEG", "8 DEG", "10 DEG" },
+      new[] { "1 DEG OUT", "2 DEG OUT", "3 DEG OUT" }, new[] { "1 DEG IN", "2 DEG IN", "3 DEG IN" }, new[] { "150 CST (15WT)", "200 CST (20WT)", "250 CST (25WT)", "300 CST (30WT)" }, new[] { "6 MM", "7 MM", "8 MM" },
+      new[] { "40%", "45%", "50%", "55%", "60%", "65%" }, new[] { "1.1 MM (SOFT)", "1.2 MM", "1.3 MM (FIRMER)" }, new[] { "SPOOL", "TIGHT GEAR DIFF" }, new[] { "40 / 60", "37 / 63", "35 / 65" } };
+    readonly int[] _setup = (int[])SetupDefault.Clone(); bool _assist = true; double RideMm => new[] { 6.0, 7, 8 }[_setup[7]];
     void ApplySetup() {
       var S = _car.S; int[] u = _setup;
-      S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; if (_audio != null) { _audio.MotorVFree = S.VFree; _audio.MotorFreeRev = new[] { 518.0, 382, 790, 382 }[u[0]]; } /* free speed in turns a second: 4200, 3100 and 6400 kV at 7.4 V */ S.TireMul = new[] { 1.12, 1, 0.88 }[u[1]]; S.GyroGain = new[] { 0, 0.4, 0.7, 0.9 }[u[2]];
-      S.KMul = new[] { 0.65, 1, 1.5 }[u[3]]; S.CMul = new[] { 0.6, 0.78, 1, 1.22 }[u[4]]; S.FFront = new[] { 0.4, 0.5, 0.6 }[u[5]]; S.AckK = new[] { 0, 0.5, 1 }[u[6]];
-      S.CasterDeg = new[] { 7.0, 9, 12 }[u[7]]; S.GearDiff = u[8] == 1; S.EscV = new[] { 1, 1.12, 1.25 }[u[9]]; S.EscF = new[] { 1, 0.98, 0.95 }[u[9]]; S.Assist = u[10] == 0; S.CamberF = CamberDeg[u[11]]; S.CamberR = CamberDeg[u[12]];
+      S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; if (_audio != null) { _audio.MotorVFree = S.VFree; _audio.MotorFreeRev = Motors[u[0]].freeRev; }
+      S.CamberF = CamberFDeg[u[1]]; S.CamberR = CamberRDeg[u[2]]; S.CasterDeg = new[] { 6.0, 8, 10 }[u[3]]; S.ToeF = u[4] + 1; S.ToeR = u[5] + 1;
+      S.CMul = new[] { 0.86, 1, 1.12, 1.22 }[u[6]]; S.GyroGain = new[] { 0.4, 0.45, 0.5, 0.55, 0.6, 0.65 }[u[8]]; S.KMul = new[] { 0.71, 1, 1.38 }[u[9]];   // spring rate goes as wire thickness to the fourth power
+      S.GearDiff = u[10] == 1; S.WeightRear = new[] { 0.60, 0.63, 0.65 }[u[11]]; S.Assist = _assist;
+      S.TireMul = 0.88; S.FFront = 0.5; S.AckK = 0.15; S.EscV = 1.25; S.EscF = 0.95;   // the fixed parts of the baseline
     }
 
     void BuildMenu() {
@@ -202,19 +205,17 @@ namespace DriftMaster {
         R("WINDOWS", () => _clearGlass ? "CLEAR" : "TINTED", d => { _clearGlass = !_clearGlass; ApplyOptions(true); }),
         R("NEON", () => CarView.Neons[_neonIdx].name, d => { _neonIdx = Cyc(_neonIdx, d, CarView.Neons.Length); ApplyOptions(true); }, "Lit tubes under the chassis."),
       };
-      string[] labels = { "MOTOR", "TYRES", "GYRO GAIN", "SPRINGS", "SHOCK OIL", "ROLL BARS", "ACKERMANN", "CASTER", "DIFF", "ESC TIMING", "DRIVING ASSIST", "FRONT CAMBER", "REAR CAMBER" };
+      string[] labels = { "MOTOR", "FRONT CAMBER", "REAR CAMBER", "FRONT CASTER", "FRONT TOE", "REAR TOE", "SHOCK OIL", "RIDE HEIGHT", "GYRO GAIN", "SPRINGS", "DIFFERENTIAL", "WEIGHT BIAS (F / R)" };
       string[] notes = {
-        "Free speed and pull. The high-FDR drift motor is the easiest to hold in a slide; the 6.5T is far too much for this hall.",
-        "Harder tyres slide sooner and hold a drift at lower speed.", "How much the gyro counter-steers for you. Off: all the catching is yours.",
-        "Stiffer springs: less roll and pitch, quicker to react.", "Thicker oil damps the body more: calmer, slower to settle into a slide.",
-        "Which end carries more of the roll. Front stiff: more push; front soft: more bite at the front.", "Parallel steering keeps more front grip at big angles.",
-        "More caster: the outside front tyre bites harder at full lock.", "A spool drives both rear wheels together. A gear diff lets the inside one spin up.",
-        "Boost and turbo: more top speed for a little less pull from rest.", "On a key: holds the wheelspin for a drift. On a trigger: eases the throttle past the angle the gyro can catch.",
-        "Negative leans the tops of the front wheels in. About -3 gives the most front grip; -9 rides the inner edge and gives it away. Positive loses grip.",
-        "The same for the rear wheels. Less rear grip lets the tail go sooner and slide further; a little negative holds it." };
+        "10.5T: more wheel speed, for big tracks. 13.5T: smoother torque, for tight layouts. Both on 2S with boost and turbo timing.",
+        "Flattens the leading tyre's contact patch at high steering angles.", "Keeps the rear tyres flat for forward drive and side bite.",
+        "Self-centring steering, and more camber at full lock.", "Toe-out sharpens the first turn-in and helps start a slide.", "Toe-in steadies the rear through transitions and guards against spinning out.",
+        "Thin oil lets the chassis roll and shift its weight quickly on a low-grip floor.", "Low keeps the centre of gravity down; too low and the chassis scrapes.",
+        "How much the gyro counter-steers for you. Too much and the front wheels wobble.", "Soft springs let the body roll and load the outside tyres.",
+        "A spool turns both rear wheels together. A tight gear diff (thick oil) nearly does.", "More weight on the rear: more forward traction and deeper angles." };
       var setup = new List<Menu.Row>();
       for (int k = 0; k < labels.Length; k++) { int q = k; setup.Add(R(labels[q], () => SetupNames[q][_setup[q]], d => { _setup[q] = Cyc(_setup[q], d, SetupNames[q].Length); ApplySetup(); ApplyOptions(true); }, notes[q])); }
-      setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The setup the car came with: drift motor, hard tyres, 90% gyro."));
+      setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The middle of the baseline: 13.5T, -7 and -2 camber, 8 caster, 2 toe each end, 200 cSt, 7 mm, 55% gyro, 1.2 mm springs, spool, 40 / 60."));
       string[] cams = { "", "PILOT'S STAND", "CEILING", "ON BOARD", "ROOF STICK" };
       var game = new List<Menu.Row> {
         R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Changing track builds the hall again and puts the car on the start line."),
@@ -242,6 +243,7 @@ namespace DriftMaster {
         R("REVERSE STEERING", () => _radio.SteerRev ? "ON" : "OFF", d => { _radio.SteerRev = !_radio.SteerRev; ApplyOptions(true); }, "If the car turns the wrong way."),
         R("REVERSE THROTTLE", () => _radio.ThrRev ? "ON" : "OFF", d => { _radio.ThrRev = !_radio.ThrRev; ApplyOptions(true); }, "If pulling the trigger brakes."),
         R("NOW", () => !_radio.On ? "-" : $"STEER {_radio.Steer * 100:+0;-0;0}%    TRIGGER {_radio.Trigger * 100:+0;-0;0}%", null, "What the game reads from the radio at this moment: 0 at rest, 100 at the ends."),
+        R("DRIVING ASSIST", () => _assist ? "ON" : "OFF", d => { _assist = !_assist; ApplySetup(); ApplyOptions(true); }, "A driving aid, not part of the car's setup. On a key: holds the wheelspin for a drift. On a trigger: eases the throttle past the angle the gyro can catch."),
         R("TRANSMITTER ON SCREEN", () => _txOn ? "ON" : "OFF", d => { _txOn = !_txOn; ApplyOptions(true); }, "A transmitter in the corner whose wheel and trigger move with your inputs, to train the hands. It works with the keys and a gamepad too, with no radio plugged in."),
       };
       var comp = new List<Menu.Row> {
@@ -259,15 +261,15 @@ namespace DriftMaster {
     void ApplyOptions(bool save = false) {
       _view.SetPaint(Paints[_paintIdx % Paints.Length].col, _livery == 1); { var rm = Rims[_rimIdx % Rims.Length]; _view.SetRims(rm.col, rm.metal); }
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
-      _view.SetCamber((float)CamberDeg[_setup[11]], (float)CamberDeg[_setup[12]]);
+      _view.SetCamber((float)CamberFDeg[_setup[1]], (float)CamberRDeg[_setup[2]]); _car.H += (RideMm - 7) * 0.001; _view.RideOffset = (float)((RideMm - 7) * 0.001);
       _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup2", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
-      for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
-      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
+      for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup2", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
+      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _assist = (bool)cf.GetValue("game", "assist", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
     }

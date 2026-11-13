@@ -17,6 +17,8 @@ namespace DriftMaster {
     public double AckK = 0.5, CasterDeg = 9;
     public bool GearDiff = false, Assist = true;
     public double EscV = 1.12, EscF = 0.98;       // BOOST
+    public double ToeF = 2, ToeR = 2;             // degrees: front toe-out, rear toe-in
+    public double WeightRear = 0.60;              // share of the weight on the rear axle (40/60 to 35/65)
     public double CamberF = 0, CamberR = 0;       // degrees; 0 = wheels upright, negative = tops lean in
   }
 
@@ -75,7 +77,7 @@ namespace DriftMaster {
 
     public void Step(double dt, in CarInput inp, bool canDrive, bool walls = true) {
       double mu0 = S.Mu * S.TireMul, kMul = S.KMul, cMul = S.CMul, fFront = S.FFront;
-      double a = L * WEIGHTREAR, b = L - a, m = M, Wt = m * GRAV;
+      double a = L * S.WeightRear, b = L - a, m = M, Wt = m * GRAV;
       double thrIn = canDrive ? inp.Thr : 0, brkIn = canDrive ? inp.Brk : 0, st = canDrive ? inp.Steer : 0;
       // drift assist on a key: an on/off key can't feather, so it becomes a wheelspin governor aiming for a drift
       // angle set by the steering; on a trigger it only eases the throttle past the angle the gyro starts fighting
@@ -123,17 +125,19 @@ namespace DriftMaster {
       double FL = Math.Max(0, Nf / 2 - latF), FR = Math.Max(0, Nf / 2 + latF), RL = Math.Max(0, Nr / 2 - latR), RRl = Math.Max(0, Nr / 2 + latR);
       double grip = Air ? 0 : 1;
       double lockF = Math.Min(1, Math.Abs(Steer) / 1.0);
-      double geoF = 1 - 0.1 * S.AckK * lockF + 0.045 * (S.CasterDeg - 9) / 3 * lockF;
+      double geoF = 1 - 0.1 * S.AckK * lockF + 0.045 * (S.CasterDeg - 9) / 3 * lockF + 0.006 * Math.Max(0, -S.CamberF) * lockF;   // negative front camber sits the leading tyre flat at big steering angles
       double Df = grip * geoF * CamberGrip(S.CamberF) * (MuAt(FL, mu0, Nref) * FL + MuAt(FR, mu0, Nref) * FR);
       double Dr = grip * CamberGrip(S.CamberR) * (MuAt(RL, mu0, Nref) * RL + MuAt(RRl, mu0, Nref) * RRl);
-      if (S.GearDiff) { double Din = grip * MuAt(Math.Min(RL, RRl), mu0, Nref) * Math.Min(RL, RRl), Dout = Dr - Din; Fdrive = Math.Min(Fdrive, 2 * Din + 0.3 * Math.Max(0, Dout - Din)); }
+      if (S.GearDiff) { double Din = grip * MuAt(Math.Min(RL, RRl), mu0, Nref) * Math.Min(RL, RRl), Dout = Dr - Din; Fdrive = Math.Min(Fdrive, 2 * Din + 0.6 * Math.Max(0, Dout - Din)); }   // a tight diff (thick oil): most of the outside wheel's grip still drives
       Loads[0] = FL; Loads[1] = FR; Loads[2] = RL; Loads[3] = RRl;
 
       // slip angles and slip ratio (the front wheels roll freely)
       double wfx = u, wfy = v + a * r;
       double uwf = wfx * cd + wfy * sd, vwf = -wfx * sd + wfy * cd;
       double Vf = Math.Max(Math.Abs(uwf), 0.8), Vr = Math.Max(Math.Abs(u), 0.8);
-      double tanF = vwf / Vf, tanR = (v - b * r) / Vr;
+      // toe: front toe-out makes the front answer the steering sooner (sharper turn-in, easier to start a slide); rear toe-in
+      // makes the rear build its side force sooner (steadier through transitions). Neither raises the grip there is to be had.
+      double tanF = vwf / Vf * (1 + 0.05 * S.ToeF), tanR = (v - b * r) / Vr * (1 + 0.06 * S.ToeR);
       double kapR = (u - W) / Vr;
       Tire(0, tanF, Df, out double Fxwf, out double Fywf);
       Tire(S.GearDiff ? kapR * 0.8 : kapR, tanR, Dr, out double Fxr, out double Fyr);
@@ -145,7 +149,7 @@ namespace DriftMaster {
       if (!up && !(dn && Reversing) && Math.Abs(u) < 0.05 && Math.Abs(W) < 0.1) W *= Math.Exp(-30 * dt);
       double alphaF = Math.Atan(tanF), alphaR = Math.Atan(tanR);
 
-      double Fres = RR * Math.Tanh(u * 6) + CDA * u * Math.Abs(u) + DRIVELINE * u;
+      double Fres = RR * (1 + 0.015 * (S.ToeF + S.ToeR)) * Math.Tanh(u * 6) + CDA * u * Math.Abs(u) + DRIVELINE * u;
       double Fx = FxF + Fxr - Fres, Fy = FyF + Fyr, Mz = a * FyF - b * Fyr;
       u += (Fx / m + v * r) * dt;
       v += (Fy / m - u * r) * dt;

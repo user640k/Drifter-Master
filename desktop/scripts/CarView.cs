@@ -10,6 +10,7 @@ namespace DriftMaster {
     /// the shells: name, model, its mass (kg) and how high its own centre of gravity sits (m), and where the cabin is (z)
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
       ("SEDAN", "sedan", 0.130, 0.068, 0.006f), ("COUPE", "coupe", 0.115, 0.060, -0.012f), ("PICKUP", "pickup", 0.165, 0.074, 0.03f), ("TUNER", "tuner", 0.120, 0.060, 0.02f), ("VAN", "zuk", 0.175, 0.090, 0.10f) };
+    public float RideOffset; /* ride height above or below 7 mm (m) */
     public bool Ghost; /* a see-through replay of the car: one pale tint, no shadow, no stickers */
     public int Body; public float RoofY = 0.133f, HalfW = 0.095f, HalfL = 0.21f;
     public static readonly string[] Bonnets = { "BODY COLOUR", "CARBON" }; /* one livery template: a solid colour, the bonnet in it or in carbon, and the rims in their own colour */
@@ -208,7 +209,7 @@ namespace DriftMaster {
       Transform = new Transform3D(new Basis(Vector3.Up, (float)c.Hd) * new Basis(Vector3.Right, -slope), new Vector3((float)c.X, y, (float)c.Z));
       // the shell shivers on its posts over the bumps: shown three times life size, or it could not be seen (a third of a millimetre)
       if (_shell != null) { if (!_shellHome.HasValue) _shellHome = _shell.Transform; var h0 = _shellHome.Value; _shell.Transform = new Transform3D(new Basis(Vector3.Back, (float)c.ShellR * 3f) * h0.Basis, h0.Origin + new Vector3(0, (float)c.ShellZ * 3f, 0)); }
-      _body.Transform = new Transform3D(new Basis(Vector3.Right, -(float)c.Pitch) * new Basis(Vector3.Back, (float)c.Roll * 1.6f), new Vector3(0, (float)c.Heave, 0));
+      _body.Transform = new Transform3D(new Basis(Vector3.Right, -(float)c.Pitch) * new Basis(Vector3.Back, (float)c.Roll * 1.6f), new Vector3(0, (float)c.Heave + RideOffset, 0));
       _blob.Visible = !c.Air && !Ghost; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {
         if (_wheel[i] == null || _spin[i] == null) continue;
