@@ -195,9 +195,27 @@ namespace DriftMaster {
     void Glass() { _glass.SetShaderParameter("tint", _clear ? new Color(0.75f, 0.82f, 0.88f, 0.1f) : new Color(0.05f, 0.065f, 0.085f, _onBoard ? 0.16f : 0.8f)); _glass.SetShaderParameter("metal", _clear ? 0.1f : 0.3f); _glass.SetShaderParameter("strip_show", _onBoard ? 0f : 1f); }
     // shell off: the bare chassis, as on a setup stand (the body posts stay)
     public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; }
+    /// Neon, as fitted to RC drift cars: LED strips under the edges of the chassis and across its ends. The light pools on
+    /// the floor close round the car's outline, fills the wheel arches, catches the bottom of the body, and lights the
+    /// cabin from inside so the windows glow.
     public void SetNeon(int i) {
-      var c = Neons[i % Neons.Length].col; bool on = i % Neons.Length != 0; _neon.Visible = on; _neonFloorNode.Visible = on; if (!on) return;
-      _neonBar.AlbedoColor = c.Lerp(Colors.White, 0.45f); _neonFloor.AlbedoColor = new Color(c.R, c.G, c.B, 0.55f); _neonLight.LightColor = c;
+      var c = Neons[i % Neons.Length].col; bool on = i % Neons.Length != 0 && !Ghost; _neon.Visible = on; _neonFloorNode.Visible = on;
+      Paint.SetShaderParameter("neon", on ? c : Colors.Black); _glass.SetShaderParameter("inner_glow", on ? c : Colors.Black); if (!on) return;
+      foreach (var ch in _neon.GetChildren()) ch.QueueFree();
+      float hw = HalfW, hl = HalfL; _neonBar.AlbedoColor = c.Lerp(Colors.White, 0.55f);
+      void Strip(Vector3 size, Vector3 pos) => _neon.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = _neonBar, Position = pos, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+      foreach (int sd in new[] { -1, 1 }) Strip(new Vector3(0.004f, 0.003f, hl * 1.0f), new Vector3(sd * (hw - 0.022f), 0.013f, 0));            // along each sill, between the wheels
+      Strip(new Vector3(hw * 1.2f, 0.003f, 0.004f), new Vector3(0, 0.014f, hl - 0.03f)); Strip(new Vector3(hw * 1.2f, 0.003f, 0.004f), new Vector3(0, 0.014f, -hl + 0.03f));   // across the nose and the tail
+      void Lamp(Vector3 pos, float range, float energy) => _neon.AddChild(new OmniLight3D { Position = pos, OmniRange = range, OmniAttenuation = 1.1f, LightEnergy = energy, LightColor = c, ShadowEnabled = false, LightSpecular = 0.3f });
+      Lamp(new Vector3(0, 0.014f, 0), 0.24f, 2.2f);                                                           // under the chassis
+      Lamp(new Vector3(0, 0.04f, 0.1285f), 0.2f, 1.8f); Lamp(new Vector3(0, 0.04f, -0.1285f), 0.2f, 1.8f);    // in the wheel arches, front and rear
+      Lamp(new Vector3(0, RoofY - 0.05f, Bodies[Body % Bodies.Length].cabZ - 0.03f), 0.17f, 1.1f);            // inside the cabin
+      // the pool on the floor: brightest right at the car's edge, gone within a hand's width of it
+      float W = hw * 2 + 0.22f, L = hl * 2 + 0.22f; const int TW = 96, TH = 160; var img = Image.CreateEmpty(TW, TH, false, Image.Format.Rgba8);
+      for (int y = 0; y < TH; y++) for (int x = 0; x < TW; x++) { float px = ((x + 0.5f) / TW - 0.5f) * W, pz = ((y + 0.5f) / TH - 0.5f) * L, r = 0.035f;
+          float qx = Mathf.Abs(px) - (hw - 0.01f - r), qz = Mathf.Abs(pz) - (hl - 0.02f - r), d = new Vector2(Mathf.Max(qx, 0), Mathf.Max(qz, 0)).Length() + Mathf.Min(Mathf.Max(qx, qz), 0) - r;   // distance outside the car's rounded outline (m)
+          float a = d <= 0 ? 0.8f : 0.95f * Mathf.Exp(-d / 0.032f); img.SetPixel(x, y, new Color(1, 1, 1, a)); }
+      _neonFloor.AlbedoTexture = ImageTexture.CreateFromImage(img); _neonFloor.AlbedoColor = new Color(c.R, c.G, c.B, 0.8f); ((PlaneMesh)_neonFloorNode.Mesh).Size = new Vector2(W, L);
     }
 
     public void Pose(CarPhysics c, Track t) {

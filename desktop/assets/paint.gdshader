@@ -13,6 +13,7 @@ uniform sampler2D detail : source_color, filter_linear_mipmap_anisotropic;   // 
 uniform float use_detail = 0.0;
 uniform float bonnet_w = 0.062;               // its half width: the wings beside it stay in the body colour
 uniform float reflect_k = 1.0;                // how much of the room the plastic mirrors
+uniform vec3 neon : source_color = vec3(0.0);   // the colour of the LEDs under the car (black: none)
 varying vec3 mp;
 varying vec3 on;
 void vertex() { mp = VERTEX; on = NORMAL; }
@@ -51,5 +52,7 @@ void fragment() {
 		float bars = smoothstep(0.55, 0.75, r.y) * (smoothstep(0.2, 0.08, abs(abs(ax) - 0.42)) + 0.6 * smoothstep(0.16, 0.06, abs(az))) ;   // the ceiling lamps: two long bars and one across
 		glow = vec3(1.0, 0.98, 0.94) * (f * room * reflect_k + bars * (0.1 + 0.9 * f) * 1.6 * reflect_k);
 	}
+	// neon under the car catches the bottom of the body: strongest at the lower edge, on surfaces that face down or sideways
+	glow += neon * (1.0 - smoothstep(0.0, 0.2, up)) * (0.25 + 0.75 * smoothstep(0.3, -0.6, nw.y)) * 0.55 * (FRONT_FACING ? 1.0 : 0.6);
 	ALBEDO = c * shade; METALLIC = 0.0; ROUGHNESS = rough; SPECULAR = spec; CLEARCOAT = coat; CLEARCOAT_ROUGHNESS = 0.03; EMISSION = glow;
 }

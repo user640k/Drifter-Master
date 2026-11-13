@@ -2,6 +2,7 @@
 
 ## Changelog (this build)
 
+- Neon reworked: LED strips under the edges of the chassis, a tight pool of light on the floor round the car's outline, lit wheel arches, a glow along the bottom of the body, and the cabin lit from inside.
 - The driver's view no longer jolts when the car hits a barrier; only a trace of the knock shows.
 - The hall is 2 m deeper on the driver's side (9 x 7 m; the layouts are unchanged), and the driver stands back from the track on a low stand in front of the middle of it, eyes 1.9 m up. The driver's camera sees like a person: a steady natural field of view that no longer zooms to hold the car's size, with the gaze leading the car so the track coming up is in view. The listening position is there too.
 - Camber: every degree from -11 to +11 at both ends. Negative: bottoms of the wheels out, tops in. Positive: bottoms in, tops out.
