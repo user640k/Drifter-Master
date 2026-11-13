@@ -58,7 +58,7 @@ namespace DriftMaster {
       float sp = (float)Math.Sqrt(c.U * c.U + c.V * c.V), slide = (float)c.Slide, spin = (float)Math.Abs(c.W - c.U), on = paused || c.Air ? 0 : 1;
       float moving = Smooth(0.08f, 1.6f, sp);
       // how much the car is shaking: speed over the tiles, sliding, and the body rocking on its springs
-      float shake = Mathf.Clamp(0.1f * sp + 0.55f * slide + 5f * (float)Math.Abs(c.RollV) + 4f * (float)Math.Abs(c.PitchV) + 60f * (float)Math.Abs(c.HeaveV), 0, 1.4f);
+      float shake = Mathf.Clamp(0.1f * sp + 0.55f * slide + 5f * (float)Math.Abs(c.RollV) + 4f * (float)Math.Abs(c.PitchV) + 60f * (float)Math.Abs(c.HeaveV) + 25f * (float)Math.Abs(c.ShellV), 0, 1.4f);
       float k = 1 - Mathf.Exp(-dt / 0.07f);
       float grind = Mathf.Clamp(slide * 0.9f + spin * 0.12f, 0, 1); // how hard the tyres are sliding or spinning
       _gRoll += (on * moving * (0.3f + 0.08f * Mathf.Min(sp / 4, 1)) * (1 - 0.6f * grind) - _gRoll) * k;

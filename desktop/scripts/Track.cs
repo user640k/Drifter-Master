@@ -50,19 +50,61 @@ namespace DriftMaster {
     /// what marks the lane edge here: a low PVC board (true) or a foam block. Boards are hard and springy; foam gives.
     public bool BoardAt(int i) => Boards || E[i] > 0.004;
 
-    // small flaws in the floor, felt through the springs: each tile sits a hair high or low, the joints are fine
-    // grooves, the slab under them undulates, and there are a few shallow humps and dips
+    // ---- the bump map: what the floor's surface really does under each wheel, in metres. Every track has its own,
+    // made once from its name, so a bump is always in the same place. Felt through the springs; the shell shivers on it.
+    //   everywhere: each tile sits a hair high or low, the joints are fine grooves, the slab under them undulates
+    //   here and there: shallow humps and dips, the lines where the sheets of the sub-floor meet (a small step and a
+    //     ridge right across the hall), a few tile corners that have lifted
+    //   along the lane: the kerbs on the inside of tight bends (1.2 mm proud, with a ripple from block to block), and on
+    //     a raised road the joints between its deck boards
     const double TileS = 0.3048, Joint = 0.0004, JointW = 0.004, StepH = 0.00015, Und = 0.0008, Wl = 2.1;
-    static readonly double[][] Patches = MakePatches();
-    static double[][] MakePatches() { var r = new Random(41); var p = new double[9][]; for (int i = 0; i < 9; i++) p[i] = new[] { -4.3 + r.NextDouble() * 8.6, -2.3 + r.NextDouble() * 4.6, 0.08 + r.NextDouble() * 0.14, (r.NextDouble() < 0.5 ? -1 : 1) * (0.0005 + r.NextDouble() * 0.0007) }; return p; }
-    static double Hash2(int i, int j) { unchecked { int h = i * 374761393 + j * 668265263 + 41 * 1442695041; h = (h ^ (int)((uint)h >> 13)) * 1274126177; return (uint)(h ^ (int)((uint)h >> 16)) / 4294967296.0; } }
-    public static double MicroH(double x, double z) {
-      double u = x / TileS, w = z / TileS; int iu = (int)Math.Floor(u), iw = (int)Math.Floor(w);
-      double h = (Hash2(iu, iw) - 0.5) * 2 * StepH;
-      double du = Math.Min(u - iu, iu + 1 - u) * TileS, dw = Math.Min(w - iw, iw + 1 - w) * TileS, dj = Math.Min(du, dw), hw = JointW / 2;
-      if (dj < hw) h -= Joint * (0.5 + 0.5 * Math.Cos(Math.PI * dj / hw));
-      double k = 2 * Math.PI / Wl; h += Und * (0.6 * Math.Sin(x * k + 1.3) * Math.Sin(z * k / 1.3 + 0.4) + 0.4 * Math.Sin((x + z) * k / 0.7));
-      foreach (var p in Patches) { double d2 = ((x - p[0]) * (x - p[0]) + (z - p[1]) * (z - p[1])) / (p[2] * p[2]); if (d2 < 4) h += p[3] * Math.Exp(-d2 * 2); }
+    double[][] _humps, _seams, _corners; double _ph1, _ph2; int _seed; bool[] _kerb; double[] _kerbSide;
+    public const double KerbH = 0.0012, DeckJoint = 1.22;
+    static double Hash2(int i, int j, int seed) { unchecked { int h = i * 374761393 + j * 668265263 + seed * 1442695041; h = (h ^ (int)((uint)h >> 13)) * 1274126177; return (uint)(h ^ (int)((uint)h >> 16)) / 4294967296.0; } }
+    void MakeBumps() {
+      _seed = 41; foreach (char ch in Name) _seed = unchecked(_seed * 31 + ch); var r = new Random(_seed);
+      double R(double a, double b) => a + r.NextDouble() * (b - a);
+      _ph1 = R(0, 6.28); _ph2 = R(0, 6.28);
+      _humps = new double[16][]; for (int i = 0; i < 16; i++) _humps[i] = new[] { R(-HallX + 0.3, HallX - 0.3), R(-HallZ + 0.3, HallZ - 0.3), R(0.08, 0.3), (r.NextDouble() < 0.5 ? -1 : 1) * R(0.0004, 0.001) };
+      // sub-floor sheets are 1.22 x 2.44 m: joints across the hall every 1.22 m one way, every 2.44 m the other
+      var sm = new List<double[]>(); double x0 = R(-0.6, 0.6), z0 = R(-1.2, 1.2);
+      for (double x = x0 - 6.1; x < HallX; x += 1.22) if (x > -HallX) sm.Add(new[] { 0, x, R(-0.0004, 0.0004), R(0.0001, 0.00035) });
+      for (double z = z0 - 4.88; z < HallZ; z += 2.44) if (z > -HallZ) sm.Add(new[] { 1, z, R(-0.0004, 0.0004), R(0.0001, 0.00035) });
+      _seams = sm.ToArray();
+      _corners = new double[12][]; for (int i = 0; i < 12; i++) _corners[i] = new[] { Math.Round(R(-HallX, HallX) / TileS) * TileS, Math.Round(R(-HallZ, HallZ) / TileS) * TileS, R(0.0004, 0.0009) };
+      // kerbs: where the lane bends tighter than about 0.9 m, along its inner edge (as painted on the floor sheet)
+      _kerb = new bool[N]; _kerbSide = new double[N];
+      for (int i = 0; i < N; i++) { int a = (i - 1 + N) % N, b = (i + 1) % N; double dh = Math.Atan2(TX[b], TZ[b]) - Math.Atan2(TX[a], TZ[a]); dh = Math.Atan2(Math.Sin(dh), Math.Cos(dh)); double k = dh / (2 * Ds);
+        _kerb[i] = Boards && Math.Abs(k) > 1 / 0.9 && E[i] < 0.004; _kerbSide[i] = k > 0 ? 1 : -1; }
+    }
+    /// the floor away from the lane's own features (also what the floor's reflections are bent by)
+    public double BumpBase(double x, double z, bool tiles = true) {
+      if (_humps == null) MakeBumps();
+      double h = 0;
+      if (tiles) {
+        double u = x / TileS, w = z / TileS; int iu = (int)Math.Floor(u), iw = (int)Math.Floor(w);
+        h = (Hash2(iu, iw, _seed) - 0.5) * 2 * StepH;
+        double du = Math.Min(u - iu, iu + 1 - u) * TileS, dw = Math.Min(w - iw, iw + 1 - w) * TileS, dj = Math.Min(du, dw), hw = JointW / 2;
+        if (dj < hw) h -= Joint * (0.5 + 0.5 * Math.Cos(Math.PI * dj / hw));
+      }
+      double kk = 2 * Math.PI / Wl; h += Und * (0.6 * Math.Sin(x * kk + _ph1) * Math.Sin(z * kk / 1.3 + _ph2) + 0.4 * Math.Sin((x + z) * kk / 0.7 + _ph1));
+      foreach (var p in _humps) { double d2 = ((x - p[0]) * (x - p[0]) + (z - p[1]) * (z - p[1])) / (p[2] * p[2]); if (d2 < 4) h += p[3] * Math.Exp(-d2 * 2); }
+      foreach (var s in _seams) { double d = (s[0] == 0 ? x : z) - s[1]; h += s[2] * 0.5 * Math.Tanh(d / 0.004); if (Math.Abs(d) < 0.03) h += s[3] * Math.Exp(-d * d / (0.008 * 0.008)); }
+      foreach (var c in _corners) { double d2 = (x - c[0]) * (x - c[0]) + (z - c[1]) * (z - c[1]); if (d2 < 0.01) h += c[2] * Math.Exp(-d2 / (0.03 * 0.03)); }
+      return h;
+    }
+    /// the whole bump map at a point, near the car's place on the lap
+    public double Bump(double x, double z) {
+      double h = BumpBase(x, z);
+      int i = NearestT(x, z, Idx); double off = (x - X[i]) * NX[i] + (z - Z[i]) * NZ[i], along = (x - X[i]) * TX[i] + (z - Z[i]) * TZ[i];
+      if (_kerb[i]) { // the kerb: a strip 7 cm wide just inside the board, ramped at its edge, rippled block to block
+        double into = off * _kerbSide[i] - (Hw - 0.075);
+        if (into > -0.01) h += KerbH * Math.Min(1, (into + 0.01) / 0.01) * (1 + 0.15 * Math.Sin((i * Ds + along) * 2 * Math.PI / 0.09));
+      }
+      if (E[i] > 0.01) { // deck boards: a ridge where two meet, and the boards drum a little between their supports
+        double s = i * Ds + along, d = s - Math.Round(s / DeckJoint) * DeckJoint; if (Math.Abs(d) < 0.02) h += 0.0005 * Math.Exp(-d * d / (0.006 * 0.006));
+        h += 0.00025 * Math.Sin(s * 2 * Math.PI / 0.41);
+      }
       return h;
     }
 

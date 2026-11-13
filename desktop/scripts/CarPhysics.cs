@@ -44,6 +44,7 @@ namespace DriftMaster {
 
     public double X, Z, Hd, U, V, Rr, W, Vx, Vz, Steer, Thr, GyroOut, Beta;
     public double Roll, RollV, Pitch, PitchV, Ax, Ay, Y, Vy, Heave, HeaveV, RoadR, RoadP, RoadH;
+    public double ShellZ, ShellV, ShellR, ShellRV; double _heaveV0, _rollV0, _roadHV0, _roadRV0; /* the shell's own shiver on its posts: up/down (m) and rocking (rad) */
     public bool Air, Reversing, Braking, Spinning;
     public double RevHold, Spin, SpinF, AlphaF, AlphaR, Slide, RearSlip, GripF, GripR;
     public readonly double[] Loads = new double[4];
@@ -54,7 +55,7 @@ namespace DriftMaster {
 
     public void Place(double x, double z, double h) {
       X = x; Z = z; Hd = h; U = V = Rr = W = Vx = Vz = Steer = Thr = GyroOut = Beta = 0;
-      Roll = RollV = Pitch = PitchV = Ax = Ay = Vy = Heave = HeaveV = RoadR = RoadP = RoadH = 0; Air = Reversing = Braking = Spinning = false;
+      Roll = RollV = Pitch = PitchV = Ax = Ay = Vy = Heave = HeaveV = RoadR = RoadP = RoadH = ShellZ = ShellV = ShellR = ShellRV = _heaveV0 = _rollV0 = _roadHV0 = _roadRV0 = 0; Air = Reversing = Braking = Spinning = false;
       RevHold = Spin = SpinF = AlphaF = AlphaR = Slide = RearSlip = 0;
       if (T != null) { T.Idx = T.NearestT(x, z, -1); Y = T.GroundAt(x, z); } else Y = 0;
     }
@@ -153,7 +154,7 @@ namespace DriftMaster {
       // the floor under each wheel (tile joints and steps, undulation, humps): the springs follow it
       double roadRV, roadPV, roadHV;
       { double sh0 = Math.Sin(Hd), ch0 = Math.Cos(Hd), hw = TW / 2;
-        double At(double dd, double sdd) => Track.MicroH(X + sh0 * dd + ch0 * sdd * hw, Z + ch0 * dd - sh0 * sdd * hw);
+        double At(double dd, double sdd) => T == null ? 0 : T.Bump(X + sh0 * dd + ch0 * sdd * hw, Z + ch0 * dd - sh0 * sdd * hw);
         double fl = At(a, 1), fr = At(a, -1), rl = At(-b, 1), rrr = At(-b, -1);
         double rR = ((fl + rl) - (fr + rrr)) / 2 / TW, rP = ((fl + fr) - (rl + rrr)) / 2 / L, rH = (fl + fr + rl + rrr) / 4;
         roadRV = (rR - RoadR) / dt; roadPV = (rP - RoadP) / dt; roadHV = (rH - RoadH) / dt; RoadR = rR; RoadP = rP; RoadH = rH;
@@ -165,6 +166,15 @@ namespace DriftMaster {
       if (Math.Abs(Roll) > RollStop) { Roll = Math.Sign(Roll) * RollStop; if (RollV * Roll > 0) RollV *= -0.2; }
       if (Math.Abs(Pitch) > PitchStop) { Pitch = Math.Sign(Pitch) * PitchStop; if (PitchV * Pitch > 0) PitchV *= -0.2; }
       if (Math.Abs(Heave) > 0.006) { Heave = Math.Sign(Heave) * 0.006; if (HeaveV * Heave > 0) HeaveV *= -0.2; }
+      // the shell: a thin body held on four posts by clips. It is a light, springy lid on the chassis: it lags and
+      // shivers at about 22 Hz when the chassis is jolted, up and down and side to side, and settles in a few cycles
+      // (what jolts it: the chassis moving on its springs, and the sharp knocks from the floor itself, which reach the
+      // chassis through the tyres and arms faster than the springs can soak them up)
+      { double aH = (HeaveV - _heaveV0) / dt + (roadHV - _roadHV0) / dt, aR = (RollV - _rollV0) / dt + (roadRV - _roadRV0) / dt; _heaveV0 = HeaveV; _rollV0 = RollV; _roadHV0 = roadHV; _roadRV0 = roadRV;
+        const double w = 2 * Math.PI * 22, zt = 0.11;
+        ShellV += (-w * w * ShellZ - 2 * zt * w * ShellV - aH) * dt; ShellZ += ShellV * dt;
+        ShellRV += (-w * w * ShellR - 2 * zt * w * ShellRV - aR) * dt; ShellR += ShellRV * dt;
+        if (Math.Abs(ShellZ) > 0.002) { ShellZ = Math.Sign(ShellZ) * 0.002; ShellV *= 0.3; } if (Math.Abs(ShellR) > 0.03) { ShellR = Math.Sign(ShellR) * 0.03; ShellRV *= 0.3; } }
 
       // pose in the world
       Hd += r * dt;

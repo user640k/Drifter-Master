@@ -5,7 +5,7 @@ using System;
 
 namespace DriftMaster {
   public partial class CarView : Node3D {
-    MeshInstance3D _blob, _neonFloorNode; Node3D _body; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
+    MeshInstance3D _blob, _neonFloorNode; Node3D _body; Transform3D? _shellHome; readonly Node3D[] _wheel = new Node3D[4], _spin = new Node3D[4]; readonly Quaternion[] _camber = new Quaternion[4]; readonly Transform3D[] _wheelBase = new Transform3D[4]; readonly float[] _spinSign = new float[4];
     public ShaderMaterial Paint; StandardMaterial3D _glass;
     /// the shells: name, model, its mass (kg) and how high its own centre of gravity sits (m), and where the cabin is (z)
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
@@ -102,6 +102,8 @@ namespace DriftMaster {
       float slope = c.Air ? 0 : (float)Math.Atan2(gf - gr, 0.257);
       float y = c.Air ? (float)c.Y : (float)((gf + gr) / 2);
       Transform = new Transform3D(new Basis(Vector3.Up, (float)c.Hd) * new Basis(Vector3.Right, -slope), new Vector3((float)c.X, y, (float)c.Z));
+      // the shell shivers on its posts over the bumps: shown three times life size, or it could not be seen (a third of a millimetre)
+      if (_shell != null) { if (!_shellHome.HasValue) _shellHome = _shell.Transform; var h0 = _shellHome.Value; _shell.Transform = new Transform3D(new Basis(Vector3.Back, (float)c.ShellR * 3f) * h0.Basis, h0.Origin + new Vector3(0, (float)c.ShellZ * 3f, 0)); }
       _body.Transform = new Transform3D(new Basis(Vector3.Right, -(float)c.Pitch) * new Basis(Vector3.Back, (float)c.Roll * 1.6f), new Vector3(0, (float)c.Heave, 0));
       _blob.Visible = !c.Air; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {

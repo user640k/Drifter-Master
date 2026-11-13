@@ -23,6 +23,15 @@ namespace DriftMaster {
       Texture2D tx(string f) => GD.Load<Texture2D>("res://assets/tex/" + f);
       m.SetShaderParameter("tile_albedo", tx("ptile_albedo.jpg")); m.SetShaderParameter("tile_rough", tx("ptile_rough.jpg"));
       m.SetShaderParameter("wear", tx(t.Wear + ".png")); m.SetShaderParameter("wear_rough", tx(t.Wear + "_rough.jpg"));
+      // the bump map's slope over the whole floor (about 8 mm a point), for the reflections. Tile joints and steps are left
+      // out: they are too fine for this grid, and the joints are drawn on the tiles already
+      { const int W = 1152, H = 640; var px = new byte[W * H * 2]; double sx = t.HallX * 2 / W, sz = t.HallZ * 2 / H; var row0 = new double[W + 1]; var row1 = new double[W + 1];
+        for (int i = 0; i <= W; i++) row0[i] = t.BumpBase(-t.HallX + i * sx, -t.HallZ, false);
+        for (int j = 0; j < H; j++) { for (int i = 0; i <= W; i++) row1[i] = t.BumpBase(-t.HallX + i * sx, -t.HallZ + (j + 1) * sz, false);
+          for (int i = 0; i < W; i++) { double gx = (row0[i + 1] - row0[i]) / sx, gz = (row1[i] - row0[i]) / sz;
+            px[(j * W + i) * 2] = (byte)Math.Clamp(127.5 + gx * 25 * 127.5, 0, 255); px[(j * W + i) * 2 + 1] = (byte)Math.Clamp(127.5 + gz * 25 * 127.5, 0, 255); }
+          (row0, row1) = (row1, row0); }
+        var img = Image.CreateFromData(W, H, false, Image.Format.Rg8, px); img.GenerateMipmaps(); m.SetShaderParameter("bump_slope", ImageTexture.CreateFromImage(img)); }
       m.SetShaderParameter("hall_half", new Vector2((float)t.HallX, (float)t.HallZ)); m.SetShaderParameter("tile_size", Tile);
       return m;
     }
