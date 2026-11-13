@@ -10,6 +10,7 @@ namespace DriftMaster {
     /// the shells: name, model, its mass (kg) and how high its own centre of gravity sits (m), and where the cabin is (z)
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
       ("SEDAN", "sedan", 0.130, 0.068, 0.006f), ("COUPE", "coupe", 0.115, 0.060, -0.012f), ("PICKUP", "pickup", 0.165, 0.074, 0.03f), ("TUNER", "tuner", 0.120, 0.060, 0.02f), ("VAN", "zuk", 0.175, 0.090, 0.10f) };
+    public bool Ghost; /* a see-through replay of the car: one pale tint, no shadow, no stickers */
     public int Body; public float RoofY = 0.133f, HalfW = 0.095f, HalfL = 0.21f;
     public static readonly string[] Bonnets = { "BODY COLOUR", "CARBON" }; /* one livery template: a solid colour, the bonnet in it or in carbon, and the rims in their own colour */
     public static string HideTest; // test: hide shell parts whose name contains this
@@ -162,6 +163,10 @@ namespace DriftMaster {
           Box(new Vector3(0.0022f, 0.03f, 0.05f), new Vector3(sd * hw, bladeY - 0.004f, bladeZ - 0.002f), Vector3.Zero);          // end plates
           Vector3 foot = new Vector3(sd * 0.04f, deck - 0.002f, zFoot), head = new Vector3(sd * 0.04f, bladeY - 0.001f, bladeZ + 0.004f), dv = head - foot;
           Box(new Vector3(0.0022f, dv.Length(), 0.02f), (foot + head) / 2, new Vector3(Mathf.RadToDeg(Mathf.Atan2(dv.Z, dv.Y)), 0, 0)); } }  // stays
+      if (Ghost) { var gm = new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.85f, 1f, 0.3f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, CullMode = BaseMaterial3D.CullModeEnum.Back };
+        foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) { var mi = (MeshInstance3D)node; mi.MaterialOverride = gm; for (int si = 0; mi.Mesh != null && si < mi.Mesh.GetSurfaceCount(); si++) mi.SetSurfaceOverrideMaterial(si, null); mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+          string gn = mi.Name.ToString(); if (mi == _blob || gn == "DoorStickers" || gn == "Banner" || gn.Contains("_glass_") || gn.StartsWith("Shell_m_ffffff_t") || gn.StartsWith("Chassis") || gn.StartsWith("Mounts")) mi.Visible = false; }
+        _neon.Visible = false; _stick.Visible = false; }
       // the cameras ride where this shell's cabin and roof are
       float cab = Bodies[Body % Bodies.Length].cabZ;
       Fpv.Position = new Vector3(FpvX, RoofY - 0.031f, cab); StickCam.Position = new Vector3(0, Math.Max(StickY, RoofY + 0.045f), StickZ);
@@ -204,7 +209,7 @@ namespace DriftMaster {
       // the shell shivers on its posts over the bumps: shown three times life size, or it could not be seen (a third of a millimetre)
       if (_shell != null) { if (!_shellHome.HasValue) _shellHome = _shell.Transform; var h0 = _shellHome.Value; _shell.Transform = new Transform3D(new Basis(Vector3.Back, (float)c.ShellR * 3f) * h0.Basis, h0.Origin + new Vector3(0, (float)c.ShellZ * 3f, 0)); }
       _body.Transform = new Transform3D(new Basis(Vector3.Right, -(float)c.Pitch) * new Basis(Vector3.Back, (float)c.Roll * 1.6f), new Vector3(0, (float)c.Heave, 0));
-      _blob.Visible = !c.Air; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
+      _blob.Visible = !c.Air && !Ghost; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {
         if (_wheel[i] == null || _spin[i] == null) continue;
         bool front = i < 2; _wheel[i].Transform = new Transform3D(new Basis(Vector3.Up, front ? (float)c.Steer : 0) * _wheelBase[i].Basis, _wheelBase[i].Origin);

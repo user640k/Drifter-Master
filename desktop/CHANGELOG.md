@@ -2,10 +2,8 @@
 
 ## Changelog (this build)
 
-- Rival line reshaped: it sets each bend up from the outside, reaches the cone mid-bend and runs wide on the way out, throws the tail out earlier and no longer flicks from side to side.
+- Rival car and tandem battles removed. Training is solo, against a ghost of your own best: your fastest lap in free practice, your best-scoring run in a judged run (TRAINING page).
 - Shell material matched against photos of real polycarbonate shells: it now mirrors the room (ceiling lights, walls, floor), more at glancing angles, with the slight waviness of a formed sheet, and the colour is shaded darker underneath. Hot pink retuned.
-- Rival: now follows the ideal drift line (in to every cone, out to every zone) as lead and as chase, at a chosen pace; it no longer waits for or reacts to the player.
-- Competition: judged qualifying run and tandem battles against a rival car, with clipping points, outer zones, deductions and one-more-time rematches (COMPETE page).
 - Parking bay on each track (K).
 - Driver's stand camera zoomed out and looking ahead of the car.
 - Real RC radio support: CONTROLLER page to pick the device, find the steering and throttle channels, calibrate and reverse them.
@@ -30,10 +28,10 @@
 - Keyboard, gamepad or a real RC transmitter over USB. Optional driving assist.
 - On-screen transmitter that mirrors your steering and trigger.
 
-**Competition**
-- Qualifying: one judged lap scored on line, angle, style and speed.
-- Tandem battle: two runs against a rival that always drives the ideal drift line, swapping lead and chase; near ties are run again. Rival pace: easy, normal or fast.
-- Cones mark inner clipping points, yellow dashes mark outer zones; score card after each run.
+**Training**
+- Judged run: one lap scored on line, angle, style and speed, with a score card.
+- Ghost: a see-through replay of your fastest lap or best judged run, kept per track between sessions.
+- Cones mark inner clipping points, yellow dashes mark outer zones.
 
 **Tracks**
 - One hall, black P-tile floor with wear, two layouts: HILLSIDE (with a raised section and bridge) and INFIELD (oval with a twisty infield, turf and kerbs).

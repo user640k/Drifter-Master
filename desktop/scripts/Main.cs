@@ -61,7 +61,8 @@ namespace DriftMaster {
       BuildOnBoard();
       _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
       BuildHud(); BuildCompetition();
-      if (CompTest == "solo") StartSolo(); else if (CompTest == "tandem") StartTandem(); else if (CompTest == "park") Park();
+      _ghostLap = LoadGhost(false); _ghostRun = LoadGhost(true);
+      if (CompTest == "solo" || CompTest == "solo2") StartSolo(); else if (CompTest == "park") Park();
       if (_menuAt != null) { _pause.Open(true); _pause.Goto(_menuAt[0], _menuAt[1]); }
       _view.Pose(_car, _t); UpdateCamera(0);
     }
@@ -230,7 +231,7 @@ namespace DriftMaster {
       };
       var keys = new List<Menu.Row>();
       foreach (var (k, what) in new[] { ("W / S  or  UP / DOWN", "drive; brake, then reverse"), ("A / D  or  LEFT / RIGHT", "steer"), ("R", "back to the start line"), ("C", "next camera"), ("ESC", "this menu"),
-        ("F1", "next track"), ("K", "park the car in its bay"), ("ENTER", "next run, when the score card is up"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("M   N   - / =", "mute, motor sound, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
+        ("F1", "next track"), ("K", "park the car in its bay"), ("ENTER", "run again, when the score card is up"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("M   N   - / =", "mute, motor sound, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
         ("GAMEPAD", "triggers drive and brake, left stick steers, Y reset, X camera, Start menu"), ("RC RADIO", "wheel steers, trigger drives, brakes and reverses: set it up on the CONTROLLER page") }) { string w = what; keys.Add(R(k, () => w, null)); }
       var ctl = new List<Menu.Row> {
         R("DRIVE WITH", () => _radio.On ? "RC RADIO" : "KEYS / GAMEPAD", d => { _radio.On = !_radio.On; ApplyOptions(true); }, "RC RADIO: a real pistol-grip transmitter plugged into the PC (its own USB port, or a simulator dongle on its receiver). Wheel and trigger act one to one, as on the car."),
@@ -244,14 +245,15 @@ namespace DriftMaster {
         R("TRANSMITTER ON SCREEN", () => _txOn ? "ON" : "OFF", d => { _txOn = !_txOn; ApplyOptions(true); }, "A transmitter in the corner whose wheel and trigger move with your inputs, to train the hands. It works with the keys and a gamepad too, with no radio plugged in."),
       };
       var comp = new List<Menu.Row> {
-        R("QUALIFYING (SOLO RUN)", () => "START", d => { _pause.Open(false); StartSolo(); }, "One judged lap from the start line. Line 35: nose to the cones (inner clipping points), tail to the yellow dashes (outer zones), while sliding. Angle 30. Style 25: one continuous, fluid drift. Speed 10. Deductions for straightening up in a bend and for tapping the barriers; a spin or a stop scores zero."),
-        R("TANDEM BATTLE", () => "START", d => { _pause.Open(false); StartTandem(); }, "Two runs against a rival that drives the ideal drift line. Run 1 you lead and are judged as in qualifying. Run 2 you chase: stay close (40), mirror the lead's angle (30), change direction when it does (20), keep the line (10); contact with the lead costs 10. Totals within 3 points: one more time."),
-        R("RIVAL PACE", () => Paces[_pace].name, d => { _pace = Cyc(_pace, d, Paces.Length); ApplyOptions(true); }, "How fast the rival takes its line. It always runs the ideal drift line (in to the cones, out to the zones), leading or chasing, and does not wait for you or steer round you."),
+        R("JUDGED RUN", () => "START", d => { _pause.Open(false); StartSolo(); }, "One judged lap from the start line. Line 35: nose to the cones (inner clipping points), tail to the yellow dashes (outer zones), while sliding. Angle 30. Style 25: one continuous, fluid drift. Speed 10. Deductions for straightening up in a bend and for tapping the barriers; a spin or a stop scores zero."),
+        R("GHOST", () => _ghostOn ? "ON" : "OFF", d => { _ghostOn = !_ghostOn; ApplyOptions(true); }, "A see-through copy of your own car to drive against. In free practice it replays your fastest lap, from the line. In a judged run it replays your highest-scoring run. Kept for each track between sessions."),
+        R("YOUR BEST", () => (_ghostLap != null ? "LAP " + T(_ghostLap.Mark) : "LAP -") + "     " + (_ghostRun != null ? $"RUN {_ghostRun.Mark:0.0}" : "RUN -"), null, "What the two ghosts on this track are: your fastest lap and your best judged run."),
+        R("CLEAR GHOSTS", null, d => { ClearGhosts(); }, "Forget both recordings for this track and start again."),
         R("BACK TO FREE PRACTICE", () => _comp == 0 ? "-" : "STOP", d => { StopComp(); ResetCar(); }),
         R("LAST RESULT", () => _lastResult, null),
         R("PARK THE CAR", null, d => { _pause.Open(false); Park(); }, "Takes the car off the track into the marked bay by the driver's stand. R puts it back on the start line."),
       };
-      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("COMPETE", comp)); _pause.Pages.Add(("CONTROLLER", ctl)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
+      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("TRAINING", comp)); _pause.Pages.Add(("CONTROLLER", ctl)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
     }
 
     void ApplyOptions(bool save = false) {
@@ -259,20 +261,20 @@ namespace DriftMaster {
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
       _view.SetCamber((float)CamberDeg[_setup[11]], (float)CamberDeg[_setup[12]]);
       _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "rival_pace", _pace); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
-      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _pace = Math.Clamp((int)cf.GetValue("game", "rival_pace", 1), 0, 2); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
+      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
     }
     float _vol0 = 0.8f; bool _motor0 = true; double _sayT; string _sayText = "";
     void Say(string s) { _sayText = s; _sayT = 1.6; }
 
-    void ResetCar() { _parked = false; if (_comp != 0) { Grid(); return; } _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
+    void ResetCar() { _parked = false; _recOn = false; _ghostPlay = false; if (_comp != 0) { Grid(); return; } _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
 
     public override void _UnhandledInput(InputEvent e) {
       bool key(Key k) => e is InputEventKey ek && ek.Pressed && !ek.Echo && ek.Keycode == k;
@@ -346,7 +348,7 @@ namespace DriftMaster {
       int q = i * 4 / n; // which quarter of the lap
       if (q == _next && _next != 0) _next = (_next + 1) % 4;
       bool crossed = idx0 > n * 7 / 8 && i < n / 8;
-      if (crossed) { if (_timing && _next == 0) { _last = _lap; if (_best == 0 || _lap < _best) _best = _lap; } _timing = true; _lap = 0; _next = 1; }
+      if (crossed) { bool fin = _timing && _next == 0; double lt = _lap; if (fin) { _last = _lap; if (_best == 0 || _lap < _best) _best = _lap; } _timing = true; _lap = 0; _next = 1; LapCrossed(fin, lt); }
     }
 
     void UpdateCamera(float dt) {

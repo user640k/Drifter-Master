@@ -1,16 +1,46 @@
-// Competition: a judged solo qualifying run, and tandem battles against a second car driven by the game. Two runs,
-// swapping the lead and the chase; the totals decide it, and a near tie is run again ("one more time"). Also the course
-// marks on the floor, and the parking bay. The judging itself is in Judging.cs.
+// Solo training: free laps and judged runs against a ghost of your own best. The ghost is a see-through copy of the car
+// replaying a recording: your fastest lap in free practice (from the line), your highest-scoring run in a judged run (from
+// the start). Recordings are kept per track between sessions. Also the course marks on the floor, and the parking bay.
+// The judging itself is in Judging.cs.
 using Godot;
 using System;
 using System.Collections.Generic;
 
 namespace DriftMaster {
   public partial class Main {
-    Course _course; LineCar _line; int _pace = 1; static readonly (string name, double k)[] Paces = { ("EASY", 0.85), ("NORMAL", 1.0), ("FAST", 1.12) }; Track _t2; CarPhysics _rival; CarView _rivalView; RunJudge _jP, _jR; double[] _leadBeta; double _contactT, _count, _cardT;
-    int _comp; /* 0 free practice, 1 qualifying, 2 tandem */ int _phase; /* 0 counting down, 1 running, 2 the score card is up */ int _runNo = 1, _omt; Label _card;
-    RunJudge.Card _pLead, _pChase, _rLead, _rChase; string _lastResult = "-"; bool _parked; Vector3 _bay; float _bayHd; public string CompTest;
-    bool PlayerLeads => _comp != 2 || _runNo == 1;
+    Course _course; RunJudge _jP; double _count, _cardT;
+    int _comp; /* 0 free practice, 1 judged run */ int _phase; /* 0 counting down, 1 running, 2 the score card is up */ Label _card;
+    string _lastResult = "-"; bool _parked; Vector3 _bay; float _bayHd; public string CompTest;
+    // ---- the ghost
+    const int GF = 10; const double GDt = 1.0 / 60;   // each frame: x, z, y, heading, steer, roll, pitch, rear spin, front spin, lap index
+    sealed class Rec { public readonly List<float> F = new(); public double Mark; public int Body; public int Count => F.Count / GF; }   // Mark: the lap time (s) or the run's score
+    Rec _ghostLap, _ghostRun, _rec; bool _recOn, _ghostOn = true, _ghostPlay; double _recAcc, _ghostT; Track _t2; CarPhysics _ghostCar; CarView _ghostView; int _ghostBody = -1;
+    string GhostFile(bool run) => $"user://ghost_{Tracks[TrackIdx % Tracks.Length].file}_{(run ? "run" : "lap")}.bin";
+    void SaveGhost(Rec r, bool run) { if (_shot != null && CompTest == null) return; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Write); if (f == null) return; f.Store32(1); f.StoreDouble(r.Mark); f.Store32((uint)r.Body); f.Store32((uint)r.F.Count); foreach (var v in r.F) f.StoreFloat(v); }
+    Rec LoadGhost(bool run) { if (!FileAccess.FileExists(GhostFile(run))) return null; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Read); if (f == null || f.Get32() != 1) return null;
+      var r = new Rec { Mark = f.GetDouble(), Body = (int)f.Get32() }; uint n = f.Get32(); if (n == 0 || n % GF != 0 || n > 2000000) return null; for (uint i = 0; i < n; i++) r.F.Add(f.GetFloat()); return r; }
+    void RecStart() { _rec = new Rec { Body = _body }; _recOn = true; _recAcc = GDt; }
+    void RecStep(double dt) { if (!_recOn) return; _recAcc += dt; if (_recAcc < GDt) return; _recAcc -= GDt; if (_rec.Count > 60 * 180) { _recOn = false; return; }   // (three minutes: not a lap)
+      _rec.F.AddRange(new[] { (float)_car.X, (float)_car.Z, (float)_car.Y, (float)_car.Hd, (float)_car.Steer, (float)_car.Roll, (float)_car.Pitch, (float)_car.Spin, (float)_car.SpinF, (float)Math.Max(0, _t.Idx) }); }
+    void GhostStart() { _ghostT = 0; _ghostPlay = true; }
+    void StepGhost(double delta) {
+      var g = _comp == 1 ? _ghostRun : _ghostLap; bool show = _ghostOn && _ghostPlay && g != null && g.Count > 2 && !_parked && !(_comp == 1 && _phase == 0);
+      if (show && _phase != 2 && !_pause.Visible) _ghostT += Math.Min(delta, 0.05); double ft = _ghostT / GDt; int i = (int)ft;
+      if (show && i >= g.Count - 1) { show = false; _ghostPlay = false; }
+      if (!show) { if (_ghostView != null) _ghostView.Visible = false; return; }
+      if (_ghostView == null || _ghostBody != g.Body) { _ghostView?.QueueFree(); _ghostBody = g.Body; _ghostView = new CarView { Body = g.Body, Ghost = true }; AddChild(_ghostView); }
+      if (_ghostCar == null) { var td = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0, 4.5, 2.5); _ghostCar = new CarPhysics { T = _t2 }; }
+      float f = (float)(ft - i); int a = i * GF, b = a + GF; float L(int k) => g.F[a + k] + (g.F[b + k] - g.F[a + k]) * f; float A(int k) => g.F[a + k] + Mathf.AngleDifference(g.F[a + k], g.F[b + k]) * f;
+      _ghostCar.X = L(0); _ghostCar.Z = L(1); _ghostCar.Y = L(2); _ghostCar.Hd = A(3); _ghostCar.Steer = L(4); _ghostCar.Roll = L(5); _ghostCar.Pitch = L(6); _ghostCar.Spin = L(7); _ghostCar.SpinF = L(8); _t2.Idx = (int)g.F[a + 9]; _ghostCar.Air = false;
+      _ghostView.Visible = true; _ghostView.Pose(_ghostCar, _t2);
+    }
+    /// the car has crossed the line in free practice: a finished lap that beats the ghost becomes the ghost, and a new recording starts
+    void LapCrossed(bool finished, double time) {
+      if (_comp != 0) return;
+      if (finished && _recOn && _rec != null && _rec.Count > 30 && (_ghostLap == null || time < _ghostLap.Mark)) { _rec.Mark = time; _ghostLap = _rec; SaveGhost(_rec, false); Say("NEW GHOST  " + T(time)); }
+      RecStart(); GhostStart();
+    }
+    void ClearGhosts() { _ghostLap = _ghostRun = null; foreach (bool run in new[] { false, true }) if (FileAccess.FileExists(GhostFile(run))) DirAccess.RemoveAbsolute(ProjectSettings.GlobalizePath(GhostFile(run))); Say("GHOSTS CLEARED"); }
 
     void BuildCompetition() {
       _course = Course.Build(_t);
@@ -40,73 +70,43 @@ namespace DriftMaster {
         var lb = new Label3D { Text = "P", FontSize = 96, PixelSize = 0.0016f, Modulate = new Color(0.92f, 0.92f, 0.88f), Position = _bay + new Vector3(0, 0.002f, 0), RotationDegrees = new Vector3(-90, 0, 0), Shaded = false }; AddChild(lb); }
     }
     /// take the car off the track into the bay (it stays there until it is reset to the start line)
-    void Park() { if (_comp != 0) StopComp(); _parked = true; _car.T.Idx = -1; _car.Place(_bay.X, _bay.Z, _bayHd); _car.Y = 0; _car.Air = true; /* (drawn at floor height, wherever the nearest piece of track is) */ _timing = false; _lap = 0; _camSnap = true; Say("PARKED   (R: back to the start line)"); }
+    void Park() { if (_comp != 0) StopComp(); _recOn = false; _parked = true; _car.T.Idx = -1; _car.Place(_bay.X, _bay.Z, _bayHd); _car.Y = 0; _car.Air = true; /* (drawn at floor height, wherever the nearest piece of track is) */ _timing = false; _lap = 0; _camSnap = true; Say("PARKED   (R: back to the start line)"); }
 
-    void EnsureRival() {
-      if (_rival != null) return; var td = Tracks[TrackIdx % Tracks.Length];
-      _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0, 4.5, 2.5); _t2.Name = td.name; _t2.Boards = td.boards;
-      _rival = new CarPhysics { T = _t2 }; _line = new LineCar(_t2, _course);
-      int rb = (_body + 3) % CarView.Bodies.Length; _rivalView = new CarView { Body = rb }; AddChild(_rivalView);
-      int rp = _paintIdx == 1 ? 10 : 1; _rivalView.SetPaint(Paints[rp].col, true); _rivalView.SetRims(Rims[4].col, Rims[4].metal); _rivalView.SetCamber(-3, -3);
-      var bd = CarView.Bodies[rb]; _rival.SetBody(bd.kg, bd.cgUp, _rivalView.HalfW, _rivalView.HalfL);
-    }
     void Grid() {
-      _parked = false; int n = _t.N, s0 = _t.NearestT(_t.Start[0], _t.Start[1], -1), back = ((s0 - (int)Math.Round(0.55 / _t.Ds)) % n + n) % n;
-      _jP = new RunJudge(_course, _t); _jR = null; _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]);
-      if (_comp == 2) { EnsureRival(); _rivalView.Visible = true; _jR = new RunJudge(_course, _t2); _leadBeta = new double[n]; Array.Fill(_leadBeta, double.NaN); _contactT = 0;
-        _line.Pace = Paces[_pace].k; if (PlayerLeads) _line.Place(_rival, back);
-        else { _line.Place(_rival, s0); _car.Place(_t.X[back], _t.Z[back], Math.Atan2(_t.TX[back], _t.TZ[back])); } }
-      _phase = 0; _count = 3.2; _timing = false; _lap = 0; _camSnap = true; _card.Visible = false;
+      _parked = false; _jP = new RunJudge(_course, _t); _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]);
+      _phase = 0; _count = 3.2; _timing = false; _lap = 0; _camSnap = true; _card.Visible = false; _recOn = false; _ghostPlay = false;
     }
-    void StartSolo() { _comp = 1; _runNo = 1; Grid(); }
-    void StartTandem() { _comp = 2; _runNo = 1; _omt = 0; Grid(); }
-    void StopComp() { _comp = 0; _phase = 0; if (_card != null) _card.Visible = false; if (_rivalView != null) _rivalView.Visible = false; }
+    void StartSolo() { _comp = 1; Grid(); }
+    void StopComp() { _comp = 0; _phase = 0; _recOn = false; _ghostPlay = false; if (_card != null) _card.Visible = false; }
 
-    /// one physics step of everything on the track
+    /// one physics step of the car
     void StepWorld(in CarInput inp) {
       if (_parked) return; bool go = _comp == 0 || _phase == 1;
-      _car.Step(CarPhysics.DT, inp, go);
-      if (_comp == 0 || _phase != 1) { if (_comp == 2 && _rival != null) _line.Step(_rival, CarPhysics.DT, false); return; }   // (the rival rolls to a stop when the run is over)
+      _car.Step(CarPhysics.DT, inp, go); if (go) RecStep(CarPhysics.DT);
+      if (_comp == 0 || _phase != 1) return;
       _jP.Step(CarPhysics.DT, _car, Math.Max(0, _t.Idx));
-      if (_comp == 2) {
-        _line.Step(_rival, CarPhysics.DT, true); /* its own line at its own pace, leading or chasing: it does not wait for the player or steer round them */ _jR.Step(CarPhysics.DT, _rival, Math.Max(0, _t2.Idx));
-        if (PlayerLeads) { _leadBeta[Math.Max(0, _t.Idx)] = _car.Beta; _jR.Chase(CarPhysics.DT, _rival, _t2.Idx, _car, _t.Idx, _leadBeta, ref _contactT); }
-        else { _leadBeta[Math.Max(0, _t2.Idx)] = _rival.Beta; _jP.Chase(CarPhysics.DT, _car, _t.Idx, _rival, _t2.Idx, _leadBeta, ref _contactT); }
-      }
-      var lead = PlayerLeads ? _jP : _jR; var chase = _comp == 2 ? (PlayerLeads ? _jR : _jP) : null;
-      if (lead.Done || lead.Spun || (chase != null && chase.Spun && chase == _jP) || lead.Time > 90) EndRun();
+      if (_jP.Done || _jP.Spun || _jP.Time > 90) EndRun();
     }
-    static string Line(string who, RunJudge.Card c, bool chase) => chase
-      ? $"{who,-14}  PROXIMITY {c.Line,4:0.0}/40   MIRROR {c.Angle,4:0.0}/30   TIMING {c.Style,4:0.0}/20   LINE {c.Speed,4:0.0}/10   DEDUCT -{c.Deduct:0}   =  {c.Total:0.0}"
-      : $"{who,-14}  LINE {c.Line,4:0.0}/35   ANGLE {c.Angle,4:0.0}/30   STYLE {c.Style,4:0.0}/25   SPEED {c.Speed,4:0.0}/10   DEDUCT -{c.Deduct:0}   =  {c.Total:0.0}";
+    static string Line(string who, RunJudge.Card c) => $"{who,-6}  LINE {c.Line,4:0.0}/35   ANGLE {c.Angle,4:0.0}/30   STYLE {c.Style,4:0.0}/25   SPEED {c.Speed,4:0.0}/10   DEDUCT -{c.Deduct:0}   =  {c.Total:0.0}";
     void EndRun() {
-      _phase = 2; _cardT = 0; string s;
-      if (_comp == 1) { var c = _jP.Solo(); s = "QUALIFYING RUN\n\n" + Line("YOU", c, false) + (c.Notes != "" ? "\n" + c.Notes : "") + $"\n\naverage angle {_jP.AvgAngleDeg:0}°   clips {_jP.ClipsHit}/{_jP.Clip.Length}   {_jP.Time:0.0} s\n\nENTER  run again        ESC  menu";
-        _lastResult = $"QUALIFYING {c.Total:0.0}"; }
-      else if (_runNo == 1) { _pLead = _jP.Solo(); _rChase = _jR.ChaseCard();
-        s = "TANDEM  RUN 1 OF 2: YOU LED\n\n" + Line("YOU (LEAD)", _pLead, false) + (_pLead.Notes != "" ? "\n" + _pLead.Notes : "") + "\n" + Line("RIVAL (CHASE)", _rChase, true) + (_rChase.Notes != "" ? "\n" + _rChase.Notes : "") + "\n\nENTER  run 2: you chase"; }
-      else { _rLead = _jR.Solo(); _pChase = _jP.ChaseCard(); double you = _pLead.Total + _pChase.Total, riv = _rLead.Total + _rChase.Total; bool tie = Math.Abs(you - riv) < 3;
-        s = "TANDEM  RUN 2 OF 2: YOU CHASED\n\n" + Line("RIVAL (LEAD)", _rLead, false) + (_rLead.Notes != "" ? "\n" + _rLead.Notes : "") + "\n" + Line("YOU (CHASE)", _pChase, true) + (_pChase.Notes != "" ? "\n" + _pChase.Notes : "")
-          + $"\n\nYOU {you:0.0}     RIVAL {riv:0.0}\n\n" + (tie ? "THE JUDGES CANNOT SPLIT IT:  ONE MORE TIME!\n\nENTER  run it again" : (you > riv ? "YOU WIN THE BATTLE" : "THE RIVAL WINS THE BATTLE") + "\n\nENTER  new battle        ESC  menu");
-        _lastResult = tie ? "TANDEM: ONE MORE TIME" : $"TANDEM {(you > riv ? "WON" : "LOST")} {you:0.0} : {riv:0.0}"; if (tie) _omt++; else _omt = -1; }
-      _card.Text = s; _card.Visible = true; if (CompTest != null) GD.Print("CARD\n" + s);
+      _phase = 2; _cardT = 0; _recOn = false; var c = _jP.Solo(); bool best = !_jP.Spun && _rec != null && _rec.Count > 30 && (_ghostRun == null || c.Total > _ghostRun.Mark + 0.05); double was = _ghostRun?.Mark ?? -1;
+      if (best) { _rec.Mark = c.Total; _ghostRun = _rec; SaveGhost(_rec, true); }
+      string s = "JUDGED RUN\n\n" + Line("YOU", c) + (c.Notes != "" ? "\n" + c.Notes : "") + $"\n\naverage angle {_jP.AvgAngleDeg:0}°   clips {_jP.ClipsHit}/{_jP.Clip.Length}   {_jP.Time:0.0} s\n\n"
+        + (best ? (was >= 0 ? $"YOUR BEST RUN: IT IS THE NEW GHOST  (was {was:0.0})" : "THIS RUN IS NOW YOUR GHOST") : (_ghostRun != null ? $"ghost: your best run, {_ghostRun.Mark:0.0}" : "")) + "\n\nENTER  run again        ESC  menu";
+      _lastResult = $"JUDGED RUN {c.Total:0.0}"; _card.Text = s; _card.Visible = true; if (CompTest != null) GD.Print("CARD\n" + s);
     }
-    void NextRun() {
-      if (_comp == 1) { Grid(); return; }
-      if (_runNo == 1) { _runNo = 2; Grid(); } else { _runNo = 1; if (_omt < 0) _omt = 0; Grid(); }
-    }
+    void NextRun() { Grid(); }
     void StepCompetition(double delta) {
-      if (_rivalView != null && _rivalView.Visible) _rivalView.Pose(_rival, _t2);
+      StepGhost(delta);
       if (_comp == 0) return;
-      if (_phase == 0) { _count -= delta; if (_count <= 0) _phase = 1; }
-      if (_phase == 2) { _cardT += delta; if (CompTest != null && _cardT > 0.5) { if (_comp == 2 && _runNo == 1) NextRun(); else if (_shot == null) GetTree().Quit(); } }
+      if (_phase == 0) { _count -= delta; if (_count <= 0) { _phase = 1; RecStart(); GhostStart(); } }
+      if (_phase == 2) { _cardT += delta; if (CompTest == "solo2" && _cardT > 0.5) { CompTest = "solo"; NextRun(); } }
     }
     string CompHud() {
       if (_parked) return "\nPARKED";
-      if (_comp == 0) return "";
-      string name = _comp == 1 ? "QUALIFYING" : (_omt > 0 ? "ONE MORE TIME  " : "TANDEM  ") + (PlayerLeads ? "RUN 1: YOU LEAD" : "RUN 2: YOU CHASE");
-      if (_phase == 0) return $"\n{name}\n{(_count > 0.4 ? Math.Ceiling(_count - 0.2).ToString() : "GO")}";
-      return $"\n{name}\nCLIPS {_jP.ClipsHit}/{_jP.Clip.Length}   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°" + (_jP.Taps > 0 ? $"   TAPS {_jP.Taps}" : "");
+      if (_comp == 0) return _ghostOn && _ghostLap != null ? $"\nGHOST  {T(_ghostLap.Mark)}" : "";
+      if (_phase == 0) return $"\nJUDGED RUN\n{(_count > 0.4 ? Math.Ceiling(_count - 0.2).ToString() : "GO")}";
+      return $"\nJUDGED RUN\nCLIPS {_jP.ClipsHit}/{_jP.Clip.Length}   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°" + (_jP.Taps > 0 ? $"   TAPS {_jP.Taps}" : "") + (_ghostOn && _ghostRun != null ? $"\nGHOST  {_ghostRun.Mark:0.0}" : "");
     }
   }
 }
