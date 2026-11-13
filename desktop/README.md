@@ -68,4 +68,13 @@ Wall, foam, ceiling and board textures are from ambientCG.com (CC0 1.0): Painted
 
 ## Not in yet
 
-Damage, the other two bodies, more tracks; from the web car menu: ride height, wheels and tyres, stickers, body mounts.
+The list, in order:
+1. Animated suspension on the chassis (shocks, springs, arms moving with the physics).
+2. The room: one side extended for stairs going up; basement windows on the opposite side; posts; the ceiling.
+3. Left-over texture and shell fitting issues.
+4. An exit from every layout to a parking area (replaces the K parking bay).
+5. The scoring system reworked to judge driving better.
+6. Sound: smoother, less rough.
+7. Better textures for the walls and the artificial grass.
+
+Later, maybe: damage, the other two bodies, more tracks; from the web car menu: ride height, wheels and tyres, stickers, body mounts.

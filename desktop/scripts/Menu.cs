@@ -15,19 +15,21 @@ namespace DriftMaster {
     public override void _Ready() {
       SetAnchorsPreset(LayoutPreset.FullRect); MouseFilter = MouseFilterEnum.Ignore;
       _shade = new ColorRect { Color = new Color(0.02f, 0.02f, 0.03f, 0.8f) }; AddChild(_shade);
-      var box = new VBoxContainer { Position = new Vector2(70, 56), CustomMinimumSize = new Vector2(640, 0) }; box.AddThemeConstantOverride("separation", 4); AddChild(box);
+      var box = new VBoxContainer { Position = new Vector2(70, 56), CustomMinimumSize = new Vector2(540, 0) }; box.AddThemeConstantOverride("separation", 4); AddChild(box);
       Label L(string t, int size, Color c) { var l = new Label { Text = t }; l.AddThemeFontSizeOverride("font_size", size); l.AddThemeColorOverride("font_color", c); return l; }
       box.AddChild(L("DRIFT MASTER", 40, Colors.White));
       _tabs = L("", 20, Dim); box.AddChild(_tabs); box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
       _list = new VBoxContainer(); _list.AddThemeConstantOverride("separation", 1); box.AddChild(_list);
       box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
-      _note = L("", 16, Dim); _note.AutowrapMode = TextServer.AutowrapMode.WordSmart; _note.CustomMinimumSize = new Vector2(640, 48); box.AddChild(_note);
+      _note = L("", 16, Dim); _note.AutowrapMode = TextServer.AutowrapMode.WordSmart; _note.CustomMinimumSize = new Vector2(540, 48); box.AddChild(_note);
       box.AddChild(L("UP / DOWN  choose     LEFT / RIGHT  change     Q / E  page     ESC  back to the track", 14, Dim));
       Refresh();
     }
 
     // it sits on a canvas layer, which has no size of its own: cover the window, whatever its size
-    public override void _Process(double delta) { if (Visible) { Size = GetViewportRect().Size; _shade.Size = Size; } }
+    public override void _Process(double delta) { if (Visible) { Size = GetViewportRect().Size; _shade.Size = new Vector2(Size.X * (Preview ? 0.5f : 1f), Size.Y); } }
+    /// the page that is open, and whether the right half of the screen is left clear for a look at the car
+    public string Page => Pages.Count > 0 ? Pages[_page].title : ""; public bool Preview => Page == "CAR";
 
     public void Open(bool on) { Visible = on; if (on) Refresh(); }
     public void Goto(int page, int row) { _page = page % Pages.Count; _row = row; Refresh(); } // (test shots)

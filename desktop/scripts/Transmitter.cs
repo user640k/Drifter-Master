@@ -18,7 +18,7 @@ namespace DriftMaster {
       var env = new Godot.Environment { BackgroundMode = Godot.Environment.BGMode.Color, BackgroundColor = new Color(0, 0, 0, 0), AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.8f, 0.85f, 0.95f), AmbientLightEnergy = 0.9f };
       _vp.AddChild(new WorldEnvironment { Environment = env });
       var cam = new Camera3D { Fov = 34, Near = 0.02f, Far = 3 }; _vp.AddChild(cam); cam.LookAtFromPosition(CamAt, new Vector3(0.012f, 0.105f, 0.004f), Vector3.Up);
-      _vp.AddChild(new DirectionalLight3D { Rotation = new Vector3(-0.9f, 2.5f, 0), LightEnergy = 1.1f }); _vp.AddChild(new DirectionalLight3D { Rotation = new Vector3(-0.3f, -2.2f, 0), LightEnergy = 0.45f, LightColor = new Color(0.7f, 0.85f, 1f) });
+      _vp.AddChild(new DirectionalLight3D { Rotation = new Vector3(-0.9f, 2.5f, 0), LightEnergy = 1.1f, ShadowEnabled = true, DirectionalShadowMaxDistance = 1.2f, ShadowBlur = 1.5f });   // it shades itself: the wheel on the head, the head on the grip _vp.AddChild(new DirectionalLight3D { Rotation = new Vector3(-0.3f, -2.2f, 0), LightEnergy = 0.45f, LightColor = new Color(0.7f, 0.85f, 1f) });
       var root = new Node3D { Scale = new Vector3(-1, 1, 1) }; _vp.AddChild(root);   // built with the wheel at +x; mirrored, so it is on the driver's right (forward is +z)
 
       // materials: matt black plastic, carbon-look panels (a 2x2 twill drawn here), foam, gloss black, red, silver
@@ -35,6 +35,11 @@ namespace DriftMaster {
       MeshInstance3D Box(Node3D p, Vector3 size, Vector3 pos, Vector3 rotDeg, Material m) { var mi = new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = m, Position = pos, RotationDegrees = rotDeg }; p.AddChild(mi); return mi; }
       MeshInstance3D Cyl(Node3D p, float r, float h, Vector3 pos, Vector3 rotDeg, Material m, float rTop = -1, int seg = 32) { var mi = new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = rTop < 0 ? r : rTop, BottomRadius = r, Height = h, RadialSegments = seg, Rings = 1 }, MaterialOverride = m, Position = pos, RotationDegrees = rotDeg }; p.AddChild(mi); return mi; }
 
+      // it stands on something: a soft shadow under the foot, darkest where the foot meets the ground, so it does not float
+      { var si = Image.CreateEmpty(96, 96, false, Image.Format.Rgba8);
+        for (int y = 0; y < 96; y++) for (int x = 0; x < 96; x++) { float u = (x - 47.5f) / 47.5f, v = (y - 47.5f) / 47.5f, d = Mathf.Sqrt(u * u + v * v), a = Mathf.SmoothStep(1f, 0.25f, d); si.SetPixel(x, y, new Color(0, 0, 0, 0.7f * a * a)); }
+        var sm = new StandardMaterial3D { AlbedoTexture = ImageTexture.CreateFromImage(si), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha };
+        root.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.2f, 0.26f) }, MaterialOverride = sm, Position = new Vector3(0.012f, 0.0004f, 0.004f), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
       // the foot it stands on, and the grip rising from it, leaning forward, with carbon-look sides
       Box(root, new Vector3(0.062f, 0.012f, 0.1f), new Vector3(0, 0.006f, 0.004f), Vector3.Zero, body); Box(root, new Vector3(0.052f, 0.012f, 0.085f), new Vector3(0, 0.017f, 0.004f), Vector3.Zero, body);
       var grip = new Node3D { Position = new Vector3(0, 0.022f, -0.012f), RotationDegrees = new Vector3(12, 0, 0) }; root.AddChild(grip);

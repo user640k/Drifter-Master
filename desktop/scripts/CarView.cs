@@ -152,16 +152,16 @@ namespace DriftMaster {
             if (sb.Size.X > 0.08f && sb.Size.Y < 0.02f && ce.Y > bot && ce.Z > B.Z - L && ce.Z < B.Z + 0.01f && Mathf.Abs(ce.X) < 0.01f) mi.Visible = false; } } }
       // the coupe carries a GT wing: a blade on two swept stays over the tail, with end plates
       if (Body % Bodies.Length == 1 && paintMi != null) {
-        var bb = paintMi.GetAabb(); float zTail = bb.Position.Z, hw = bb.Size.X / 2 * 0.9f; var wing = new Node3D { Name = "Wing" }; _shell.AddChild(wing);
+        var bb = paintMi.GetAabb(); float zTail = bb.Position.Z, hw = bb.Size.X / 2 * 0.74f; var wing = new Node3D { Name = "Wing" }; _shell.AddChild(wing);
         var black = new StandardMaterial3D { AlbedoColor = new Color(0.012f, 0.012f, 0.014f), Roughness = 0.28f }; float zFoot = zTail + 0.04f, deck = 0;
-        foreach (int sd in new[] { -1, 1 }) { float d = Hit(paintG, new Vector3(sd * 0.04f, 0.4f, zFoot), Vector3.Down); if (d > 0) deck = Math.Max(deck, 0.4f - d); }
-        if (deck < 0.03f) deck = bb.Position.Y + bb.Size.Y * 0.7f; float bladeY = Math.Max(deck + 0.034f, bb.Position.Y + bb.Size.Y - 0.004f), bladeZ = zTail + 0.016f;
+        foreach (int sd in new[] { -1, 1 }) { float d = Hit(paintG, new Vector3(sd * 0.034f, 0.4f, zFoot), Vector3.Down); if (d > 0) deck = Math.Max(deck, 0.4f - d); }
+        if (deck < 0.03f) deck = bb.Position.Y + bb.Size.Y * 0.7f; float bladeY = deck + 0.024f, bladeZ = zTail + 0.02f;   /* a modest wing: three quarters of the body's width, a couple of centimetres off the deck */
         void Box(Vector3 size, Vector3 pos, Vector3 rotDeg) => wing.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = black, Position = pos, RotationDegrees = rotDeg });
-        Box(new Vector3(hw * 2, 0.0028f, 0.036f), new Vector3(0, bladeY, bladeZ), new Vector3(9, 0, 0));                      // the blade, its trailing edge kicked up
-        Box(new Vector3(hw * 2, 0.0022f, 0.008f), new Vector3(0, bladeY + 0.0042f, bladeZ - 0.019f), new Vector3(42, 0, 0));    // the lip along the trailing edge
+        Box(new Vector3(hw * 2, 0.0024f, 0.028f), new Vector3(0, bladeY, bladeZ), new Vector3(9, 0, 0));                      // the blade, its trailing edge kicked up
+        Box(new Vector3(hw * 2, 0.002f, 0.006f), new Vector3(0, bladeY + 0.0034f, bladeZ - 0.015f), new Vector3(42, 0, 0));    // the lip along the trailing edge
         foreach (int sd in new[] { -1, 1 }) {
-          Box(new Vector3(0.0022f, 0.03f, 0.05f), new Vector3(sd * hw, bladeY - 0.004f, bladeZ - 0.002f), Vector3.Zero);          // end plates
-          Vector3 foot = new Vector3(sd * 0.04f, deck - 0.002f, zFoot), head = new Vector3(sd * 0.04f, bladeY - 0.001f, bladeZ + 0.004f), dv = head - foot;
+          Box(new Vector3(0.002f, 0.02f, 0.036f), new Vector3(sd * hw, bladeY - 0.003f, bladeZ - 0.002f), Vector3.Zero);          // end plates
+          Vector3 foot = new Vector3(sd * 0.034f, deck - 0.002f, zFoot), head = new Vector3(sd * 0.034f, bladeY - 0.001f, bladeZ + 0.004f), dv = head - foot;
           Box(new Vector3(0.0022f, dv.Length(), 0.02f), (foot + head) / 2, new Vector3(Mathf.RadToDeg(Mathf.Atan2(dv.Z, dv.Y)), 0, 0)); } }  // stays
       if (Ghost) { var gm = new StandardMaterial3D { AlbedoColor = new Color(0.55f, 0.85f, 1f, 0.3f), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, CullMode = BaseMaterial3D.CullModeEnum.Back };
         foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) { var mi = (MeshInstance3D)node; mi.MaterialOverride = gm; for (int si = 0; mi.Mesh != null && si < mi.Mesh.GetSurfaceCount(); si++) mi.SetSurfaceOverrideMaterial(si, null); mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;

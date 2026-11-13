@@ -2,6 +2,9 @@
 
 ## Changelog (this build)
 
+- CAR page: the car is shown still on the right half of the screen while you customise it.
+- On-screen transmitter: a soft shadow under it and shading on itself, so it no longer floats.
+- Coupe: smaller wing.
 - Ceiling view is now an analog camera picture too (4:3, same look as the on-board cameras).
 - Rival car and tandem battles removed. Training is solo, against a ghost of your own best: your fastest lap in free practice, your best-scoring run in a judged run (TRAINING page).
 - Shell material matched against photos of real polycarbonate shells: it now mirrors the room (ceiling lights, walls, floor), more at glancing angles, with the slight waviness of a formed sheet, and the colour is shaded darker underneath. Hot pink retuned.

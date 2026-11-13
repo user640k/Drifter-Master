@@ -355,6 +355,10 @@ namespace DriftMaster {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
       if (_camMode != 2 && _camMode != 3 && _camMode != 4) { OnBoard(false); _view.ShowStick(false); }
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
+      if (_pause.Visible && _pause.Preview && _camMode != 8) { // the CAR page: the car itself, still, on the clear right half of the screen, so each choice shows as it is made
+        OnBoard(false); _view.ShowStick(false); float az = Mathf.DegToRad(42) + (float)_car.Hd, el = Mathf.DegToRad(15);
+        var dir = new Vector3(Mathf.Sin(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Cos(az) * Mathf.Cos(el)); var side = dir.Cross(Vector3.Up).Normalized();
+        look = p + new Vector3(0, 0.05f, 0) + side * 0.2f; pos = look + dir * 0.82f; _camSnap = true; _cam.Fov = 34; _cam.Position = pos; _cam.LookAt(look, Vector3.Up); return; }
       if (_camMode == 8) { // test view round the car: degrees round from its nose, degrees up, distance, lens
         float az = Mathf.DegToRad(_view6[0]) + (float)_car.Hd, el = Mathf.DegToRad(_view6[1]), d = _view6[2];
         look = p + new Vector3(0, 0.055f, 0); pos = look + new Vector3(Mathf.Sin(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Cos(az) * Mathf.Cos(el)) * d; fov = _view6[3]; _camSnap = true;
