@@ -13,7 +13,7 @@ using System;
 
 namespace DriftMaster {
   public partial class CarAudio : Node3D {
-    AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit, _whine, _tyre, _air; float _gWhine, _gTyre, _gAir, _jitP, _jitA; AudioListener3D _ear;
+    AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit, _whine, _whineLow, _tyre; float _gWhine, _gTyre, _jitP, _jitA; AudioListener3D _ear;
     /// The motor's note. A sensored brushless motor of this class has a two-pole rotor and three coils: its torque pulses
     /// six times a turn, and that is the whine heard from the car. The motor's speed is the wheels' speed as a share of
     /// the car's free-running speed, times the motor's own free speed (its kV at 7.4 V). So a 13.5T at 2.5 m/s on the
@@ -42,7 +42,7 @@ namespace DriftMaster {
       if (_bus < 0) { _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master"); } else while (AudioServer.GetBusEffectCount(_bus) > 0) AudioServer.RemoveBusEffect(_bus, 0);
       AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.5f, Spread = 0.8f, Hipass = 0.2f, PredelayMsec = 10, PredelayFeedback = 0.1f, Dry = 1f, Wet = 0.08f }, 0);
       AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 1);
-      _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true); _tyre = Player("tyre", true); _air = Player("air", true);
+      _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true); _tyre = Player("tyre", true); _whineLow = Player("whine", true);
       _tick = Player("tick", false, 10); _hit = Player("hit", false, 3);
       _ear = new AudioListener3D(); AddChild(_ear); _ear.TopLevel = true; _ear.MakeCurrent();
     }
@@ -59,7 +59,7 @@ namespace DriftMaster {
       // the way it would outdoors. Much of what reaches you is the room, so nine times the distance was only a bit
       // over twice as quiet. Loudness goes as distance to the power -0.4 here (outdoors it would be -1). The far car was
       // also a little duller in the video; that is left out, as the engine's low-pass took far too much of the top off.
-      float dist = Mathf.Max(0.6f, ear.Origin.DistanceTo(GlobalPosition)), far = Mathf.Pow(2f / dist, 0.8f);   /* close by it is clearly louder, across the hall clearly quieter: about 2.6 times at arm's length, half at 5 m */   /* (0.4 at first: with the second clip as the guide the car swells more as it comes close and falls away further off) */
+      float dist = Mathf.Max(0.6f, ear.Origin.DistanceTo(GlobalPosition)), far = Mathf.Clamp(Mathf.Pow(2f / dist, 0.35f), 0.7f, 1.45f);   /* close by it is clearly louder, across the hall clearly quieter: about 2.6 times at arm's length, half at 5 m */   /* (0.4 at first: with the second clip as the guide the car swells more as it comes close and falls away further off) */
       AudioServer.SetBusVolumeDb(_bus, Muted || Silent ? -80 : Db(Volume * Volume * camGain * far * 1.45f));
       float sp = (float)Math.Sqrt(c.U * c.U + c.V * c.V), slide = (float)c.Slide, spin = (float)Math.Abs(c.W - c.U), on = paused || c.Air ? 0 : 1;
       float moving = Smooth(0.08f, 1.6f, sp);
@@ -80,16 +80,17 @@ namespace DriftMaster {
       _jitP += ((float)GD.RandRange(-1.0, 1.0) - _jitP) * Mathf.Min(1, dt * 9); _jitA += ((float)GD.RandRange(-1.0, 1.0) - _jitA) * Mathf.Min(1, dt * 6);
       _whine.PitchScale = Mathf.Clamp((float)(6 * wsp / MotorVFree * MotorFreeRev) / 1000f * (1 + (0.012f + 0.018f * (float)c.Thr) * _jitP), 0.22f, 3.2f);
       _whine.VolumeDb = Db(Motor ? _gWhine * (1 + 0.22f * _jitA) : 0);
-      // The tyres: a pitchless hiss, the main sound, louder the faster the car goes and the more it slides. Close to the
-      // listener the top of the hiss comes through as well; across the hall only its body is left.
-      float run = on * Smooth(0.15f, 2.2f, sp + 0.5f * spin) * (0.055f + 0.07f * Mathf.Min(1, slide + 0.1f * spin));   // about a third of what it was: it sits under the motor's note
-      float near = Mathf.Clamp(Mathf.Pow(1.5f / dist, 0.9f), 0.2f, 1.9f);   /* the hiss falls away with distance faster than the whine does: up close it is there, across the hall it is nearly gone */
-      _gTyre += (run * near - _gTyre) * k; _gAir += (run * 0.9f * Mathf.Clamp(Mathf.Pow(1.5f / dist, 1.5f), 0.04f, 2.2f) - _gAir) * k;
-      _tyre.VolumeDb = Db(_gTyre); _air.VolumeDb = Db(_gAir); _tyre.PitchScale = 0.97f + 0.02f * Mathf.Min(sp, 3); _air.PitchScale = 1;
+      // Up close the motor is a little deeper and a little louder, not much: its lower octave comes in under the note.
+      float close = Mathf.Clamp((2.2f - dist) / 1.6f, 0, 1);
+      _whineLow.PitchScale = Mathf.Clamp(_whine.PitchScale * 0.5f, 0.11f, 1.6f); _whineLow.VolumeDb = Db(Motor ? _gWhine * 0.45f * close : 0);
+      // The rest of the car: the tyres spinning and its general noise, a faint low rumble under the motor. It does not
+      // grow as the car comes close (the motor covers it there), so the distance's effect on loudness is taken back out.
+      float run = on * Smooth(0.15f, 2.2f, sp + 0.5f * spin) * (0.02f + 0.02f * Mathf.Min(1, slide + 0.1f * spin));
+      _gTyre += (run / far - _gTyre) * k; _tyre.VolumeDb = Db(_gTyre); _tyre.PitchScale = 0.95f + 0.03f * Mathf.Min(sp, 3);
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)
       _roll.PitchScale = 0.86f + 0.07f * Mathf.Min(sp, 4.5f); _slide.PitchScale = 0.94f + 0.03f * Mathf.Min(sp, 4.5f); _scrub.PitchScale = 0.95f + 0.04f * Mathf.Min(spin, 5);
       _shell.PitchScale = 0.97f + 0.05f * Mathf.Min(shake, 1);
-      if (!_started) { _started = true; foreach (var p in new[] { _roll, _slide, _scrub, _shell, _whine, _tyre, _air }) p.Play((float)GD.RandRange(0.0, 3.0)); }
+      if (!_started) { _started = true; foreach (var p in new[] { _roll, _slide, _scrub, _shell, _whine, _whineLow, _tyre }) p.Play((float)GD.RandRange(0.0, 3.0)); }
       // tile joints under each wheel
       _tickWait -= dt; double sh = Math.Sin(c.Hd), ch = Math.Cos(c.Hd); bool crossed = false;
       for (int i = 0; i < 4; i++) {

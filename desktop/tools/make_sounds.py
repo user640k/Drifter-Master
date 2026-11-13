@@ -37,8 +37,9 @@ def shape(t0, t1):
     f, P = welch(ref[int(t0 * SR):int(t1 * SR)], SR, nperseg=4096); P = median_filter(P, 81, mode='nearest'); return f, uniform_filter1d(P, 25)
 def hiss(f, P, secs=6.0):
     n = int(secs * SR); X = np.fft.rfft(rng.normal(0, 1, n)); fx = np.fft.rfftfreq(n, 1 / SR); X *= np.sqrt(np.interp(fx, f, P)); X[fx < 120] = 0; return np.fft.irfft(X, n)   # a whole number of periods: it loops as it is
-fF, PF = shape(0.0, 6.5); fN, PN = shape(7.0, 8.3)                # far running; the close pass (the clip's 8.5 s sound is a phone, left out)
-save('tyre', hiss(fF, PF)); save('air', band(hiss(fN, PN), 3000, None))
+fF, PF = shape(0.0, 6.5)                # (the clip's 8.5 s sound is a phone, left out)
+# a faint rumble, not a hiss: the recording's shape with the top rolled away (falling steadily above 250 Hz)
+save('tyre', hiss(fF, PF * np.minimum(1, (250 / np.maximum(fF, 1)) ** 2.2)))
 
 # the motor's whistle: three seconds at a nominal 1 kHz; the game sets its pitch from the motor's speed. A real motor is not a
 # pure tone: its note wavers a little, each harmonic swells and fades on its own, the rotor's once-a-turn unevenness
