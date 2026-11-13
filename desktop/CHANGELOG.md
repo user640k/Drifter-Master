@@ -2,6 +2,7 @@
 
 ## Changelog (this build)
 
+- Rival: now follows the ideal drift line (in to every cone, out to every zone) as lead and as chase, at a chosen pace; it no longer waits for or reacts to the player.
 - Competition: judged qualifying run and tandem battles against a rival car, with clipping points, outer zones, deductions and one-more-time rematches (COMPETE page).
 - Parking bay on each track (K).
 - Driver's stand camera zoomed out and looking ahead of the car.
@@ -29,7 +30,7 @@
 
 **Competition**
 - Qualifying: one judged lap scored on line, angle, style and speed.
-- Tandem battle: two runs against the game's driver, swapping lead and chase; near ties are run again.
+- Tandem battle: two runs against a rival that always drives the ideal drift line, swapping lead and chase; near ties are run again. Rival pace: easy, normal or fast.
 - Cones mark inner clipping points, yellow dashes mark outer zones; score card after each run.
 
 **Tracks**

@@ -102,3 +102,43 @@ namespace DriftMaster {
     }
   }
 }
+
+namespace DriftMaster {
+  /// The game's car. It is guided along the ideal drift line, not driven through the tyre model: a path that swings in to
+  /// each inner clipping point and out to each outer zone, taken at a speed that suits each bend, the tail held out at an
+  /// angle that grows with the bend and swaps side smoothly between bends. It runs this line whatever any other car does.
+  public sealed class LineCar {
+    public readonly double[] Off, K;       // the line as a sideways offset from the middle of the lane, and the lane's curvature, at each point of the lap
+    public double MaxAngle = 0.72, VMax = 2.3, VMin = 1.4, ALat = 3.8, Accel = 2.4, Brake = 3.0, Swap = 0.3, Pace = 1;   // 41 degrees; m/s; m/s2; seconds to swap the tail over
+    public double S, Speed, Angle; readonly Track _t; readonly double[] _vt;
+    public LineCar(Track t, Course c, double inset = 0.25, double outset = 0.27, double reach = 0.6) {
+      _t = t; int n = t.N; Off = new double[n]; K = new double[n]; _vt = new double[n]; var wsum = new double[n];
+      foreach (var m in c.Marks) { double target = m.Outer ? -m.Side * (t.Hw - outset) : m.Side * (t.Hw - inset); int span = (int)(reach * 2.5 / t.Ds);
+        for (int d = -span; d <= span; d++) { int i = ((m.I + d) % n + n) % n; double w = Math.Exp(-(d * t.Ds / reach) * (d * t.Ds / reach)); Off[i] += w * target; wsum[i] += w; } }
+      for (int i = 0; i < n; i++) if (wsum[i] > 1) Off[i] /= wsum[i];
+      int w2 = Math.Max(2, (int)Math.Round(0.3 / t.Ds));
+      for (int i = 0; i < n; i++) { int a = ((i - w2) % n + n) % n, b = (i + w2) % n; double h = Math.Atan2(t.TX[b], t.TZ[b]) - Math.Atan2(t.TX[a], t.TZ[a]); K[i] = Math.Atan2(Math.Sin(h), Math.Cos(h)) / (2 * w2 * t.Ds); }
+      // the speed each point can be taken at, then eased so the car can brake down to it in time
+      for (int i = 0; i < n; i++) _vt[i] = Math.Clamp(Math.Sqrt(ALat / Math.Max(Math.Abs(K[i]), 0.05)), VMin, VMax);
+      for (int pass = 0; pass < 2; pass++) for (int i = n - 1; i >= 0; i--) { int b = (i + 1) % n; _vt[i] = Math.Min(_vt[i], Math.Sqrt(_vt[b] * _vt[b] + 2 * Brake * t.Ds)); }
+    }
+    (double x, double z) At(double s) { int n = _t.N, i = ((int)Math.Floor(s) % n + n) % n, j = (i + 1) % n; double f = s - Math.Floor(s);
+      double x0 = _t.X[i] + _t.NX[i] * Off[i], z0 = _t.Z[i] + _t.NZ[i] * Off[i], x1 = _t.X[j] + _t.NX[j] * Off[j], z1 = _t.Z[j] + _t.NZ[j] * Off[j]; return (x0 + (x1 - x0) * f, z0 + (z1 - z0) * f); }
+    public void Place(CarPhysics car, int idx) { S = idx; Speed = 0; Angle = 0; var p = At(S); var q = At(S + 2); car.Place(p.x, p.z, Math.Atan2(q.x - p.x, q.z - p.z)); Put(car, 0); }
+    /// move the car one step along the line
+    public void Step(CarPhysics car, double dt, bool go) {
+      int n = _t.N, i = ((int)Math.Floor(S) % n + n) % n; double vt = go ? _vt[i] * Pace : 0;
+      Speed += Math.Clamp(vt - Speed, -Brake * dt, Accel * dt); S += Speed * dt / _t.Ds;
+      int la = (i + (int)Math.Round(0.3 / _t.Ds)) % n; double want = Math.Clamp(K[la] / 1.1, -1, 1) * MaxAngle * Math.Clamp((Speed - 0.5) / 1.0, 0, 1);   // the tail goes out as the bend comes, and only once it is moving
+      Angle += Math.Clamp(want - Angle, -2 * MaxAngle / Swap * dt, 2 * MaxAngle / Swap * dt); Put(car, dt);
+    }
+    void Put(CarPhysics car, double dt) {
+      var p = At(S); var q = At(S + 1.5); double dir = Math.Atan2(q.x - p.x, q.z - p.z), yaw0 = car.Hd;
+      car.X = p.x; car.Z = p.z; car.Hd = dir + Angle; car.U = Speed * Math.Cos(Angle); car.V = -Speed * Math.Sin(Angle); car.Beta = Speed > 0.2 ? -Angle : 0;
+      car.Vx = Speed * Math.Sin(dir); car.Vz = Speed * Math.Cos(dir); car.Steer = Math.Clamp(-Angle * 0.9, -CarPhysics.STEERMAX, CarPhysics.STEERMAX); car.Air = false;
+      int n = _t.N; _t.Idx = ((int)Math.Floor(S) % n + n) % n; car.Y = _t.GroundAt(car.X, car.Z);
+      double ay = Speed * Speed * K[_t.Idx]; car.Roll += (Math.Clamp(ay * 0.006, -0.05, 0.05) - car.Roll) * Math.Min(1, dt * 8);
+      if (dt > 0) { car.SpinF += Speed / CarPhysics.R * dt; car.Spin += Speed * (1 + 1.2 * Math.Abs(Angle)) / CarPhysics.R * dt; car.W = Speed * (1 + 1.2 * Math.Abs(Angle)); car.Rr = (car.Hd - yaw0) / dt; }
+    }
+  }
+}

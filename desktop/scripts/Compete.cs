@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace DriftMaster {
   public partial class Main {
-    Course _course; Track _t2; CarPhysics _rival; CarView _rivalView; RunJudge _jP, _jR; double[] _leadBeta; double _contactT, _count, _cardT;
+    Course _course; LineCar _line; int _pace = 1; static readonly (string name, double k)[] Paces = { ("EASY", 0.85), ("NORMAL", 1.0), ("FAST", 1.12) }; Track _t2; CarPhysics _rival; CarView _rivalView; RunJudge _jP, _jR; double[] _leadBeta; double _contactT, _count, _cardT;
     int _comp; /* 0 free practice, 1 qualifying, 2 tandem */ int _phase; /* 0 counting down, 1 running, 2 the score card is up */ int _runNo = 1, _omt; Label _card;
     RunJudge.Card _pLead, _pChase, _rLead, _rChase; string _lastResult = "-"; bool _parked; Vector3 _bay; float _bayHd; public string CompTest;
     bool PlayerLeads => _comp != 2 || _runNo == 1;
@@ -45,7 +45,7 @@ namespace DriftMaster {
     void EnsureRival() {
       if (_rival != null) return; var td = Tracks[TrackIdx % Tracks.Length];
       _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0, 4.5, 2.5); _t2.Name = td.name; _t2.Boards = td.boards;
-      _rival = new CarPhysics { T = _t2 }; _rival.S.Assist = true; _rival.OnBump = k => _jR?.Tap(k);
+      _rival = new CarPhysics { T = _t2 }; _line = new LineCar(_t2, _course);
       int rb = (_body + 3) % CarView.Bodies.Length; _rivalView = new CarView { Body = rb }; AddChild(_rivalView);
       int rp = _paintIdx == 1 ? 10 : 1; _rivalView.SetPaint(Paints[rp].col, true); _rivalView.SetRims(Rims[4].col, Rims[4].metal); _rivalView.SetCamber(-3, -3);
       var bd = CarView.Bodies[rb]; _rival.SetBody(bd.kg, bd.cgUp, _rivalView.HalfW, _rivalView.HalfL);
@@ -54,30 +54,22 @@ namespace DriftMaster {
       _parked = false; int n = _t.N, s0 = _t.NearestT(_t.Start[0], _t.Start[1], -1), back = ((s0 - (int)Math.Round(0.55 / _t.Ds)) % n + n) % n;
       _jP = new RunJudge(_course, _t); _jR = null; _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]);
       if (_comp == 2) { EnsureRival(); _rivalView.Visible = true; _jR = new RunJudge(_course, _t2); _leadBeta = new double[n]; Array.Fill(_leadBeta, double.NaN); _contactT = 0;
-        if (PlayerLeads) _rival.Place(_t.X[back], _t.Z[back], Math.Atan2(_t.TX[back], _t.TZ[back]));
-        else { _rival.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _car.Place(_t.X[back], _t.Z[back], Math.Atan2(_t.TX[back], _t.TZ[back])); } }
+        _line.Pace = Paces[_pace].k; if (PlayerLeads) _line.Place(_rival, back);
+        else { _line.Place(_rival, s0); _car.Place(_t.X[back], _t.Z[back], Math.Atan2(_t.TX[back], _t.TZ[back])); } }
       _phase = 0; _count = 3.2; _timing = false; _lap = 0; _camSnap = true; _card.Visible = false;
     }
     void StartSolo() { _comp = 1; _runNo = 1; Grid(); }
     void StartTandem() { _comp = 2; _runNo = 1; _omt = 0; Grid(); }
     void StopComp() { _comp = 0; _phase = 0; if (_card != null) _card.Visible = false; if (_rivalView != null) _rivalView.Visible = false; }
 
-    // the game's driver: aims down the lane and holds a slide on the drift assist; chasing, it works the throttle to sit behind the lead
-    CarInput RivalDrive(bool chasing) {
-      var inp = new CarInput(); int i = (_t2.Idx + 22) % _t2.N; double dx = _t2.X[i] - _rival.X, dz = _t2.Z[i] - _rival.Z, dh = Math.Atan2(dx, dz) - _rival.Hd; dh = Math.Atan2(Math.Sin(dh), Math.Cos(dh));
-      inp.Steer = Math.Clamp(dh * 1.6, -1, 1); inp.Thr = 1; inp.ThrDigital = true;
-      if (chasing) { int g = _t.Idx - _t2.Idx, n = _t.N; if (g > n / 2) g -= n; if (g < -n / 2) g += n; double gap = g * _t.Ds;
-        if (gap < 0.42) { inp.Thr = 0; inp.ThrDigital = false; if (gap < 0.3) inp.Brk = 0.5; } }
-      return inp;
-    }
     /// one physics step of everything on the track
     void StepWorld(in CarInput inp) {
       if (_parked) return; bool go = _comp == 0 || _phase == 1;
       _car.Step(CarPhysics.DT, inp, go);
-      if (_comp == 0 || _phase != 1) { if (_comp == 2 && _rival != null) _rival.Step(CarPhysics.DT, new CarInput(), false); return; }
+      if (_comp == 0 || _phase != 1) { if (_comp == 2 && _rival != null) _line.Step(_rival, CarPhysics.DT, false); return; }   // (the rival rolls to a stop when the run is over)
       _jP.Step(CarPhysics.DT, _car, Math.Max(0, _t.Idx));
       if (_comp == 2) {
-        _rival.Step(CarPhysics.DT, RivalDrive(PlayerLeads), true); _jR.Step(CarPhysics.DT, _rival, Math.Max(0, _t2.Idx));
+        _line.Step(_rival, CarPhysics.DT, true); /* its own line at its own pace, leading or chasing: it does not wait for the player or steer round them */ _jR.Step(CarPhysics.DT, _rival, Math.Max(0, _t2.Idx));
         if (PlayerLeads) { _leadBeta[Math.Max(0, _t.Idx)] = _car.Beta; _jR.Chase(CarPhysics.DT, _rival, _t2.Idx, _car, _t.Idx, _leadBeta, ref _contactT); }
         else { _leadBeta[Math.Max(0, _t2.Idx)] = _rival.Beta; _jP.Chase(CarPhysics.DT, _car, _t.Idx, _rival, _t2.Idx, _leadBeta, ref _contactT); }
       }
