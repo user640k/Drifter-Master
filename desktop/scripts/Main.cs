@@ -188,7 +188,7 @@ namespace DriftMaster {
     readonly int[] _setup = (int[])SetupDefault.Clone(); bool _assist = true; double RideMm => new[] { 6.0, 7, 8 }[_setup[7]];
     void ApplySetup() {
       var S = _car.S; int[] u = _setup;
-      S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; if (_audio != null) { _audio.MotorVFree = S.VFree; _audio.MotorFreeRev = Motors[u[0]].freeRev; }
+      S.VFree = Motors[u[0]].vFree; S.FStall = Motors[u[0]].fStall; if (_audio != null) { _audio.MotorVFree = S.VFree; _audio.MotorFreeRev = Motors[u[0]].freeRev; _audio.MotorPitch = u[0] == 0 ? 1.4 : 1.3; }
       S.CamberF = CamberFDeg[u[1]]; S.CamberR = CamberRDeg[u[2]]; S.CasterDeg = new[] { 6.0, 8, 10 }[u[3]]; S.ToeF = u[4] + 1; S.ToeR = u[5] + 1;
       S.CMul = new[] { 0.86, 1, 1.12, 1.22 }[u[6]]; S.GyroGain = new[] { 0.4, 0.45, 0.5, 0.55, 0.6, 0.65 }[u[8]]; S.KMul = new[] { 0.71, 1, 1.38 }[u[9]];   // spring rate goes as wire thickness to the fourth power
       S.GearDiff = u[10] == 1; S.WeightRear = new[] { 0.60, 0.63, 0.65 }[u[11]]; S.Assist = _assist;
@@ -270,11 +270,11 @@ namespace DriftMaster {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup4", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
-      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _assist = (bool)cf.GetValue("game", "assist", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
+      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.4); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _assist = (bool)cf.GetValue("game", "assist", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
     }
-    float _vol0 = 0.8f; bool _motor0 = true; double _sayT; string _sayText = "";
+    float _vol0 = 0.4f; /* the browser version's 4 out of 10 */ bool _motor0 = true; double _sayT; string _sayText = "";
     void Say(string s) { _sayText = s; _sayT = 1.6; }
 
     void ResetCar() { _parked = false; _recOn = false; _ghostPlay = false; if (_comp != 0) { Grid(); return; } _car.Place(_t.Start[0], _t.Start[1], _t.Start[2]); _timing = false; _lap = 0; _next = 1; _camSnap = true; }
