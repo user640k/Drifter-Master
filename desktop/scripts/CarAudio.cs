@@ -13,12 +13,12 @@ using System;
 
 namespace DriftMaster {
   public partial class CarAudio : Node3D {
-    AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit, _whine, _rumble; float _gWhine, _gRumble, _jitP, _jitA; AudioListener3D _ear;
+    AudioStreamPlayer3D _roll, _slide, _scrub, _shell, _tick, _hit, _whine, _tyre, _air; float _gWhine, _gTyre, _gAir, _jitP, _jitA; AudioListener3D _ear;
     /// The motor's note. A sensored brushless motor of this class has a two-pole rotor and three coils: its torque pulses
     /// six times a turn, and that is the whine heard from the car. The motor's speed is the wheels' speed as a share of
     /// the car's free-running speed, times the motor's own free speed (its kV at 7.4 V). So a 13.5T at 2.5 m/s on the
     /// drift gearing sings at about 550 Hz, a 10.5T at about 650 Hz, and both rise in step with the wheels.
-    public const bool Silent = true;   // the car makes no sound at all for now: its sound is to be built again from nothing
+    public const bool Silent = false;
     public double MotorVFree = 10.5, MotorFreeRev = 382; public bool WhineOnly = true;
     float _gRoll, _gSlide, _gScrub, _gShell; bool _started; int _bus; readonly int[] _cellX = new int[4], _cellZ = new int[4]; bool _cells; double _tickWait; float _pendHit;
     public float Volume = 0.8f; public bool Muted, Motor = true; // Motor: the whistle can be switched off (N)
@@ -42,7 +42,7 @@ namespace DriftMaster {
       if (_bus < 0) { _bus = AudioServer.BusCount; AudioServer.AddBus(_bus); AudioServer.SetBusName(_bus, "Car"); AudioServer.SetBusSend(_bus, "Master"); } else while (AudioServer.GetBusEffectCount(_bus) > 0) AudioServer.RemoveBusEffect(_bus, 0);
       AudioServer.AddBusEffect(_bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.5f, Spread = 0.8f, Hipass = 0.2f, PredelayMsec = 10, PredelayFeedback = 0.1f, Dry = 1f, Wet = 0.08f }, 0);
       AudioServer.AddBusEffect(_bus, new AudioEffectLimiter { CeilingDb = -1, ThresholdDb = -6 }, 1);
-      _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true); _rumble = Player("rumble", true);
+      _roll = Player("roll", true); _slide = Player("roar", true); _scrub = Player("hiss", true); _shell = Player("shell", true); _whine = Player("whine", true); _tyre = Player("tyre", true); _air = Player("air", true);
       _tick = Player("tick", false, 10); _hit = Player("hit", false, 3);
       _ear = new AudioListener3D(); AddChild(_ear); _ear.TopLevel = true; _ear.MakeCurrent();
     }
@@ -71,7 +71,7 @@ namespace DriftMaster {
       _gSlide += (on * Smooth(0.02f, 0.6f, sp + spin) * grind * 0.8f - _gSlide) * k;
       _gScrub += (on * Mathf.Clamp(spin * 0.06f, 0, 0.3f) * Smooth(0.02f, 0.5f, sp + spin) - _gScrub) * k;
       // the motor: heard when it is driving, a little when coasting; its pitch is the wheels' speed
-      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.043f + 0.1f * (float)c.Thr) * (inside ? 0.3f : 1f) - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
+      float wsp = (float)Math.Abs(c.W); _gWhine += (on * Smooth(0.15f, 1.2f, wsp) * (0.012f + 0.09f * (float)c.Thr) * (inside ? 0.3f : 1f)   /* under the tyres, and mostly while on the throttle */ - _gWhine) * (1 - Mathf.Exp(-dt / 0.05f));
       _gShell += (on * shake * (inside ? 0.2f : 0.03f) - _gShell) * (1 - Mathf.Exp(-dt / 0.04f));
       if (WhineOnly) { _gRoll = _gSlide = _gScrub = _gShell = 0; }   // the sound is being rebuilt one layer at a time, starting with the motor: the tyre, shell and tile layers are silent for now
       if (Solo != null) { if (Solo != "roll") _gRoll = 0; if (Solo != "slide") _gSlide = 0; if (Solo != "scrub") _gScrub = 0; if (Solo != "shell") _gShell = 0; if (Solo != "whine") _gWhine = 0; }
@@ -80,12 +80,15 @@ namespace DriftMaster {
       _jitP += ((float)GD.RandRange(-1.0, 1.0) - _jitP) * Mathf.Min(1, dt * 9); _jitA += ((float)GD.RandRange(-1.0, 1.0) - _jitA) * Mathf.Min(1, dt * 6);
       _whine.PitchScale = Mathf.Clamp((float)(6 * wsp / MotorVFree * MotorFreeRev) / 1000f * (1 + (0.012f + 0.018f * (float)c.Thr) * _jitP), 0.22f, 3.2f);
       _whine.VolumeDb = Db(Motor ? _gWhine * (1 + 0.22f * _jitA) : 0);
-      // a light rumble under it while the car rolls: a little more with speed, a little more when sliding
-      _gRumble += (on * Smooth(0.15f, 2.5f, sp) * (0.05f + 0.03f * Mathf.Min(1, slide)) - _gRumble) * k; _rumble.VolumeDb = Db(_gRumble); _rumble.PitchScale = 0.85f + 0.07f * Mathf.Min(sp, 4.5f);
+      // The tyres: a pitchless hiss, the main sound, louder the faster the car goes and the more it slides. Close to the
+      // listener the top of the hiss comes through as well; across the hall only its body is left.
+      float run = on * Smooth(0.15f, 2.2f, sp + 0.5f * spin) * (0.16f + 0.2f * Mathf.Min(1, slide + 0.1f * spin));
+      _gTyre += (run - _gTyre) * k; _gAir += (run * 0.9f * Mathf.Clamp(Mathf.Pow(1.5f / dist, 1.5f), 0.04f, 2.2f) - _gAir) * k;
+      _tyre.VolumeDb = Db(_gTyre); _air.VolumeDb = Db(_gAir); _tyre.PitchScale = 0.97f + 0.02f * Mathf.Min(sp, 3); _air.PitchScale = 1;
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)
       _roll.PitchScale = 0.86f + 0.07f * Mathf.Min(sp, 4.5f); _slide.PitchScale = 0.94f + 0.03f * Mathf.Min(sp, 4.5f); _scrub.PitchScale = 0.95f + 0.04f * Mathf.Min(spin, 5);
       _shell.PitchScale = 0.97f + 0.05f * Mathf.Min(shake, 1);
-      if (!_started) { _started = true; foreach (var p in new[] { _roll, _slide, _scrub, _shell, _whine, _rumble }) p.Play((float)GD.RandRange(0.0, 3.0)); }
+      if (!_started) { _started = true; foreach (var p in new[] { _roll, _slide, _scrub, _shell, _whine, _tyre, _air }) p.Play((float)GD.RandRange(0.0, 3.0)); }
       // tile joints under each wheel
       _tickWait -= dt; double sh = Math.Sin(c.Hd), ch = Math.Cos(c.Hd); bool crossed = false;
       for (int i = 0; i < 4; i++) {
@@ -97,6 +100,7 @@ namespace DriftMaster {
       if (!WhineOnly && crossed && on > 0 && sp > 0.25f && _tickWait <= 0 && (Solo == null || Solo == "tick")) {
         _tickWait = 0.03; _tick.VolumeDb = Db(Mathf.Clamp(0.1f + 0.09f * sp, 0, 0.42f) * (inside ? 1.4f : 1f) * (float)GD.RandRange(0.6, 1.0)); _tick.PitchScale = (float)GD.RandRange(0.85, 1.2); _tick.Play();
       }
+      if (WhineOnly) _pendHit = 0;   // no knocks either, for now
       if (_pendHit > 0) { if (!paused && (Solo == null || Solo == "hit")) { _hit.VolumeDb = Db(0.25f + 0.75f * Mathf.Min(1, _pendHit)); _hit.PitchScale = (float)GD.RandRange(0.9, 1.1) * (1.1f - 0.2f * Mathf.Min(1, _pendHit)); _hit.Play(); } _pendHit = 0; }
     }
   }

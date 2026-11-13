@@ -222,6 +222,7 @@ namespace DriftMaster {
       var game = new List<Menu.Row> {
         R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Changing track builds the hall again and puts the car on the start line."),
         R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = 1 + Cyc(_camMode - 1, d, 4); _camSnap = true; }),
+        R("VOLUME", () => $"{Math.Round(_audio.Volume * 10)}", d => { _audio.Volume = Math.Clamp(_audio.Volume + 0.1f * d, 0, 1); ApplyOptions(true); }, "The car's sound."),
         R("MUSIC", () => _musicOn ? "ON" : "OFF", d => { _musicOn = !_musicOn; if (!_musicOn && _music != null) _music.Stop(); ApplyOptions(true); if (_musicOn) { ApplyMusic(); StartMusicLabel(); } }, MusicTitle + " by " + MusicArtist + ", heard as if from the hall's speakers."),
         R("MUSIC VOLUME", () => $"{Math.Round(_musicVol * 10)}", d => { _musicVol = Math.Clamp(_musicVol + 0.1f * d, 0, 1); ApplyOptions(true); }),
         R("SHADOWS", () => _sun.ShadowEnabled ? "ON" : "OFF", d => { _sun.ShadowEnabled = !_sun.ShadowEnabled; }),
@@ -232,7 +233,7 @@ namespace DriftMaster {
       };
       var keys = new List<Menu.Row>();
       foreach (var (k, what) in new[] { ("W / S  or  UP / DOWN", "drive; brake, then reverse"), ("A / D  or  LEFT / RIGHT", "steer"), ("R", "back to the start line"), ("C", "next camera"), ("ESC", "this menu"),
-        ("F1", "next track"), ("K", "park the car in its bay"), ("ENTER", "run again, when the score card is up"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
+        ("F1", "next track"), ("K", "park the car in its bay"), ("ENTER", "run again, when the score card is up"), ("T   P   O   L", "body, colour, rims, bonnet"), ("B   V   G", "shell, windows, neon"), ("M   - / =", "mute, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
         ("GAMEPAD", "triggers drive and brake, left stick steers, Y reset, X camera, Start menu"), ("RC RADIO", "wheel steers, trigger drives, brakes and reverses: set it up on the CONTROLLER page") }) { string w = what; keys.Add(R(k, () => w, null)); }
       var ctl = new List<Menu.Row> {
         R("DRIVE WITH", () => _radio.On ? "RC RADIO" : "KEYS / GAMEPAD", d => { _radio.On = !_radio.On; ApplyOptions(true); }, "RC RADIO: a real pistol-grip transmitter plugged into the PC (its own USB port, or a simulator dongle on its receiver). Wheel and trigger act one to one, as on the car."),

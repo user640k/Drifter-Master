@@ -69,7 +69,7 @@ Wall, foam, ceiling and board textures are from ambientCG.com (CC0 1.0): Painted
 ## Not in yet
 
 The list, in order:
-0. The car's sound, from scratch (it is switched off for now: `CarAudio.Silent`).
+0. The car's sound: rebuilt as tyre hiss plus motor whine (`CarAudio`, `tools/make_sounds.py`); awaiting the owner's verdict before anything is added.
 1. Animated suspension on the chassis (shocks, springs, arms moving with the physics).
 2. The room: one side extended for stairs going up; basement windows on the opposite side; posts; the ceiling.
 3. Left-over texture and shell fitting issues.

@@ -3,7 +3,7 @@
    usage: make_sounds.py <out dir>
 
    The running sounds are cut from a reference recording (tools/sound_src/reference.wav: the sound of the owner's video of
-   1/10 drift cars on a P-tile track, the floor the game has; for non-commercial use):
+   two 1/10 drift cars on a P-tile track; for non-commercial use):
      - the recording is split by loudness: its loud quarter is the car sliding, its quiet quarter rolling and coasting
      - the motor's whistle glides up and down in it, which would chirp at random once cut up, so the narrow lines that
        stand well above the noise are taken out of each instant; the game adds its own whistle, pitched by wheel speed
@@ -27,17 +27,18 @@ def band(a, lo, hi, order=2):
 
 w = wave.open(os.path.join(here, 'sound_src', 'reference.wav')); assert w.getframerate() == SR and w.getnchannels() == 1
 ref = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
-# The running sounds are long, unbroken stretches of the recording, played as they are: nothing is cut into grains and
-# nothing is filtered out, so the tyres' own texture and the motor's own note stay exactly as recorded. (Cutting it
-# into shuffled pieces and removing the motor's lines measured the same but sounded rough.) Only the slow swell of the
-# car coming and going is levelled, as the game sets the loudness by distance itself, and the ends are cross-faded.
-def stretch(t0, t1, xf=0.6):
-    seg = ref[int(t0 * SR):int(t1 * SR)]; env = np.sqrt(uniform_filter1d(seg ** 2, int(0.35 * SR))) + 1e-5; seg = seg / env
-    k = int(xf * SR); n = len(seg) - k; th = np.linspace(0, np.pi / 2, k); out = seg[:n].copy(); out[:k] = seg[:k] * np.sin(th) + seg[n:n + k] * np.cos(th); return out
-roar = stretch(5.7, 9.3)
-save('roar', roar)                                           # a car passing close, sliding
-save('roll', stretch(10.2, 15.2))                            # steady running further off
-save('hiss', band(roar, 2000, None))                         # wheelspin: the top of the slide
+# The tyres: a soft hiss with no pitch, the main sound of the car. It is made here from plain noise given the shape of
+# the recording's own spectrum, so it has the recording's tone and none of its events: no motor notes (the narrow
+# lines are smoothed out of the shape), no clicks, nothing that can be heard coming round again.
+#   tyre: the tone of the cars heard across the hall (mostly 600 Hz to 1.5 kHz)
+#   air:  what is added when a car is close: the top of the hiss, above 3 kHz, which the distance takes away
+from scipy.signal import welch
+def shape(t0, t1):
+    f, P = welch(ref[int(t0 * SR):int(t1 * SR)], SR, nperseg=4096); P = median_filter(P, 81, mode='nearest'); return f, uniform_filter1d(P, 25)
+def hiss(f, P, secs=6.0):
+    n = int(secs * SR); X = np.fft.rfft(rng.normal(0, 1, n)); fx = np.fft.rfftfreq(n, 1 / SR); X *= np.sqrt(np.interp(fx, f, P)); X[fx < 120] = 0; return np.fft.irfft(X, n)   # a whole number of periods: it loops as it is
+fF, PF = shape(0.0, 6.5); fN, PN = shape(7.0, 8.3)                # far running; the close pass (the clip's 8.5 s sound is a phone, left out)
+save('tyre', hiss(fF, PF)); save('air', band(hiss(fN, PN), 3000, None))
 
 # the motor's whistle: three seconds at a nominal 1 kHz; the game sets its pitch from the motor's speed. A real motor is not a
 # pure tone: its note wavers a little, each harmonic swells and fades on its own, the rotor's once-a-turn unevenness
@@ -50,10 +51,6 @@ wh = sum(a * (1 + wander(r, 0.22)) * np.sin(h * ph + o) for h, a, r, o in ((1, 1
 wh *= 1 + 0.1 * np.sin(ph / 6) + 0.05 * np.sin(ph / 3 + 0.7)                                   # once and twice a turn of the rotor
 hash_ = band(rng.normal(0, 1, n), 600, 5000) * (0.5 + 0.5 * np.sin(ph)) ** 2; wh += 0.22 * hash_ / (np.abs(hash_).max() + 1e-9) * np.abs(wh).max()
 save('whine', wh, 0.5)
-# a light rumble: the chassis and hard tyres rolling over the tiles, felt more than heard. Low noise that wanders
-x = band(rng.normal(0, 1, 4 * SR), 35, 190, 2) * (1 + 0.35 * np.interp(np.arange(4 * SR), np.linspace(0, 4 * SR, 30), rng.normal(0, 1, 30)).clip(-1.5, 1.5))
-k = SR // 4; x[:k] = x[:k] * np.linspace(0, 1, k) + x[-k:] * np.linspace(1, 0, k); save('rumble', x[:-k], 0.6)
-
 # ---- the shell: resonances of a 1/10 polycarbonate body (hollow, papery, a little boxy)
 MODES = [(172, 9), (248, 11), (395, 12), (610, 14), (905, 12), (1340, 10), (2100, 8)]
 def resonate(x, modes=MODES, weights=None):
