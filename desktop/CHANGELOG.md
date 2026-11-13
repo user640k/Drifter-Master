@@ -2,6 +2,7 @@
 
 ## Changelog (this build)
 
+- Shell material matched against photos of real polycarbonate shells: it now mirrors the room (ceiling lights, walls, floor), more at glancing angles, with the slight waviness of a formed sheet, and the colour is shaded darker underneath. Hot pink retuned.
 - Rival: now follows the ideal drift line (in to every cone, out to every zone) as lead and as chase, at a chosen pace; it no longer waits for or reacts to the player.
 - Competition: judged qualifying run and tandem battles against a rival car, with clipping points, outer zones, deductions and one-more-time rematches (COMPETE page).
 - Parking bay on each track (K).
