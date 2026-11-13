@@ -1,6 +1,6 @@
 // The shell's paint: one colour or a livery, drawn in the body's own space (so it stays put on the car), under a clear coat.
 // Schemes: 0 solid, 1 bonnet in the second colour, 2 fade front to back, 3 flames along the sides, 4 camo,
-// 5 streaks, 6 hologram (chrome wrap that shifts through the rainbow with the angle you see it from).
+// 5 streaks, 6 hologram (a chrome film that breaks the light into colours, with line-work in the second colour).
 // All original artwork: shapes from noise, no logos.
 shader_type spatial;
 render_mode cull_disabled;
@@ -47,12 +47,26 @@ void fragment() {
 		float s1 = smoothstep(0.52, 0.56, band + 0.25 * (ragged - 0.5)) * (1.0 - smoothstep(0.8, 0.84, band));
 		float s2 = smoothstep(0.84, 0.86, band) * step(0.35, ragged);
 		c = mix(c, col_b, s1 * mix(0.35, 1.0, flank)); c = mix(c, col_c, s2 * flank);
-	} else if (scheme == 6) { // hologram: a chrome film whose colour turns with the angle of view, in fine drips down the panels
+	} else if (scheme == 6) { // hologram: a chrome film that breaks the light into colours. Broad washes of pink, blue, green and
+		// gold that slide over the panels as the car turns, fine streaks hanging down the sides like drips, and line-work in
+		// the second colour: nested chevrons over the rear quarters and a ring on the bonnet
 		float facing = dot(normalize(NORMAL), normalize(VIEW));
-		float drip = vnoise(vec2(mp.z * 150.0, 0.0)) * 0.5 + vnoise(vec2(mp.z * 34.0, mp.y * 7.0)) * 0.5;
-		float h = fract(facing * 1.15 + up * 0.4 + along * 0.3 + drip * 0.2);
-		vec3 film = mix(vec3(0.86), hue(h), 0.46 + 0.2 * drip);   // mostly silver, washed with colour
-		c = film; metal = 0.92; rough = 0.13; glow = film * 0.16;
+		float broad = facing * 0.85 + up * 0.5 + along * 0.55 + 0.4 * fbm(vec2(mp.z * 7.0, mp.y * 9.0 + abs(mp.x) * 5.0));
+		float colm = floor(mp.z * 260.0), rnd = hash(vec2(colm, 3.0)), len = 0.25 + 0.75 * hash(vec2(colm, 9.0));
+		float drip = smoothstep(len, len - 0.3, 1.0 - up) * rnd * flank;                   // each streak hangs from the top, its own length
+		float h = fract(broad * 0.8 + 0.3 * drip + 0.08 * rnd * flank);
+		vec3 tint = 0.5 + 0.5 * cos(6.2832 * (h + vec3(0.02, 0.36, 0.64)));          // pink, lilac, blue, aqua, a little green and gold
+		vec3 film = mix(vec3(0.9), tint, 0.46 + 0.3 * drip);                         // silver first, colour washed over it; the streaks carry more colour
+		// chevrons on the rear quarters
+		float q = abs(up - 0.52) * 1.7 + (along + 1.0) * 1.25, band = fract(q * 3.2);
+		float zone = (1.0 - smoothstep(-0.2, -0.05, along)) * flank * smoothstep(0.1, 0.2, up);
+		float ink = (smoothstep(0.0, 0.04, band) - smoothstep(0.16, 0.2, band)) * zone;
+		float fill = step(0.55, fract(q * 1.6)) * zone * 0.35;
+		// the ring on the bonnet
+		float rr = length(vec2(mp.x / dim.x * 1.15, (along - 0.6) * 2.6)), top = smoothstep(0.5, 0.8, on.y) * step(up, 0.75);
+		float ring = (smoothstep(0.30, 0.33, rr) - smoothstep(0.40, 0.43, rr) + smoothstep(0.50, 0.52, rr) - smoothstep(0.56, 0.58, rr)) * top;
+		float art = clamp(ink + fill + ring, 0.0, 1.0);
+		c = mix(film, mix(col_b, film, 0.2), art); metal = 0.4; rough = mix(0.16, 0.3, art); glow = film * 0.26 * (1.0 - art * 0.8);   // it throws light back, so it is never dark
 	}
 	ALBEDO = c; METALLIC = metal; ROUGHNESS = rough; CLEARCOAT = 0.8; CLEARCOAT_ROUGHNESS = 0.12; EMISSION = glow;
 }

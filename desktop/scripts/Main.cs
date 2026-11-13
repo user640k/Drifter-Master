@@ -94,18 +94,27 @@ namespace DriftMaster {
       GetViewport().Disable3D = on; _view.SetOnBoard(on); // the window itself draws no 3D while on board: only the small frame is rendered
     }
 
-    // ---- splash: the icon on black, carried on from the engine's own start-up picture, then faded away to the track
+    // ---- splash: the game starts as a small window with no frame and no background, so the icon floats over the desktop
+    // (the engine's own start-up picture is the same icon, the same way). After two seconds it fades and the window becomes
+    // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
+    // the icon simply shows on black.
     bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
-    static bool _splashShown; TextureRect _splash; ColorRect _splashBg; double _splashT;
+    static bool _splashShown; TextureRect _splash; double _splashT;
     void BuildSplash(CanvasLayer layer) {
-      if (_splashShown || Quiet) return; _splashShown = true; // once a run, not at every change of track
-      _splashBg = new ColorRect { Color = Colors.Black }; _splash = new TextureRect { Texture = GD.Load<Texture2D>("res://splash.png"), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
-      layer.AddChild(_splashBg); layer.AddChild(_splash); _splashT = 2.2;
+      if (_splashShown || Quiet) { if (!_splashShown) GameWindow(); _splashShown = true; return; } // once a run, not at every change of track
+      _splashShown = true; GetViewport().TransparentBg = true; GetViewport().Disable3D = true;
+      _splash = new TextureRect { Texture = GD.Load<Texture2D>("res://splash.png"), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
+      layer.AddChild(_splash); _splashT = 2.4;
+    }
+    void GameWindow() {
+      var w = GetWindow(); GetViewport().TransparentBg = false; GetViewport().Disable3D = _camMode == 3 || _camMode == 4;
+      if (_shot != null && !_full) return; // (test shots keep whatever window they were given)
+      w.Transparent = false; w.Borderless = false; w.Size = new Vector2I(1280, 720); w.MoveToCenter();
     }
     void StepSplash(double dt) {
-      if (_splash == null) return; var sz = GetViewport().GetVisibleRect().Size; _splashBg.Size = sz; float side = Math.Min(720, Math.Min(sz.X, sz.Y)); _splash.Size = new Vector2(side, side); _splash.Position = (sz - _splash.Size) / 2;
-      _splashT -= dt; float a = (float)Math.Clamp(_splashT / 0.6, 0, 1); _splash.Modulate = new Color(1, 1, 1, a); _splashBg.Color = new Color(0, 0, 0, a);
-      if (_splashT <= 0) { _splash.QueueFree(); _splashBg.QueueFree(); _splash = null; StartMusicLabel(); }
+      if (_splash == null) return; var sz = GetViewport().GetVisibleRect().Size; float side = Math.Min(sz.X, sz.Y) * 0.94f; _splash.Size = new Vector2(side, side); _splash.Position = (sz - _splash.Size) / 2;
+      _splashT -= dt; _splash.Modulate = new Color(1, 1, 1, (float)Math.Clamp(_splashT / 0.5, 0, 1));
+      if (_splashT <= 0) { _splash.QueueFree(); _splash = null; GameWindow(); StartMusicLabel(); }
     }
 
     // ---- music: the web version's track, as if from the hall's speakers (its own bus with the room on it), and a
@@ -143,7 +152,7 @@ namespace DriftMaster {
       _help.Text = "ESC  menu and all keys     W / S  drive     A / D  steer     R  reset     C  camera"; // short, so it fits any window; the rest are in the menu
       _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
       _pause = new Menu { Visible = false }; BuildMenu(); layer.AddChild(_pause);
-      BuildMusic(layer); BuildSplash(layer);
+      BuildSplash(layer); BuildMusic(layer);
       if (Quiet) _help.Visible = false;
     }
 
@@ -328,7 +337,7 @@ namespace DriftMaster {
     void UpdateHud() {
       double sp = Math.Sqrt(_car.U * _car.U + _car.V * _car.V);
       _hud.Text = $"{_t.Name}\nLAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
-      _hud.Visible = !_pause.Visible && !_bare;
+      _hud.Visible = !_pause.Visible && !_bare && _splash == null; if (_splash != null) _help.Visible = false; else if (!_pause.Visible && !Quiet) _help.Visible = true;
       { var vs = GetViewport().GetVisibleRect().Size; _help.SetAnchorsPreset(Control.LayoutPreset.TopLeft); _help.Position = new Vector2(24, vs.Y - 40); _help.Size = new Vector2(vs.X - 48, 24); _help.ClipText = true; } // along the bottom edge, never wider than the window
       if (_sayT > 0) { _sayT -= GetProcessDeltaTime(); _hud.Text += "\n\n" + _sayText; }
       if (_stats.Visible) _stats.Text = $"{Engine.GetFramesPerSecond()} fps   draw calls {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0}   tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}\nresolution {_scales[_scaleIdx] * 100:0}%   shadows {(_sun.ShadowEnabled ? "on" : "off")}   {RenderingServer.GetVideoAdapterName()}";
