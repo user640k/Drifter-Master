@@ -31,7 +31,7 @@ centred('640kFPV', saira, 540, 130, 590)
 # 4  SEND IT again, in block capitals between two rules
 x, w, h = centred('SEND IT', saira, 470, 110, 748); d.rectangle((x - 4, 748 - 30, x + w + 10, 748 - 18), fill=255); d.rectangle((x - 14, 748 + h + 18, x + w, 748 + h + 30), fill=255)
 # the black contour: the shapes grown by a few pixels, under the white
-edge = im.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(1.2)); res = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+edge = im.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.GaussianBlur(1.2)); res = Image.new('RGBA', (W, H), (0, 0, 0, 0))
 res.putalpha(edge); res.paste((255, 255, 255, 255), (0, 0), im.filter(ImageFilter.GaussianBlur(0.6)))
 a = Image.composite(Image.new('L', (W, H), 255), edge, im.point(lambda v: 255 if v > 127 else 0)); res.putalpha(a)
 res.save(os.path.join(out, 'side_stickers.png'), optimize=True)
@@ -48,7 +48,7 @@ relief(res, 'side_stickers_n.png')
 # the windscreen banner: DRIFT MASTER across the sun strip (the strip itself is tint in the glass, see glass.gdshader)
 BW, BH = 1024, 128; bm = Image.new('L', (BW, BH), 0); bd = ImageDraw.Draw(bm); f, bb = fit('DRIFT MASTER', saira, 940, 110, bd)
 bd.text(((BW - (bb[2] - bb[0])) // 2 - bb[0], (BH - (bb[3] - bb[1])) // 2 - bb[1]), 'DRIFT MASTER', font=f, fill=255)
-edge = bm.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(1.0)); ban = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
+edge = bm.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.GaussianBlur(1.0)); ban = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
 ban.paste((255, 255, 255, 255), (0, 0), bm.filter(ImageFilter.GaussianBlur(0.6))); ban.putalpha(Image.composite(Image.new('L', (BW, BH), 255), edge, bm.point(lambda v: 255 if v > 127 else 0)))
 ban.save(os.path.join(out, 'banner.png'), optimize=True); relief(ban, 'banner_n.png')
 # the tyre sidewall lettering: DRIFTMASTER in white on a blue band with a yellow flash at its head, a strip that is bent

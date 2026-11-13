@@ -104,7 +104,7 @@ namespace DriftMaster {
           float f = 1 / det; var sv = o - a; float u = f * sv.Dot(h); if (u < 0 || u > 1) continue; var q = sv.Cross(e1); float v = f * d.Dot(q); if (v < 0 || u + v > 1) continue;
           float tt = f * e2.Dot(q); if (tt > 1e-5f && (best < 0 || tt < best)) best = tt; }
         return best; }
-      StandardMaterial3D Vinyl(string tex) => new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/" + tex + ".png"), NormalEnabled = true, NormalTexture = GD.Load<Texture2D>("res://assets/tex/" + tex + "_n.png"), NormalScale = 1.0f,
+      StandardMaterial3D Vinyl(string tex) => new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/" + tex + ".png"), NormalEnabled = true, NormalTexture = GD.Load<Texture2D>("res://assets/tex/" + tex + "_n.png"), NormalScale = 0.6f, AlbedoColor = new Color(0.98f, 0.96f, 0.9f), EmissionEnabled = true, Emission = new Color(0.98f, 0.96f, 0.9f), EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionTexture = GD.Load<Texture2D>("res://assets/tex/" + tex + ".png"), EmissionEnergyMultiplier = 0.6f, /* milky white: a soft warm white that does not go grey in the shade */
         Transparency = BaseMaterial3D.TransparencyEnum.Alpha, CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.42f, MetallicSpecular = 0.4f, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
       // a patch c +- along*hl, +- up*hh dropped onto a mesh along -n, held a hair off it; hold: how far it may leave the height at its middle
       void Patch(SurfaceTool st, (Vector3[] v, int[] i) g, Vector3 c, Vector3 along, Vector3 up, Vector3 n, float hl, float hh, int NU, int NV, bool flip, float hold, float lift) {
@@ -125,7 +125,7 @@ namespace DriftMaster {
           float lean = syy > 1e-9f ? sxy / syy : 0, sweep = szz > 1e-9f ? sxz / szz : 0;           // how the door's surface runs up and along
           var up = new Vector3(lean, 1, 0).Normalized(); var along = new Vector3(sweep, 0, 1).Normalized(); var n = along.Cross(up).Normalized(); if (n.X * sg < 0) n = -n;
           int bi = Body % Bodies.Length; var c = m + new Vector3(0, StickUp - (bi == 2 ? 0.006f : bi == 3 ? 0.008f : 0), StickFwd - (bi == 3 ? 0.034f : 0)); /* the pickup's mirror hangs lower; the tuner's sits on the door itself */
-          Patch(st, paintG, c, along, up, n, 0.0164f, 0.023f, 6, 9, sg > 0, 0.009f, 0.0012f);   // seen from outside, the nose is to the left on the car's left side
+          Patch(st, paintG, c, along, up, n, 0.0135f, 0.019f, 6, 9, sg > 0, 0.009f, 0.0012f);   // seen from outside, the nose is to the left on the car's left side
         }
         st.GenerateTangents();
         _shell.AddChild(new MeshInstance3D { Mesh = st.Commit(), MaterialOverride = Vinyl("side_stickers"), Name = "DoorStickers", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
