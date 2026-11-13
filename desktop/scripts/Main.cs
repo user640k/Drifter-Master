@@ -353,7 +353,7 @@ namespace DriftMaster {
 
     void UpdateCamera(float dt) {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
-      if (_camMode != 3 && _camMode != 4) { OnBoard(false); _view.ShowStick(false); }
+      if (_camMode != 2 && _camMode != 3 && _camMode != 4) { OnBoard(false); _view.ShowStick(false); }
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
       if (_camMode == 8) { // test view round the car: degrees round from its nose, degrees up, distance, lens
         float az = Mathf.DegToRad(_view6[0]) + (float)_car.Hd, el = Mathf.DegToRad(_view6[1]), d = _view6[2];
@@ -363,12 +363,13 @@ namespace DriftMaster {
       else if (_camMode == 1) { // the driver's stand: where you would stand with the transmitter
         var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.14f).LimitLength(0.35f);   // where the car is going
         pos = new Vector3(0, 1.45f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; fov = Mathf.Clamp(Mathf.RadToDeg(2 * Mathf.Atan(1.3f / pos.DistanceTo(look))), 22, 58);   // a 2.6 m wide patch of track round the car (it was 1.5 m)
-      } else if (_camMode == 2) { pos = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); look = new Vector3(0, 0, 0); fov = 100; } // from the ceiling
+      } else if (_camMode == 2) { // from the ceiling: an analog camera too, fixed up there looking straight down
+        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); _fpvCam.LookAt(Vector3.Zero, Vector3.Forward); _camSnap = true; return; }
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
-        OnBoard(true); _view.ShowStick(false); _fpvCam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
+        OnBoard(true); _view.ShowStick(false); _fpvCam.Fov = 75; _fpvCam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
       }
       else if (_camMode == 4) { // the stick camera: fixed to the roof on a short stick, behind and above the car, looking forward
-        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(true); _fpvCam.GlobalTransform = _view.StickCam.GlobalTransform; _camSnap = true; return;
+        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(true); _fpvCam.Fov = 75; _fpvCam.GlobalTransform = _view.StickCam.GlobalTransform; _camSnap = true; return;
       } else { pos = new Vector3(0, 1.45f, hz); look = p; }
       pos.X = Mathf.Clamp(pos.X, -hx, hx); pos.Z = Mathf.Clamp(pos.Z, -hz, hz);
       float k = _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 12);
