@@ -82,8 +82,9 @@ namespace DriftMaster {
       _whine.VolumeDb = Db(Motor ? _gWhine * (1 + 0.22f * _jitA) : 0);
       // The tyres: a pitchless hiss, the main sound, louder the faster the car goes and the more it slides. Close to the
       // listener the top of the hiss comes through as well; across the hall only its body is left.
-      float run = on * Smooth(0.15f, 2.2f, sp + 0.5f * spin) * (0.16f + 0.2f * Mathf.Min(1, slide + 0.1f * spin));
-      _gTyre += (run - _gTyre) * k; _gAir += (run * 0.9f * Mathf.Clamp(Mathf.Pow(1.5f / dist, 1.5f), 0.04f, 2.2f) - _gAir) * k;
+      float run = on * Smooth(0.15f, 2.2f, sp + 0.5f * spin) * (0.055f + 0.07f * Mathf.Min(1, slide + 0.1f * spin));   // about a third of what it was: it sits under the motor's note
+      float near = Mathf.Clamp(Mathf.Pow(1.5f / dist, 0.9f), 0.2f, 1.9f);   /* the hiss falls away with distance faster than the whine does: up close it is there, across the hall it is nearly gone */
+      _gTyre += (run * near - _gTyre) * k; _gAir += (run * 0.9f * Mathf.Clamp(Mathf.Pow(1.5f / dist, 1.5f), 0.04f, 2.2f) - _gAir) * k;
       _tyre.VolumeDb = Db(_gTyre); _air.VolumeDb = Db(_gAir); _tyre.PitchScale = 0.97f + 0.02f * Mathf.Min(sp, 3); _air.PitchScale = 1;
       // tyre noise rises a little with speed (it is the floor going by, not a motor winding up)
       _roll.PitchScale = 0.86f + 0.07f * Mathf.Min(sp, 4.5f); _slide.PitchScale = 0.94f + 0.03f * Mathf.Min(sp, 4.5f); _scrub.PitchScale = 0.95f + 0.04f * Mathf.Min(spin, 5);
