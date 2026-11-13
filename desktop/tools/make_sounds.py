@@ -39,10 +39,20 @@ save('roar', roar)                                           # a car passing clo
 save('roll', stretch(10.2, 15.2))                            # steady running further off
 save('hiss', band(roar, 2000, None))                         # wheelspin: the top of the slide
 
-# the motor's whistle: one second at 1 kHz with a little second harmonic and a slight waver; the game sets its pitch
-t = np.arange(SR) / SR; wav = np.cumsum(rng.normal(0, 1, SR)); wav = uniform_filter1d(wav - np.linspace(wav[0], wav[-1], SR), 400); wav = wav / (np.abs(wav).max() + 1e-9)
-ph = 2 * np.pi * 1000 * t + 0.6 * wav
-save('whine', np.sin(ph) + 0.3 * np.sin(2 * ph) + 0.55 * np.sin(3 * ph) + 0.12 * np.sin(4 * ph), 0.5)  # the third harmonic is the high whistle
+# the motor's whistle: three seconds at a nominal 1 kHz; the game sets its pitch from the motor's speed. A real motor is not a
+# pure tone: its note wavers a little, each harmonic swells and fades on its own, the rotor's once-a-turn unevenness
+# beats through it (a sixth of the note), and the switching adds a hiss that rides on the note
+n = 3 * SR; t = np.arange(n) / SR
+def wander(rate, depth):   # a slow random drift, the same at both ends so the loop closes
+    k = max(2, int(n / SR * rate)); pts = rng.normal(0, 1, k); pts = np.append(pts, pts[0]); return depth * np.interp(t, np.linspace(0, n / SR, k + 1), pts)
+ph = 2 * np.pi * 1000 * t + 2 * np.pi * np.cumsum(wander(5, 4.0) + wander(23, 2.5)) / SR; ph -= (ph[-1] - 2 * np.pi * round(ph[-1] / (2 * np.pi))) * t / t[-1]   # a few Hz of waver; whole turns, so it loops
+wh = sum(a * (1 + wander(r, 0.22)) * np.sin(h * ph + o) for h, a, r, o in ((1, 1.0, 3, 0), (2, 0.3, 4, 1.1), (3, 0.5, 5, 2.3), (4, 0.14, 6, 0.4), (6, 0.08, 7, 1.9)))
+wh *= 1 + 0.1 * np.sin(ph / 6) + 0.05 * np.sin(ph / 3 + 0.7)                                   # once and twice a turn of the rotor
+hash_ = band(rng.normal(0, 1, n), 600, 5000) * (0.5 + 0.5 * np.sin(ph)) ** 2; wh += 0.22 * hash_ / (np.abs(hash_).max() + 1e-9) * np.abs(wh).max()
+save('whine', wh, 0.5)
+# a light rumble: the chassis and hard tyres rolling over the tiles, felt more than heard. Low noise that wanders
+x = band(rng.normal(0, 1, 4 * SR), 35, 190, 2) * (1 + 0.35 * np.interp(np.arange(4 * SR), np.linspace(0, 4 * SR, 30), rng.normal(0, 1, 30)).clip(-1.5, 1.5))
+k = SR // 4; x[:k] = x[:k] * np.linspace(0, 1, k) + x[-k:] * np.linspace(1, 0, k); save('rumble', x[:-k], 0.6)
 
 # ---- the shell: resonances of a 1/10 polycarbonate body (hollow, papery, a little boxy)
 MODES = [(172, 9), (248, 11), (395, 12), (610, 14), (905, 12), (1340, 10), (2100, 8)]
