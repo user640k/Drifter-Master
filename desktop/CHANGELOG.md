@@ -2,6 +2,7 @@
 
 ## Changelog (this build)
 
+- Judged run rescored after the solo qualifying format: line 40, angle 40 (depth and consistency), style 20 (fluidity, commitment, initiation), up to 5 bonus for an early initiation. Speed no longer scores by itself. The card shows the breakdown.
 - CAR page: the car is shown still on the right half of the screen while you customise it.
 - On-screen transmitter: a soft shadow under it and shading on itself, so it no longer floats.
 - Coupe: smaller wing.
@@ -33,7 +34,7 @@
 - On-screen transmitter that mirrors your steering and trigger.
 
 **Training**
-- Judged run: one lap scored on line, angle, style and speed, with a score card.
+- Judged run: one lap scored like solo qualifying (line 40, angle 40, style 20, bonus 5), with a score card and breakdown.
 - Ghost: a see-through replay of your fastest lap or best judged run, kept per track between sessions.
 - Cones mark inner clipping points, yellow dashes mark outer zones.
 

@@ -1,11 +1,14 @@
-// Drift judging for solo training, after the usual qualifying format: a run judged on line, angle, style and speed.
+// Drift judging for solo training, after the solo qualifying (tanso) format: a run out of 100, plus up to 5 bonus.
 // No engine types here: it only watches the car.
-//   Line: the course has inner clipping points (the nose must pass close) and outer zones (the tail must run close to
-//     the outside barrier), set out from the track's own bends.
-//   Angle: how much slip angle the car carries through the bends.     Style: one continuous, fluid drift.
-//   Speed: the average over the run.
-//   Deductions: straightening up in a bend, tapping the barriers (the first is cheap, the rest are not).
-//     A spin, or stopping on the course, scores the run zero.
+//   Line 40: every inner clipping point (nose close to the cone) and outer zone (tail close to the outside barrier), taken
+//     on a natural line. Reaching for a clip (a sudden swerve to touch it) halves that clip and costs style.
+//   Angle 40: depth (25: how much angle the car carries through the bends) and consistency (15: holding it, not flattening).
+//   Style 20: fluidity (7: transitions that are quick, clean and made once), commitment (7: staying on the throttle through
+//     the bends, carrying speed through the outer zones, running close to the edge there), initiation (6: early and sharp).
+//   Bonus, up to 5: initiating before the initiation line (0.8 m ahead of the first bend), and doing it hard.
+//   Speed earns nothing by itself; it shows only as momentum in the outer zones.
+//   Deductions: straightening up in a bend, tapping the barriers (the first is cheap, the rest are not). A spin, or
+//     stopping on the course, scores the run zero.
 using System;
 using System.Collections.Generic;
 
@@ -42,9 +45,10 @@ namespace DriftMaster {
 
   public sealed class RunJudge {
     public readonly double[] Clip; readonly Course _c; readonly Track _t;
-    public double Time, Dist, DriftT, BendT, AngleSum, RateSum, Progress; public int Straightens, Taps; public bool Spun, Started;
+    public double Time, Dist, DriftT, BendT, AngleSum, AngleSq, RateSum, Progress; public int Straightens, Taps, Reaches, Transitions; public bool Spun, Started;
+    public double ThrBendT, ZoneT, ZoneSpeed, TransScore, InitLead = double.NaN, InitRate; readonly bool[] _reached; double _reachT, _transT = -1, _lastVdir; int _transFrom, _firstBend = -1, _startIdx = -1; double _sinceFlip = 9;
     double _flatT, _slowT, _tapT, _lastBeta; int _lastIdx = -1; bool _flatCounted;
-    public RunJudge(Course c, Track t) { _c = c; _t = t; Clip = new double[c.Marks.Count]; }
+    public RunJudge(Course c, Track t) { _c = c; _t = t; Clip = new double[c.Marks.Count]; _reached = new bool[c.Marks.Count]; }
     public bool Done => Progress >= _t.N;
     public void Tap(double k) { if (k > 0.2 && _tapT <= 0 && Started) { Taps++; _tapT = 0.5; } }
 
@@ -53,7 +57,15 @@ namespace DriftMaster {
       if (_lastIdx >= 0) { int d = idx - _lastIdx; if (d > n / 2) d -= n; if (d < -n / 2) d += n; Progress += d; } _lastIdx = idx;
       Time += dt; Dist += sp * dt; _tapT -= dt; bool drifting = ab > 0.17 && sp > 0.6, bend = _c.Bend[idx];
       if (drifting) { Started = true; DriftT += dt; }
-      if (bend) { BendT += dt; AngleSum += Math.Min(ab, 0.95) * dt; }
+      if (bend) { BendT += dt; double aa = Math.Min(ab, 0.95); AngleSum += aa * dt; AngleSq += aa * aa * dt; if (car.Thr > 0.3) ThrBendT += dt; }
+      // the first bend of the run, for the initiation: how far before it the tail first went out, and how sharply
+      if (_startIdx < 0) { _startIdx = idx; int bestD = int.MaxValue; foreach (var b in _c.Bends) { int d = ((b.a - idx) % n + n) % n; if (d > 12 && d < bestD) { bestD = d; _firstBend = b.a; } } }
+      if (double.IsNaN(InitLead) && ab > 0.26 && sp > 0.6 && _firstBend >= 0) { int d = _firstBend - idx; if (d > n / 2) d -= n; if (d < -n / 2) d += n; InitLead = d * _t.Ds; InitRate = Math.Abs(beta - _lastBeta) / dt; }
+      // transitions: the tail swapping from one side to the other. Timed from 15 degrees one way to 15 the other
+      _sinceFlip += dt;
+      if (ab > 0.26 && sp > 0.6) { int sg = Math.Sign(beta); if (_transFrom != 0 && sg != _transFrom) { double took = _transT >= 0 ? Time - _transT : 0.5; Transitions++; TransScore += Math.Clamp(1 - (took - 0.35) / 0.9, 0, 1) * (_sinceFlip < 1.0 ? 0.4 : 1); _sinceFlip = 0; } _transFrom = sg; _transT = Time; }
+      // reaching: the car's path bending far tighter than the lane does, close to an inner clip: a late swerve at the cone
+      double vdir = Math.Atan2(car.Vx, car.Vz), dv = vdir - _lastVdir; dv = Math.Atan2(Math.Sin(dv), Math.Cos(dv)); _lastVdir = vdir; double pathK = sp > 0.5 ? Math.Abs(dv) / dt / sp : 0;
       RateSum += Math.Abs(beta - _lastBeta); _lastBeta = beta;
       if (Started) {
         if (bend && !drifting && sp > 0.5) { _flatT += dt; if (_flatT > 0.7 && !_flatCounted) { Straightens++; _flatCounted = true; } } else if (drifting) { _flatT = 0; _flatCounted = false; }
@@ -61,27 +73,39 @@ namespace DriftMaster {
         if (sp < 0.2) { _slowT += dt; if (_slowT > 1.2) Spun = true; } else _slowT = 0;
       }
       // the line: nose to the inner clips, tail to the outer zones, while sliding
-      double fx = Math.Sin(car.Hd), fz = Math.Cos(car.Hd);
+      double fx = Math.Sin(car.Hd), fz = Math.Cos(car.Hd); if (pathK <= 7.0) _reachT = 0;
       for (int m = 0; m < _c.Marks.Count; m++) { var mk = _c.Marks[m]; int rel = idx - mk.I; if (rel > n / 2) rel -= n; if (rel < -n / 2) rel += n; if (rel < mk.I0 - mk.I || rel > mk.I1 - mk.I || !drifting) continue;
         double v;
-        if (!mk.Outer) { double dx = car.X + fx * 0.2 - mk.X, dz = car.Z + fz * 0.2 - mk.Z, d = Math.Sqrt(dx * dx + dz * dz); v = 1 - (d - 0.15) / 0.2; }
-        else { double rx = car.X - fx * 0.2 - _t.X[idx], rz = car.Z - fz * 0.2 - _t.Z[idx], off = -(rx * _t.NX[idx] + rz * _t.NZ[idx]) * mk.Side, gap = _t.Hw - off; v = 1 - (gap - 0.17) / 0.22; }
+        if (!mk.Outer) { double dx = car.X + fx * 0.2 - mk.X, dz = car.Z + fz * 0.2 - mk.Z, d = Math.Sqrt(dx * dx + dz * dz); v = 1 - (d - 0.15) / 0.2;
+          if (Math.Abs(rel) * _t.Ds < 0.45 && pathK > 7.0) { _reachT += dt; if (_reachT > 0.1 && !_reached[m]) { _reached[m] = true; Reaches++; } } }
+        else { double rx = car.X - fx * 0.2 - _t.X[idx], rz = car.Z - fz * 0.2 - _t.Z[idx], off = -(rx * _t.NX[idx] + rz * _t.NZ[idx]) * mk.Side, gap = _t.Hw - off; v = 1 - (gap - 0.17) / 0.22; ZoneT += dt; ZoneSpeed += sp * dt; }
         Clip[m] = Math.Max(Clip[m], Math.Clamp(v, 0, 1)); }
     }
-    public double LineFrac { get { if (Clip.Length == 0) return 1; double s = 0; foreach (var v in Clip) s += v; return s / Clip.Length; } }
+    public double LineFrac { get { if (Clip.Length == 0) return 1; double s = 0; for (int m = 0; m < Clip.Length; m++) s += Clip[m] * (_reached[m] ? 0.5 : 1); return s / Clip.Length; } }
     public int ClipsHit { get { int k = 0; foreach (var v in Clip) if (v > 0.5) k++; return k; } }
     public double AvgAngleDeg => BendT > 0 ? AngleSum / BendT * 180 / Math.PI : 0;
     public double AvgSpeed => Time > 0 ? Dist / Time : 0;
-    public struct Card { public double Line, Angle, Style, Speed, Deduct, Total; public string Notes; }
-    /// the lead car's (or a solo run's) score out of 100
+    public struct Card { public double Line, Angle, Style, Bonus, Deduct, Total, Depth, Consistency, Fluidity, Commitment, Initiation; public string Notes; }
+    /// the run's score: line 40, angle 40, style 20, bonus up to 5
     public Card Solo() {
       var c = new Card(); if (Spun) { c.Notes = "SPIN OR STOP ON COURSE: ZERO"; return c; }
-      c.Line = 35 * LineFrac; c.Angle = 30 * Math.Clamp(AvgAngleDeg / 38, 0, 1);
-      double cont = BendT > 0 ? Math.Clamp(DriftT / Math.Max(BendT, 0.1), 0, 1) : 0, wob = Time > 0 ? RateSum / Time : 0, fluid = Math.Clamp(1 - (wob - 1.0) / 2.0, 0, 1);
-      c.Style = 25 * (0.65 * cont + 0.35 * fluid); c.Speed = 10 * Math.Clamp((AvgSpeed - 1.0) / 1.4, 0, 1);
+      c.Line = 40 * LineFrac;
+      double mean = BendT > 0 ? AngleSum / BendT : 0, var_ = BendT > 0 ? Math.Max(0, AngleSq / BendT - mean * mean) : 0, cv = mean > 0.05 ? Math.Sqrt(var_) / mean : 1;
+      c.Depth = 25 * Math.Clamp(mean / 0.66, 0, 1);                         // 38 degrees and more: full marks
+      c.Consistency = 15 * Math.Clamp(1 - (cv - 0.3) / 0.55, 0, 1) * Math.Clamp(mean / 0.3, 0, 1);   // steady angle (and some angle to be steady about)
+      c.Angle = c.Depth + c.Consistency;
+      double wob = Time > 0 ? RateSum / Time : 0, smooth = Math.Clamp(1 - (wob - 1.0) / 2.0, 0, 1), trans = Transitions > 0 ? TransScore / Transitions : smooth;
+      c.Fluidity = 7 * (0.6 * trans + 0.4 * smooth);
+      double onThr = BendT > 0 ? ThrBendT / BendT : 0, cont = BendT > 0 ? Math.Clamp(DriftT / Math.Max(BendT, 0.1), 0, 1) : 0, zoneV = ZoneT > 0 && AvgSpeed > 0 ? Math.Clamp((ZoneSpeed / ZoneT) / AvgSpeed, 0, 1.1) / 1.1 : 0, outer = 0; int no = 0;
+      for (int m = 0; m < Clip.Length; m++) if (_c.Marks[m].Outer) { outer += Clip[m]; no++; } if (no > 0) outer /= no; else outer = cont;
+      c.Commitment = 7 * (0.35 * Math.Clamp((onThr - 0.4) / 0.5, 0, 1) + 0.25 * cont + 0.2 * zoneV + 0.2 * outer);
+      bool init = !double.IsNaN(InitLead); double early = init ? Math.Clamp((InitLead + 0.3) / 0.8, 0, 1) : 0, sharp = init ? Math.Clamp(InitRate / 3.0, 0, 1) : 0;   // tail out by 0.5 m before the bend: full marks for timing
+      c.Initiation = 6 * (0.6 * early + 0.4 * sharp);
+      c.Style = Math.Max(0, c.Fluidity + c.Commitment + c.Initiation - 2 * Reaches);
+      c.Bonus = init && InitLead > 0.8 ? Math.Min(5, 5 * (0.6 * Math.Clamp((InitLead - 0.8) / 1.0, 0, 1) + 0.4 * sharp)) : 0;   // before the initiation line
       c.Deduct = 4 * Straightens + (Taps > 0 ? 2 + 4 * (Taps - 1) : 0); var notes = new List<string>();
-      if (ClipsHit < Clip.Length) notes.Add($"MISSED {Clip.Length - ClipsHit} OF {Clip.Length} CLIPS"); if (Straightens > 0) notes.Add($"STRAIGHTENED x{Straightens}"); if (Taps > 0) notes.Add($"WALL TAP x{Taps}");
-      c.Total = Math.Max(0, c.Line + c.Angle + c.Style + c.Speed - c.Deduct); c.Notes = string.Join("   ", notes); return c;
+      if (ClipsHit < Clip.Length) notes.Add($"MISSED {Clip.Length - ClipsHit} OF {Clip.Length} CLIPS"); if (Reaches > 0) notes.Add($"REACHED FOR A CLIP x{Reaches}"); if (Straightens > 0) notes.Add($"STRAIGHTENED x{Straightens}"); if (Taps > 0) notes.Add($"WALL TAP x{Taps}"); if (c.Bonus > 0.05) notes.Add("EARLY INITIATION");
+      c.Total = Math.Max(0, c.Line + c.Angle + c.Style + c.Bonus - c.Deduct); c.Notes = string.Join("   ", notes); return c;
     }
   }
 }

@@ -87,7 +87,7 @@ namespace DriftMaster {
       _jP.Step(CarPhysics.DT, _car, Math.Max(0, _t.Idx));
       if (_jP.Done || _jP.Spun || _jP.Time > 90) EndRun();
     }
-    static string Line(string who, RunJudge.Card c) => $"{who,-6}  LINE {c.Line,4:0.0}/35   ANGLE {c.Angle,4:0.0}/30   STYLE {c.Style,4:0.0}/25   SPEED {c.Speed,4:0.0}/10   DEDUCT -{c.Deduct:0}   =  {c.Total:0.0}";
+    static string Line(string who, RunJudge.Card c) => $"{who,-6}  LINE {c.Line,4:0.0}/40   ANGLE {c.Angle,4:0.0}/40   STYLE {c.Style,4:0.0}/20   BONUS +{c.Bonus:0.0}   DEDUCT -{c.Deduct:0}   =  {c.Total:0.0}\n        angle: depth {c.Depth:0.0}/25, consistency {c.Consistency:0.0}/15      style: fluidity {c.Fluidity:0.0}/7, commitment {c.Commitment:0.0}/7, initiation {c.Initiation:0.0}/6";
     void EndRun() {
       _phase = 2; _cardT = 0; _recOn = false; var c = _jP.Solo(); bool best = !_jP.Spun && _rec != null && _rec.Count > 30 && (_ghostRun == null || c.Total > _ghostRun.Mark + 0.05); double was = _ghostRun?.Mark ?? -1;
       if (best) { _rec.Mark = c.Total; _ghostRun = _rec; SaveGhost(_rec, true); }
