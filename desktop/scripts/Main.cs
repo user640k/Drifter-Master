@@ -113,7 +113,7 @@ namespace DriftMaster {
     // (the engine's own start-up picture is the same icon, the same way). After two seconds it fades and the window becomes
     // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
     // the icon simply shows on black.
-    float _eyeFov = 50;
+    float _eyeFov = 50; Vector3 _aheadSm;
     /// where the driver stands: on a low stand at the back of the clear floor, in front of the middle of the track, eyes 1.9 m up
     Vector3 DriverEye => new Vector3(0, 1.9f, (float)_t.HallZ - 0.55f);   // in the middle of the long side, facing the layout
     readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
@@ -380,7 +380,9 @@ namespace DriftMaster {
         // little when the car is far off (attention, not a lens: a car twice as far still looks a good deal smaller).
         // The gaze runs ahead of the car to where it will be in about half a second, so the track coming up is in view,
         // and it follows smoothly, the way eyes and head track something moving.
-        var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.5f).LimitLength(1.0f);
+        // (the lead eases to its new place over about a third of a second: when the car hits a barrier its speed changes in an
+        // instant, and the gaze must not jump with it. Only a trace of the knock shows.)
+        var aheadNow = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.5f).LimitLength(1.0f); _aheadSm = _aheadSm.Lerp(aheadNow, _camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 3f)); var ahead = _aheadSm;
         pos = DriverEye; look = p + new Vector3(0, 0.04f, 0) + ahead; float dEye = pos.DistanceTo(look);
         _eyeFov += (Mathf.Clamp(58f * Mathf.Pow(2.5f / dEye, 0.4f), 34, 58) - _eyeFov) * (_camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 3)); fov = _eyeFov;
       } else if (_camMode == 2) { // from the ceiling: an analog camera too, fixed up there looking straight down
