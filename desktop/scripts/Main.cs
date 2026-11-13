@@ -51,6 +51,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--paintb=")) _paintB = int.Parse(a.Substring(9));
         else if (a.StartsWith("--camber=")) { var q = a.Substring(9).Split(','); _setup[11] = int.Parse(q[0]); _setup[12] = int.Parse(q[1]); }
         else if (a.StartsWith("--hide=")) CarView.HideTest = a.Substring(7);
+        else if (a.StartsWith("--stk=")) { var q = a.Substring(6).Split(','); CarView.StickSide = int.Parse(q[0]); CarView.StickUp = float.Parse(q[1], System.Globalization.CultureInfo.InvariantCulture); CarView.StickFwd = float.Parse(q[2], System.Globalization.CultureInfo.InvariantCulture); }
         else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
         else if (a == "--bare") _bare = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);

@@ -18,6 +18,7 @@ namespace DriftMaster {
     public static readonly (string name, Color col)[] Neons = { ("OFF", Colors.Black), ("PINK", new Color(1f, 0.25f, 0.71f)), ("ICE BLUE", new Color(0.25f, 0.8f, 1f)), ("GREEN", new Color(0.3f, 1f, 0.45f)), ("AMBER", new Color(1f, 0.62f, 0.12f)), ("PURPLE", new Color(0.62f, 0.3f, 1f)), ("WHITE", new Color(1f, 0.97f, 0.9f)) };
     public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
     public Node3D StickCam; Node3D _stick; // a second FPV camera on a short stick: fixed to the roof, reaching back, looking forward over the car
+    public static int StickSide = 1; public static float StickUp = 0, StickFwd = 0.03f; /* door sticker placement (test) */
     public static float StickY = 0.195f, StickZ = -0.5f, StickTilt = 7f; // 19.5 cm up: it has to pass under the bridge (23 cm)
     public static float FpvX = 0, FpvY = 0.102f, FpvZ = 0.006f, FpvTilt = 5f;
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
@@ -84,10 +85,10 @@ namespace DriftMaster {
             mi.SetSurfaceOverrideMaterial(si, d); }
         if (mi != _blob && mi != _neonFloorNode && !_stick.IsAncestorOf(mi) && !_neon.IsAncestorOf(mi)) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
       }
-      // door stickers: four separate cut-vinyl stickers with no backing (DRIFT MASTER, SEND IT, 640kFPV, NO FEAR), one set on
-      // each door, a little bigger than the old strips, laid on the door's own lean. They read left to right from outside.
+      // door stickers: four separate cut-vinyl stickers with no backing (DRIFT MASTER, SEND IT, 640kFPV, NO FEAR), stacked
+      // in a column down the driver's door under the mirror, laid on the door's own lean. White with a thin black contour.
       if (_oldStick.Count > 0 && _shell != null) {
-        _stickerMat = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/side_stickers.png"), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.35f, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
+        _stickerMat = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/side_stickers.png"), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, CullMode = BaseMaterial3D.CullModeEnum.Disabled, Roughness = 0.35f, EmissionEnabled = true, Emission = new Color(1, 1, 1), EmissionEnergyMultiplier = 0.12f, EmissionTexture = GD.Load<Texture2D>("res://assets/tex/side_stickers.png"), TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
         var st = new SurfaceTool(); st.Begin(Mesh.PrimitiveType.Triangles);
         // the painted shell's triangles, to lay the stickers on its surface (a flat sticker would sink into a curved door)
         Vector3[] pv = null; int[] pi = null;
@@ -98,14 +99,14 @@ namespace DriftMaster {
             float f = 1 / det; var sv = o - a; float u = f * sv.Dot(h); if (u < 0 || u > 1) continue; var q = sv.Cross(e1); float v = f * d.Dot(q); if (v < 0 || u + v > 1) continue;
             float tt = f * e2.Dot(q); if (tt > 1e-5f && (best < 0 || tt < best)) best = tt; }
           return best; }
-        foreach (int sg in new[] { 1, -1 }) {
+        foreach (int sg in new[] { StickSide }) {
           // (a shell with stickers on one side only gets the same on the other, mirrored)
           var pts = _oldStick.FindAll(v => v.X * sg > 0); if (pts.Count < 6) pts = _oldStick.FindAll(v => v.X * sg < 0).ConvertAll(v => new Vector3(-v.X, v.Y, v.Z)); if (pts.Count < 6) continue;
           Vector3 m = Vector3.Zero; foreach (var v in pts) m += v; m /= pts.Count; float sxy = 0, syy = 0, sxz = 0, szz = 0;
           foreach (var v in pts) { sxy += (v.X - m.X) * (v.Y - m.Y); syy += (v.Y - m.Y) * (v.Y - m.Y); sxz += (v.X - m.X) * (v.Z - m.Z); szz += (v.Z - m.Z) * (v.Z - m.Z); }
           float lean = syy > 1e-9f ? sxy / syy : 0, sweep = szz > 1e-9f ? sxz / szz : 0;           // how the door's surface runs up and along
           var up = new Vector3(lean, 1, 0).Normalized(); var along = new Vector3(sweep, 0, 1).Normalized(); var n = along.Cross(up).Normalized(); if (n.X * sg < 0) n = -n;
-          var c = m + new Vector3(0, 0.001f, -0.012f); const float hl = 0.05f, hh = 0.025f; const int NU = 14, NV = 7;
+          var c = m + new Vector3(0, StickUp - (Body % Bodies.Length == 2 ? 0.006f : 0), StickFwd); /* the pickup's mirror hangs lower */ const float hl = 0.0164f, hh = 0.023f; const int NU = 6, NV = 9;
           // a grid of points, each dropped onto the shell from outside, then held a hair off it
           var grid = new Vector3[NU + 1, NV + 1]; float d0 = Hit(c + n * 0.04f, -n); if (d0 <= 0 || d0 > 0.07f) d0 = 0.04f;
           for (int iu = 0; iu <= NU; iu++) for (int iv = 0; iv <= NV; iv++) { var flat = c + along * ((iu / (float)NU * 2 - 1) * hl) + up * ((1 - iv / (float)NV * 2) * hh); float d = Hit(flat + n * 0.04f, -n); if (d <= 0 || d > 0.07f) d = d0; d = Mathf.Clamp(d, d0 - 0.009f, d0 + 0.009f); grid[iu, iv] = flat + n * (0.04f - d + 0.0019f); } // (not up onto a mirror or down into a vent)
@@ -129,8 +130,6 @@ namespace DriftMaster {
     // from the driver's seat the tint is light enough to see the track through
     public void SetPaint(Color a, Color b, Color c, int scheme) {
       // shut lines are shadow, not ink: a much darker shade of the body colour, so they do not look drawn on
-      // stickers are white vinyl on dark paint, black on light paint
-      if (_stickerMat != null) _stickerMat.AlbedoColor = a.Luminance < 0.42f ? new Color(1f, 1f, 1f) : new Color(0.03f, 0.03f, 0.035f);
       foreach (var g in _gaps) g.AlbedoColor = new Color(a.R * 0.3f + 0.006f, a.G * 0.3f + 0.006f, a.B * 0.3f + 0.006f); Paint.SetShaderParameter("col_a", a); Paint.SetShaderParameter("col_b", b); Paint.SetShaderParameter("col_c", c); Paint.SetShaderParameter("scheme", scheme); }
     /// camber in degrees, front and rear: 0 upright, negative leans the tops of the wheels in, positive out
     public void SetCamber(float front, float rear) { for (int i = 0; i < 4; i++) _camber[i] = new Quaternion(Vector3.Right, _leanIn[i] * Mathf.DegToRad(-(i < 2 ? front : rear))); }
