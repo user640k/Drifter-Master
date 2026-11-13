@@ -52,9 +52,13 @@ namespace DriftMaster {
       if (_shot == null) LoadOptions();
       // the layouts share one small hall (9.0 x 5.0 m). HILLSIDE sat at z = -4.9..-1.9 in the web version's warehouse and is centred here
       var td = Tracks[TrackIdx % Tracks.Length];
-      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0, 4.5, 2.5); _t.Name = td.name; _t.Wear = td.wear; _t.Boards = td.boards;
+      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, 4.5, 2.5 + Hall.Back / 2); _t.Name = td.name; _t.Wear = td.wear; _t.Boards = td.boards;
       if (!_bare) AddChild(Hall.Build(_t)); else { GetViewport().TransparentBg = true; }
       BuildLights();
+      if (!_bare) { // the driver's stand: a low platform with a step up, in the corner behind the track
+        var wood = new StandardMaterial3D { AlbedoColor = new Color(0.16f, 0.15f, 0.14f), Roughness = 0.8f }; var e = DriverEye;
+        AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(1.3f, 0.3f, 0.9f) }, MaterialOverride = wood, Position = new Vector3(e.X - 0.05f, 0.15f, e.Z) });
+        AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.6f, 0.15f, 0.3f) }, MaterialOverride = wood, Position = new Vector3(e.X - 0.2f, 0.075f, e.Z - 0.6f) }); }
       _car = new CarPhysics { T = _t }; _view = new CarView { Body = _body }; AddChild(_view);
       ApplyOptions();
       if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
@@ -110,6 +114,8 @@ namespace DriftMaster {
     // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
     // the icon simply shows on black.
     float _eyeFov = 50;
+    /// where the driver stands: on a low stand in the corner of the clear floor behind the track, eyes 1.9 m up
+    Vector3 DriverEye => new Vector3((float)_t.HallX - 0.7f, 1.9f, (float)_t.HallZ - 0.55f);
     readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
     bool _txShot; bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
     static bool _splashShown; TextureRect _splash; double _splashT;
@@ -341,7 +347,7 @@ namespace DriftMaster {
       StepSplash(delta); StepMusic(delta);
       StepCompetition(delta); _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
-        var earXf = new Transform3D(Basis.Identity, new Vector3((float)_t.HallX - 0.15f, 1.6f, (float)_t.HallZ - 0.15f)).LookingAt(new Vector3(0, 0.5f, 0), Vector3.Up); // the driver's place: the same corner as the camera, facing the middle of the hall
+        var earXf = new Transform3D(Basis.Identity, DriverEye).LookingAt(new Vector3(0, 0.5f, 0), Vector3.Up); // the driver's place: the same corner as the camera, facing the middle of the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
       if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()}"); GetTree().Quit(); }
     }
@@ -375,10 +381,10 @@ namespace DriftMaster {
         // The gaze runs ahead of the car to where it will be in about half a second, so the track coming up is in view,
         // and it follows smoothly, the way eyes and head track something moving.
         var ahead = (new Vector3((float)_car.Vx, 0, (float)_car.Vz) * 0.5f).LimitLength(1.0f);
-        pos = new Vector3(hx, 1.6f, hz); look = p + new Vector3(0, 0.04f, 0) + ahead; float dEye = pos.DistanceTo(look);
+        pos = DriverEye; look = p + new Vector3(0, 0.04f, 0) + ahead; float dEye = pos.DistanceTo(look);
         _eyeFov += (Mathf.Clamp(58f * Mathf.Pow(2.5f / dEye, 0.4f), 34, 58) - _eyeFov) * (_camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 3)); fov = _eyeFov;
       } else if (_camMode == 2) { // from the ceiling: an analog camera too, fixed up there looking straight down
-        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f); _fpvCam.LookAt(Vector3.Zero, Vector3.Forward); _camSnap = true; return; }
+        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f - (float)Hall.Back / 2); _fpvCam.LookAt(new Vector3(0, 0, -(float)Hall.Back / 2), Vector3.Forward);   /* over the middle of the layout, not of the hall */ _camSnap = true; return; }
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
         OnBoard(true); _view.ShowStick(false); _fpvCam.Fov = 75; _fpvCam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
       }

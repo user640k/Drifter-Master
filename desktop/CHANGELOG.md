@@ -2,7 +2,7 @@
 
 ## Changelog (this build)
 
-- The driver's camera (and the listening position) moved to a corner of the hall, a little higher, and now sees like a person: a steady natural field of view that no longer zooms to hold the car's size, with the gaze leading the car so the track coming up is in view.
+- The hall is 2 m deeper on the driver's side (9 x 7 m; the layouts are unchanged), and the driver stands back from the track on a low stand in that corner, eyes 1.9 m up. The driver's camera sees like a person: a steady natural field of view that no longer zooms to hold the car's size, with the gaze leading the car so the track coming up is in view. The listening position is there too.
 - Camber: every degree from -11 to +11 at both ends. Negative: bottoms of the wheels out, tops in. Positive: bottoms in, tops out.
 - SETUP rebuilt as the 1/10 RWD drift baseline and nothing else: 10.5T or 13.5T, cambers, caster, front and rear toe (new), shock oil in cSt, ride height (new), gyro 40 to 65%, spring wire, spool or tight diff, weight bias (new). Tyres, Ackermann, ESC timing and servo are fixed to the baseline. Driving assist moved to the CONTROLLER page.
 - The car's sound is now the web version's, ported exactly: the synthesised motor, the three recorded loops under it, knocks, distance filter and panning, and the compressor. Everything built for sound on the desktop before this is removed.

@@ -3,15 +3,16 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvvl631k8ig60"
-path="res://.godot/imported/floor_wear_infield.png-91bfde3fc48b6ea822400fdbb65a7118.ctex"
+path.s3tc="res://.godot/imported/floor_wear_infield.png-91bfde3fc48b6ea822400fdbb65a7118.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/tex/floor_wear_infield.png"
-dest_files=["res://.godot/imported/floor_wear_infield.png-91bfde3fc48b6ea822400fdbb65a7118.ctex"]
+dest_files=["res://.godot/imported/floor_wear_infield.png-91bfde3fc48b6ea822400fdbb65a7118.s3tc.ctex"]
 
 [params]
 

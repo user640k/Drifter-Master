@@ -25,7 +25,7 @@ namespace DriftMaster {
       m.SetShaderParameter("wear", tx(t.Wear + ".png")); m.SetShaderParameter("wear_rough", tx(t.Wear + "_rough.jpg"));
       // the bump map's slope over the whole floor (about 8 mm a point), for the reflections. Tile joints and steps are left
       // out: they are too fine for this grid, and the joints are drawn on the tiles already
-      { const int W = 1152, H = 640; var px = new byte[W * H * 2]; double sx = t.HallX * 2 / W, sz = t.HallZ * 2 / H; var row0 = new double[W + 1]; var row1 = new double[W + 1];
+      { const int W = 1152, H = 896; var px = new byte[W * H * 2]; double sx = t.HallX * 2 / W, sz = t.HallZ * 2 / H; var row0 = new double[W + 1]; var row1 = new double[W + 1];
         for (int i = 0; i <= W; i++) row0[i] = t.BumpBase(-t.HallX + i * sx, -t.HallZ, false);
         for (int j = 0; j < H; j++) { for (int i = 0; i <= W; i++) row1[i] = t.BumpBase(-t.HallX + i * sx, -t.HallZ + (j + 1) * sz, false);
           for (int i = 0; i < W; i++) { double gx = (row0[i + 1] - row0[i]) / sx, gz = (row1[i] - row0[i]) / sz;
@@ -36,6 +36,8 @@ namespace DriftMaster {
       return m;
     }
 
+    /// clear floor behind the layouts on the driver's side (+z), in metres: room to stand back from the track
+    public const double Back = 2.0;
     public static Node3D Build(Track t) {
       var root = new Node3D { Name = "Hall" };
       float hx = (float)t.HallX, hz = (float)t.HallZ;

@@ -63,7 +63,7 @@ simple('Chipboard004', 'board.jpg', 1024)
 # floor_wear.png is colour + how much of it covers the tile; floor_wear_rough.jpg shifts the gloss (grey = no change).
 import json, os, math
 from PIL import ImageDraw
-HX, HZ, PXM = 4.5, 2.5, 256
+HX, HZ, PXM = 4.5, 3.5, 256   # the hall is 9 x 7 m: the 9 x 5 m the layouts fill, and 2 m of clear floor on the driver's side (+z)
 Wp, Hp = int(HX * 2 * PXM), int(HZ * 2 * PXM)
 rr = lambda a, b: a + wr.random() * (b - a)
 def over(mask, col, rough=0.0):
@@ -81,7 +81,7 @@ def arr(im, blur=0):
     a = np.asarray(im).astype(np.float32) / 255
     return gaussian_filter(a, blur) if blur else a
 # one sheet per track: (data file, how far its layout was moved along z, name suffix, turf and kerbs?)
-for TFILE, Z0, SUF, TURF in (('hillside.json', -3.4, '', False), ('infield.json', 0.0, '_infield', True)):
+for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True)):   # (each layout sits 1 m towards -z of the hall's middle)
     wr = np.random.default_rng(777); tj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', TFILE)))
     rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
     # broad dust haze
