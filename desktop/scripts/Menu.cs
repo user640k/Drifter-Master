@@ -21,7 +21,7 @@ namespace DriftMaster {
       _tabs = L("", 20, Dim); box.AddChild(_tabs); box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
       _list = new VBoxContainer(); _list.AddThemeConstantOverride("separation", 1); box.AddChild(_list);
       box.AddChild(new Control { CustomMinimumSize = new Vector2(0, 12) });
-      _note = L("", 16, Dim); _note.AutowrapMode = TextServer.AutowrapMode.WordSmart; _note.CustomMinimumSize = new Vector2(540, 48); box.AddChild(_note);
+      _note = L("", 16, Dim); _note.AutowrapMode = TextServer.AutowrapMode.WordSmart; _note.CustomMinimumSize = new Vector2(520, 48); _note.Size = new Vector2(520, 48); box.AddChild(_note);
       box.AddChild(L("UP / DOWN  choose     LEFT / RIGHT  change     Q / E  page     ESC  back to the track", 14, Dim));
       Refresh();
     }
@@ -29,7 +29,7 @@ namespace DriftMaster {
     // it sits on a canvas layer, which has no size of its own: cover the window, whatever its size
     public override void _Process(double delta) { if (Visible) { Size = GetViewportRect().Size; _shade.Size = new Vector2(Size.X * (Preview ? 0.5f : 1f), Size.Y); } }
     /// the page that is open, and whether the right half of the screen is left clear for a look at the car
-    public string Page => Pages.Count > 0 ? Pages[_page].title : ""; public bool Preview => Page == "CAR";
+    public string Page => Pages.Count > 0 ? Pages[_page].title : ""; public bool Preview => Page == "CAR" || Page == "SETUP";
 
     public void Open(bool on) { Visible = on; if (on) Refresh(); }
     public void Goto(int page, int row) { _page = page % Pages.Count; _row = row; Refresh(); } // (test shots)

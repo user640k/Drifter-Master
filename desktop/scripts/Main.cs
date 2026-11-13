@@ -357,8 +357,9 @@ namespace DriftMaster {
       var p = new Vector3((float)_car.X, (float)_car.Y, (float)_car.Z); Vector3 pos, look; float fov = 58;
       if (_camMode != 2 && _camMode != 3 && _camMode != 4) { OnBoard(false); _view.ShowStick(false); }
       float hx = (float)_t.HallX - 0.15f, hz = (float)_t.HallZ - 0.15f;
+      _view.SetShell(_shellOn && !(_pause.Visible && _pause.Page == "SETUP"));   // on the SETUP page the shell comes off, as on a setup stand: the wheels, arms and shocks are what is being set
       if (_pause.Visible && _pause.Preview && _camMode != 8) { // the CAR page: the car itself, still, on the clear right half of the screen, so each choice shows as it is made
-        OnBoard(false); _view.ShowStick(false); float az = Mathf.DegToRad(42) + (float)_car.Hd, el = Mathf.DegToRad(15);
+        OnBoard(false); _view.ShowStick(false); bool su = _pause.Page == "SETUP"; float az = Mathf.DegToRad(su ? 20 : 42) + (float)_car.Hd, el = Mathf.DegToRad(su ? 7 : 15);   // SETUP: lower and more from the front, where camber, toe and ride height show
         var dir = new Vector3(Mathf.Sin(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Cos(az) * Mathf.Cos(el)); var side = dir.Cross(Vector3.Up).Normalized();
         look = p + new Vector3(0, 0.05f, 0) + side * 0.2f; pos = look + dir * 0.82f; _camSnap = true; _cam.Fov = 34; _cam.Position = pos; _cam.LookAt(look, Vector3.Up); return; }
       if (_camMode == 8) { // test view round the car: degrees round from its nose, degrees up, distance, lens
