@@ -63,7 +63,7 @@ simple('Chipboard004', 'board.jpg', 1024)
 # floor_wear.png is colour + how much of it covers the tile; floor_wear_rough.jpg shifts the gloss (grey = no change).
 import json, os, math
 from PIL import ImageDraw
-HX, HZ, PXM = 4.5, 3.5, 256   # the hall is 9 x 7 m: the 9 x 5 m the layouts fill, and 2 m of clear floor on the driver's side (+z)
+HX, HZ, PXM = 5.5, 3.5, 256   # the hall is 11 x 7 m: the 11 x 5 m the layouts may fill, and 2 m of clear floor on the driver's side (+z)
 Wp, Hp = int(HX * 2 * PXM), int(HZ * 2 * PXM)
 rr = lambda a, b: a + wr.random() * (b - a)
 def over(mask, col, rough=0.0):

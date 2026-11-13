@@ -52,7 +52,7 @@ namespace DriftMaster {
       if (_shot == null) LoadOptions();
       // the layouts share one small hall (9.0 x 5.0 m). HILLSIDE sat at z = -4.9..-1.9 in the web version's warehouse and is centred here
       var td = Tracks[TrackIdx % Tracks.Length];
-      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, 4.5, 2.5 + Hall.Back / 2); _t.Name = td.name; _t.Wear = td.wear; _t.Boards = td.boards;
+      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _t.Name = td.name; _t.Wear = td.wear; _t.Boards = td.boards;
       if (!_bare) AddChild(Hall.Build(_t)); else { GetViewport().TransparentBg = true; }
       BuildLights();
       if (!_bare) { // the driver's stand: a low platform with a step up, in the corner behind the track
@@ -66,6 +66,7 @@ namespace DriftMaster {
       BuildOnBoard();
       _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
       BuildHud(); BuildCompetition();
+      if (!_bare) AddChild(Decor.Build(_t, _course, DriverEye));
       _ghostLap = LoadGhost(false); _ghostRun = LoadGhost(true);
       if (CompTest == "solo" || CompTest == "solo2") StartSolo(); else if (CompTest == "park") Park();
       if (_menuAt != null) { _pause.Open(true); _pause.Goto(_menuAt[0], _menuAt[1]); }

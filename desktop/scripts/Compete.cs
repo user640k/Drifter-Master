@@ -16,8 +16,8 @@ namespace DriftMaster {
     sealed class Rec { public readonly List<float> F = new(); public double Mark; public int Body; public int Count => F.Count / GF; }   // Mark: the lap time (s) or the run's score
     Rec _ghostLap, _ghostRun, _rec; bool _recOn, _ghostOn = true, _ghostPlay; double _recAcc, _ghostT; Track _t2; CarPhysics _ghostCar; CarView _ghostView; int _ghostBody = -1;
     string GhostFile(bool run) => $"user://ghost_{Tracks[TrackIdx % Tracks.Length].file}_{(run ? "run" : "lap")}.bin";
-    void SaveGhost(Rec r, bool run) { if (_shot != null && CompTest == null) return; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Write); if (f == null) return; f.Store32(2); f.StoreDouble(r.Mark); f.Store32((uint)r.Body); f.Store32((uint)r.F.Count); foreach (var v in r.F) f.StoreFloat(v); }
-    Rec LoadGhost(bool run) { if (!FileAccess.FileExists(GhostFile(run))) return null; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Read); if (f == null || f.Get32() != 2) return null;   // (2: since the layouts moved 1 m in the hall)
+    void SaveGhost(Rec r, bool run) { if (_shot != null && CompTest == null) return; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Write); if (f == null) return; f.Store32(3); f.StoreDouble(r.Mark); f.Store32((uint)r.Body); f.Store32((uint)r.F.Count); foreach (var v in r.F) f.StoreFloat(v); }
+    Rec LoadGhost(bool run) { if (!FileAccess.FileExists(GhostFile(run))) return null; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Read); if (f == null || f.Get32() != 3) return null;   // (2: since the layouts moved 1 m in the hall)
       var r = new Rec { Mark = f.GetDouble(), Body = (int)f.Get32() }; uint n = f.Get32(); if (n == 0 || n % GF != 0 || n > 2000000) return null; for (uint i = 0; i < n; i++) r.F.Add(f.GetFloat()); return r; }
     void RecStart() { _rec = new Rec { Body = _body }; _recOn = true; _recAcc = GDt; }
     void RecStep(double dt) { if (!_recOn) return; _recAcc += dt; if (_recAcc < GDt) return; _recAcc -= GDt; if (_rec.Count > 60 * 180) { _recOn = false; return; }   // (three minutes: not a lap)
@@ -29,7 +29,7 @@ namespace DriftMaster {
       if (show && i >= g.Count - 1) { show = false; _ghostPlay = false; }
       if (!show) { if (_ghostView != null) _ghostView.Visible = false; return; }
       if (_ghostView == null || _ghostBody != g.Body) { _ghostView?.QueueFree(); _ghostBody = g.Body; _ghostView = new CarView { Body = g.Body, Ghost = true }; AddChild(_ghostView); }
-      if (_ghostCar == null) { var td = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, 4.5, 2.5 + Hall.Back / 2); _ghostCar = new CarPhysics { T = _t2 }; }
+      if (_ghostCar == null) { var td = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _ghostCar = new CarPhysics { T = _t2 }; }
       float f = (float)(ft - i); int a = i * GF, b = a + GF; float L(int k) => g.F[a + k] + (g.F[b + k] - g.F[a + k]) * f; float A(int k) => g.F[a + k] + Mathf.AngleDifference(g.F[a + k], g.F[b + k]) * f;
       _ghostCar.X = L(0); _ghostCar.Z = L(1); _ghostCar.Y = L(2); _ghostCar.Hd = A(3); _ghostCar.Steer = L(4); _ghostCar.Roll = L(5); _ghostCar.Pitch = L(6); _ghostCar.Spin = L(7); _ghostCar.SpinF = L(8); _t2.Idx = (int)g.F[a + 9]; _ghostCar.Air = false;
       _ghostView.Visible = true; _ghostView.Pose(_ghostCar, _t2);
