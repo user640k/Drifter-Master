@@ -47,6 +47,8 @@ namespace DriftMaster {
       return E[i] + (E[k] - E[i]) * Math.Min(1, Math.Abs(along) / Ds);
     }
     public double GroundAt(double x, double z) => GroundAt(x, z, Idx);
+    /// what marks the lane edge here: a low PVC board (true) or a foam block. Boards are hard and springy; foam gives.
+    public bool BoardAt(int i) => Boards || E[i] > 0.004;
 
     // small flaws in the floor, felt through the springs: each tile sits a hair high or low, the joints are fine
     // grooves, the slab under them undulates, and there are a few shallow humps and dips

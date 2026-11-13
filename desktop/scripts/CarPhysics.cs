@@ -40,6 +40,7 @@ namespace DriftMaster {
     public const double GYROK = 1.6, RCMDMAX = 3.0, RTURN = 1.5, BETAMAX = 1.0, BETAK = 2.2, THRCUT = 3, KBSLIP = 0.8, KBSLIPK = 4, GYROMIX = 0.85;
     public const double MEQ = 0.25;               // wheel + rotor inertia as a mass at the tyre surface
     public const double WEIGHTREAR = 0.56, STEERMAX = 1.22, SERVO = 0.06;
+    public const double RollStop = 0.078, PitchStop = 0.052;
 
     public double X, Z, Hd, U, V, Rr, W, Vx, Vz, Steer, Thr, GyroOut, Beta;
     public double Roll, RollV, Pitch, PitchV, Ax, Ay, Y, Vy, Heave, HeaveV, RoadR, RoadP, RoadH;
@@ -159,6 +160,11 @@ namespace DriftMaster {
         double Kh = 1600 * kMul, Ch = 2 * ZETA * Math.Sqrt(Kh * m) * cMul; HeaveV += ((-Kh * (Heave - rH) - Ch * (HeaveV - roadHV)) / m) * dt; Heave += HeaveV * dt; }
       RollV += ((m * Ay * (H - HRC) - Kr * (Roll - RoadR) - Cr * (RollV - roadRV)) / IXX) * dt; Roll += RollV * dt;
       PitchV += ((m * Ax * (H - HPC) - Kp * (Pitch - RoadP) - Cp * (PitchV - roadPV)) / IYY) * dt; Pitch += PitchV * dt;
+      // bump stops: the dampers have about 6 mm of travel, so the body cannot lean more than about 4.5 degrees or pitch
+      // more than 3 (a knock into a barrier used to throw it over to 12)
+      if (Math.Abs(Roll) > RollStop) { Roll = Math.Sign(Roll) * RollStop; if (RollV * Roll > 0) RollV *= -0.2; }
+      if (Math.Abs(Pitch) > PitchStop) { Pitch = Math.Sign(Pitch) * PitchStop; if (PitchV * Pitch > 0) PitchV *= -0.2; }
+      if (Math.Abs(Heave) > 0.006) { Heave = Math.Sign(Heave) * 0.006; if (HeaveV * Heave > 0) HeaveV *= -0.2; }
 
       // pose in the world
       Hd += r * dt;
@@ -189,9 +195,11 @@ namespace DriftMaster {
             touched = true; X += nx * pen; Z += nz * pen;
             double vn = -(Vx * nx + Vz * nz);
             if (vn > 0) {
-              bool hard = vn > 0.6; double kk = hard ? 1.3 : 1;
+              // a hard knock bounces the car back a little and scrubs speed: a PVC board is springy (30% back, 12% lost),
+              // a foam block gives and soaks it up (8% back, 24% lost)
+              bool hard = vn > 0.6, board = T.BoardAt(T.Idx); double kk = hard ? (board ? 1.3 : 1.08) : 1, keep = board ? 0.88 : 0.76;
               Vx += nx * vn * kk; Vz += nz * vn * kk;
-              if (hard) { Vx *= 0.88; Vz *= 0.88; r *= 0.4; OnBump?.Invoke(Math.Min(1, vn / 6)); RollV += (nx * Math.Cos(Hd) - nz * Math.Sin(Hd)) * vn * 6; PitchV -= vn * 1.5; }
+              if (hard) { Vx *= keep; Vz *= keep; r *= 0.4; OnBump?.Invoke(Math.Min(1, vn / 6)); RollV += (nx * Math.Cos(Hd) - nz * Math.Sin(Hd)) * vn * 6; PitchV -= vn * 1.5; }
             }
             double k = Math.Exp(-1.2 * dt); Vx *= k; Vz *= k;
             double tx = nz, tz = -nx, fwdDot = Math.Sin(Hd) * tx + Math.Cos(Hd) * tz;
