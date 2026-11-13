@@ -29,6 +29,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
+        else if (a == "--full") _full = true;
         else if (a.StartsWith("--menu=")) _menuAt = Array.ConvertAll(a.Substring(7).Split(','), int.Parse);
         else if (a.StartsWith("--track=")) { TrackIdx = int.Parse(a.Substring(8)); _trackChosen = true; }
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--paintb=")) _paintB = int.Parse(a.Substring(9));
@@ -93,16 +94,57 @@ namespace DriftMaster {
       GetViewport().Disable3D = on; _view.SetOnBoard(on); // the window itself draws no 3D while on board: only the small frame is rendered
     }
 
+    // ---- splash: the icon on black, carried on from the engine's own start-up picture, then faded away to the track
+    bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
+    static bool _splashShown; TextureRect _splash; ColorRect _splashBg; double _splashT;
+    void BuildSplash(CanvasLayer layer) {
+      if (_splashShown || Quiet) return; _splashShown = true; // once a run, not at every change of track
+      _splashBg = new ColorRect { Color = Colors.Black }; _splash = new TextureRect { Texture = GD.Load<Texture2D>("res://splash.png"), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
+      layer.AddChild(_splashBg); layer.AddChild(_splash); _splashT = 2.2;
+    }
+    void StepSplash(double dt) {
+      if (_splash == null) return; var sz = GetViewport().GetVisibleRect().Size; _splashBg.Size = sz; float side = Math.Min(720, Math.Min(sz.X, sz.Y)); _splash.Size = new Vector2(side, side); _splash.Position = (sz - _splash.Size) / 2;
+      _splashT -= dt; float a = (float)Math.Clamp(_splashT / 0.6, 0, 1); _splash.Modulate = new Color(1, 1, 1, a); _splashBg.Color = new Color(0, 0, 0, a);
+      if (_splashT <= 0) { _splash.QueueFree(); _splashBg.QueueFree(); _splash = null; StartMusicLabel(); }
+    }
+
+    // ---- music: the web version's track, as if from the hall's speakers (its own bus with the room on it), and a
+    // small "now playing" line at the bottom left for the first five seconds
+    static AudioStreamPlayer _music; Label _nowPlaying; double _npT; bool _musicOn = true; float _musicVol = 0.5f;
+    const string MusicTitle = "Off Road", MusicArtist = "Aylex";
+    void BuildMusic(CanvasLayer layer) {
+      int bus = AudioServer.GetBusIndex("Music");
+      if (bus < 0) { bus = AudioServer.BusCount; AudioServer.AddBus(bus); AudioServer.SetBusName(bus, "Music"); AudioServer.SetBusSend(bus, "Master");
+        AudioServer.AddBusEffect(bus, new AudioEffectReverb { RoomSize = 0.62f, Damping = 0.45f, Spread = 1f, Hipass = 0.25f, PredelayMsec = 28, Dry = 0.7f, Wet = 0.3f }, 0); }
+      if (_music == null || !IsInstanceValid(_music)) { // it plays on through a change of track: it belongs to the game, not the scene
+        var st = GD.Load<AudioStreamMP3>("res://assets/music/off-road.mp3"); st.Loop = true;
+        _music = new AudioStreamPlayer { Stream = st, Bus = "Music" }; GetTree().Root.CallDeferred(Node.MethodName.AddChild, _music);
+      }
+      _nowPlaying = new Label { Visible = false }; _nowPlaying.AddThemeFontSizeOverride("font_size", 16); _nowPlaying.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.75f)); _nowPlaying.AddThemeConstantOverride("outline_size", 5); layer.AddChild(_nowPlaying);
+      ApplyMusic(); if (_splash == null) StartMusicLabel();
+    }
+    void ApplyMusic() {
+      int bus = AudioServer.GetBusIndex("Music"); AudioServer.SetBusVolumeDb(bus, _musicOn && !Quiet ? Mathf.LinearToDb(Math.Max(0.0001f, _musicVol * _musicVol * 0.5f)) : -80);
+      if (_music != null && IsInstanceValid(_music) && _music.IsInsideTree() && !_music.Playing && _musicOn && !Quiet) _music.Play();
+    }
+    void StartMusicLabel() { if (_nowPlaying == null || !_musicOn || Quiet) return; _nowPlaying.Text = $"NOW PLAYING   {MusicTitle}  ·  {MusicArtist}"; _nowPlaying.Visible = true; _npT = 5; }
+    void StepMusic(double dt) {
+      ApplyMusic(); if (_nowPlaying == null || !_nowPlaying.Visible) return;
+      var sz = GetViewport().GetVisibleRect().Size; _nowPlaying.Position = new Vector2(24, sz.Y - 74);
+      _npT -= dt; _nowPlaying.Modulate = new Color(1, 1, 1, (float)Math.Clamp(_npT / 0.8, 0, 1)); if (_npT <= 0) _nowPlaying.Visible = false;
+    }
+
     void BuildHud() {
       var layer = new CanvasLayer(); AddChild(layer);
       Label L(Vector2 pos, int size, Color col) { var l = new Label { Position = pos }; l.AddThemeFontSizeOverride("font_size", size); l.AddThemeColorOverride("font_color", col); l.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.75f)); l.AddThemeConstantOverride("outline_size", 6); layer.AddChild(l); return l; }
       _hud = L(new Vector2(24, 18), 22, Colors.White);
       _stats = L(new Vector2(24, 150), 15, new Color(0.75f, 0.9f, 1f)); _stats.Visible = false;
       _help = L(new Vector2(24, 0), 14, new Color(1, 1, 1, 0.8f)); _help.SetAnchorsPreset(Control.LayoutPreset.BottomLeft); _help.Position = new Vector2(24, -40);
-      _help.Text = "F1 track · W/S drive · A/D steer · R reset · C camera · T body · P colour · O 2nd colour · L livery · B shell · G neon · V windows · M mute · N motor sound · - = volume · F2 shadows · F3 stats · F4 resolution · F11 full screen · Esc menu";
+      _help.Text = "ESC  menu and all keys     W / S  drive     A / D  steer     R  reset     C  camera"; // short, so it fits any window; the rest are in the menu
       _help.AnchorTop = 1; _help.AnchorBottom = 1; _help.OffsetTop = -40; _help.OffsetBottom = -14; _help.OffsetLeft = 24;
       _pause = new Menu { Visible = false }; BuildMenu(); layer.AddChild(_pause);
-      if (_shot != null) _help.Visible = false;
+      BuildMusic(layer); BuildSplash(layer);
+      if (Quiet) _help.Visible = false;
     }
 
     // another shell: the car on screen is rebuilt; where it is and how it is moving stay
@@ -153,13 +195,19 @@ namespace DriftMaster {
         R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = 1 + Cyc(_camMode - 1, d, 4); _camSnap = true; }),
         R("VOLUME", () => $"{Math.Round(_audio.Volume * 10)}", d => { _audio.Volume = Math.Clamp(_audio.Volume + 0.1f * d, 0, 1); ApplyOptions(true); }),
         R("MOTOR SOUND", () => _audio.Motor ? "ON" : "OFF", d => { _audio.Motor = !_audio.Motor; ApplyOptions(true); }),
+        R("MUSIC", () => _musicOn ? "ON" : "OFF", d => { _musicOn = !_musicOn; if (!_musicOn && _music != null) _music.Stop(); ApplyOptions(true); if (_musicOn) { ApplyMusic(); StartMusicLabel(); } }, MusicTitle + " by " + MusicArtist + ", heard as if from the hall's speakers."),
+        R("MUSIC VOLUME", () => $"{Math.Round(_musicVol * 10)}", d => { _musicVol = Math.Clamp(_musicVol + 0.1f * d, 0, 1); ApplyOptions(true); }),
         R("SHADOWS", () => _sun.ShadowEnabled ? "ON" : "OFF", d => { _sun.ShadowEnabled = !_sun.ShadowEnabled; }),
         R("RESOLUTION", () => $"{_scales[_scaleIdx] * 100:0}%", d => { _scaleIdx = Cyc(_scaleIdx, d, _scales.Length); GetViewport().Scaling3DScale = _scales[_scaleIdx]; }, "Lower it if the frame rate is low."),
         R("FULL SCREEN", () => GetWindow().Mode == Window.ModeEnum.Fullscreen ? "ON" : "OFF", d => { var w = GetWindow(); w.Mode = w.Mode == Window.ModeEnum.Fullscreen ? Window.ModeEnum.Windowed : Window.ModeEnum.Fullscreen; }),
         R("RESET CAR TO THE START", null, d => { ResetCar(); }),
         R("QUIT", null, d => { GetTree().Quit(); }),
       };
-      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("GAME", game));
+      var keys = new List<Menu.Row>();
+      foreach (var (k, what) in new[] { ("W / S  or  UP / DOWN", "drive; brake, then reverse"), ("A / D  or  LEFT / RIGHT", "steer"), ("R", "back to the start line"), ("C", "next camera"), ("ESC", "this menu"),
+        ("F1", "next track"), ("T   P   O   L", "body, colour, second colour, livery"), ("B   V   G", "shell, windows, neon"), ("M   N   - / =", "mute, motor sound, volume"), ("F2   F3   F4   F11", "shadows, frame rate, resolution, full screen"),
+        ("GAMEPAD", "triggers drive and brake, left stick steers, Y reset, X camera, Start menu") }) { string w = what; keys.Add(R(k, () => w, null)); }
+      _pause.Pages.Add(("CAR", car)); _pause.Pages.Add(("SETUP", setup)); _pause.Pages.Add(("GAME", game)); _pause.Pages.Add(("KEYS", keys));
     }
 
     void ApplyOptions(bool save = false) {
@@ -168,13 +216,13 @@ namespace DriftMaster {
       _view.SetPaint(ca, cb, cc, _livery);
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
       _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "motor_sound", _audio.Motor); } cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "paint_b", _paintB); cf.SetValue("car", "livery", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup", SetupKeys[k], _setup[k]); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "paint_b", _paintB); cf.SetValue("car", "livery", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
-      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
+      _vol0 = (float)(double)cf.GetValue("game", "volume", 0.8); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _paintB = Math.Clamp((int)cf.GetValue("car", "paint_b", 1), 0, Paints.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "livery", 0), 0, CarView.Liveries.Length - 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
     }
@@ -186,7 +234,7 @@ namespace DriftMaster {
     public override void _UnhandledInput(InputEvent e) {
       bool key(Key k) => e is InputEventKey ek && ek.Pressed && !ek.Echo && ek.Keycode == k;
       bool pad(JoyButton b) => e is InputEventJoypadButton jb && jb.Pressed && jb.ButtonIndex == b;
-      if (key(Key.Escape) || pad(JoyButton.Start)) { _pause.Open(!_pause.Visible); _help.Visible = !_pause.Visible && _shot == null; return; }
+      if (key(Key.Escape) || pad(JoyButton.Start)) { _pause.Open(!_pause.Visible); _help.Visible = !_pause.Visible && !Quiet; return; }
       if (_pause.Visible) { _pause.Handle(e); return; } // the menu has the keys while it is open
       if (false) { }
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
@@ -234,6 +282,7 @@ namespace DriftMaster {
         Laps(idx0, Math.Min(delta, 0.05));
       }
       if (!double.IsNaN(_poseSteer)) { _car.Steer = _poseSteer; _car.Roll = -0.035 * Math.Sign(_poseSteer); }
+      StepSplash(delta); StepMusic(delta);
       _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
         var earXf = new Transform3D(Basis.Identity, new Vector3(0, 1.45f, (float)_t.HallZ - 0.15f)); // looking along -z, across the hall
@@ -280,6 +329,7 @@ namespace DriftMaster {
       double sp = Math.Sqrt(_car.U * _car.U + _car.V * _car.V);
       _hud.Text = $"{_t.Name}\nLAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
       _hud.Visible = !_pause.Visible && !_bare;
+      { var vs = GetViewport().GetVisibleRect().Size; _help.SetAnchorsPreset(Control.LayoutPreset.TopLeft); _help.Position = new Vector2(24, vs.Y - 40); _help.Size = new Vector2(vs.X - 48, 24); _help.ClipText = true; } // along the bottom edge, never wider than the window
       if (_sayT > 0) { _sayT -= GetProcessDeltaTime(); _hud.Text += "\n\n" + _sayText; }
       if (_stats.Visible) _stats.Text = $"{Engine.GetFramesPerSecond()} fps   draw calls {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0}   tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}\nresolution {_scales[_scaleIdx] * 100:0}%   shadows {(_sun.ShadowEnabled ? "on" : "off")}   {RenderingServer.GetVideoAdapterName()}";
     }

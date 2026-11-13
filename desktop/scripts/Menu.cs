@@ -42,7 +42,7 @@ namespace DriftMaster {
       }
       for (int i = 0; i < _lines.Count; i++) {
         var (n, v) = _lines[i]; bool used = i < rows.Count; ((Control)n.GetParent()).Visible = used; if (!used) continue;
-        bool sel = i == _row; n.Text = (sel ? "> " : "   ") + rows[i].Label; v.Text = rows[i].Value == null ? "" : (sel ? "<  " + rows[i].Value() + "  >" : rows[i].Value());
+        bool sel = i == _row; n.Text = (sel ? "> " : "   ") + rows[i].Label; v.Text = rows[i].Value == null ? "" : (sel && rows[i].Change != null ? "<  " + rows[i].Value() + "  >" : rows[i].Value()); // (rows with nothing to change, as on the KEYS page, show no arrows)
         n.AddThemeColorOverride("font_color", sel ? Hi : Colors.White); v.AddThemeColorOverride("font_color", sel ? Hi : Dim);
       }
       _note.Text = rows[_row].Note;

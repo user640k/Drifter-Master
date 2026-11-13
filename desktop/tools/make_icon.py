@@ -34,4 +34,6 @@ off = 6 + 16 * len(imgs); ent = b''; body = b''
 for n, d in imgs:
     ent += struct.pack('<BBBBHHII', n % 256, n % 256, 0, 0, 1, 32, len(d), off + len(body)); body += d
 open(os.path.join(proj, 'icon.ico'), 'wb').write(struct.pack('<HHH', 0, 1, len(imgs)) + ent + body)
+# the splash: the same picture on black, shown while the game starts
+sp = Image.new('RGBA', (720, 720), (0, 0, 0, 255)); sp.alpha_composite(out.resize((560, 560), Image.LANCZOS), (80, 80)); sp.convert('RGB').save(os.path.join(proj, 'splash.png'))
 print('ok')
