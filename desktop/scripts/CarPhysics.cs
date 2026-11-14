@@ -51,6 +51,7 @@ namespace DriftMaster {
     public double Roll, RollV, Pitch, PitchV, Ax, Ay, Y, Vy, Heave, HeaveV, RoadR, RoadP, RoadH;
     public double ShellZ, ShellV, ShellR, ShellRV; double _heaveV0, _rollV0, _roadHV0, _roadRV0; /* the shell's own shiver on its posts: up/down (m) and rocking (rad) */
     public bool Air, Reversing, Braking, Spinning;
+    public bool TouchedWall;   /* set when the car has met a barrier or wall, however lightly; whoever reads it clears it */
     public double RevHold, Spin, SpinF, AlphaF, AlphaR, Slide, RearSlip, GripF, GripR;
     public readonly double[] Loads = new double[4];
     public CarSetup S = new CarSetup();
@@ -233,6 +234,7 @@ namespace DriftMaster {
           }
         }
       }
+      if (touched) TouchedWall = true;
       if (touched) { double s2 = Math.Sin(Hd), c2 = Math.Cos(Hd); u = Vx * s2 + Vz * c2; v = Vx * c2 - Vz * s2; }
       U = u; V = v; Rr = r;
       Beta = Math.Sqrt(u * u + v * v) > 0.6 ? Math.Atan2(v, u) : 0;

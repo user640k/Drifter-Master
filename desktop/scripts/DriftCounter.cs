@@ -1,6 +1,8 @@
 // The drift counter: a small, quiet read-out in the top right corner, and a call-out when a drift gets big.
 //   points build while the car is sideways (angle x speed); a change of direction without straightening up is a LINK,
-//   and each link raises the multiplier; the run ends a moment after the car straightens, or at once on a hard knock.
+//   and each link raises the multiplier. Going straight for half a second ends the run (its points are banked) and
+//   the counter and the links start again from nothing; touching a wall, however lightly, loses the run at once.
+//   A faint sound goes with it: a soft tick as the points run up, faster the faster they come, and a soft knock for a link.
 // The read-out is plain lettering in milky white with a soft shadow: no box, no frame. A call-out (NICE, GREAT, INSANE,
 // MONSTER DRIFT) is vibrant pink and a little see-through, stays one second, then breaks up into dust.
 using Godot;
@@ -10,24 +12,31 @@ using System.Collections.Generic;
 namespace DriftMaster {
   public sealed partial class DriftCounter : Control {
     public static readonly (double at, string name)[] Tiers = { (350, "NICE DRIFT"), (900, "GREAT DRIFT"), (1600, "INSANE DRIFT"), (2400, "MONSTER DRIFT") };
-    const double Rate = 2.0, MinAngle = 10, MinSpeed = 0.8, EndAfter = 1.2;
+    const double Rate = 2.0, MinAngle = 10, MinSpeed = 0.8, EndAfter = 0.5;   // (half a second straight ends the run: long enough to swing from one side to the other)
     public double Score, Mult = 1, Best; public int Links, Tier = -1;
     /// the best run on this track and the points banked in all (kept by the game between sessions); a run that ends is handed to OnBank, a call-out to OnTier
     public double Record, Total; public Action<double> OnBank; public Action<int> OnTier;
     double _angle, _off, _shown, _fade, _linkT = 9, _callT = 9; int _lastSign, _callTier = -1; bool _on;
+    AudioStreamPlayer _tick, _knock; double _tickDue;
+    static AudioStreamWav Click(float lowpassHz, float decay, float len, int seed) { const int sr = 44100; int n = (int)(sr * len); var data = new byte[n * 2]; var rnd = new Random(seed); float y = 0, a = Mathf.Exp(-Mathf.Tau * lowpassHz / sr);
+      for (int i = 0; i < n; i++) { float t = i / (float)sr, x = ((float)rnd.NextDouble() * 2 - 1) * Mathf.Exp(-t * decay) * Mathf.Min(1, t / 0.0006f); y = a * y + (1 - a) * x; short v = (short)(Mathf.Clamp(y * 3.2f, -1, 1) * 30000); data[i * 2] = (byte)(v & 255); data[i * 2 + 1] = (byte)((v >> 8) & 255); }
+      return new AudioStreamWav { Data = data, Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = sr, Stereo = false }; }
     Font _font; readonly List<(Vector2 p, Vector2 v, float life, float size)> _dust = new(); readonly Random _rnd = new(7);
     static readonly Color Milk = new(0.96f, 0.95f, 0.91f), Pink = new(1f, 0.16f, 0.62f), Shade = new(0, 0, 0, 0.55f);
 
-    public override void _Ready() { _font = GD.Load<Font>("res://assets/fonts/Saira-ExtraBoldItalic.ttf"); SetAnchorsPreset(LayoutPreset.FullRect); MouseFilter = MouseFilterEnum.Ignore; }
+    public override void _Ready() { _font = GD.Load<Font>("res://assets/fonts/Saira-ExtraBoldItalic.ttf"); SetAnchorsPreset(LayoutPreset.FullRect); MouseFilter = MouseFilterEnum.Ignore;
+      // the counter's sound, kept faint and soft: filtered noise, not a tone, so it ticks like a mechanical counter and does not beep
+      _tick = new AudioStreamPlayer { Stream = Click(1500, 190, 0.03f, 5), VolumeDb = -27, MaxPolyphony = 4 }; AddChild(_tick); _knock = new AudioStreamPlayer { Stream = Click(520, 60, 0.09f, 9), VolumeDb = -18, MaxPolyphony = 2 }; AddChild(_knock); }
 
-    /// a hard knock: the run is lost
+    /// the car has touched a wall: the run and its links are lost
     public void Knock() { if (Score > 0) { OnBank?.Invoke(0); Score = 0; Mult = 1; Links = 0; Tier = -1; _lastSign = 0; _on = false; } }
 
     /// once a frame: the car's drift angle (degrees, signed), its speed (m/s), and whether it is being driven (not parked, in the air or paused)
     public void Tick(double dt, double angleDeg, double speed, bool live) {
       _angle = Math.Abs(angleDeg); _linkT += dt; _callT += dt;
       bool on = live && _angle > MinAngle && speed > MinSpeed;
-      if (on) { int sg = angleDeg > 0 ? 1 : -1; if (_lastSign != 0 && sg != _lastSign) { Links++; Mult = 1 + 0.5 * Links; _linkT = 0; } _lastSign = sg; _off = 0; Score += _angle * speed * Rate * Mult * dt; if (Score > Best) Best = Score; }
+      if (on) { int sg = angleDeg > 0 ? 1 : -1; if (_lastSign != 0 && sg != _lastSign) { Links++; Mult = 1 + 0.5 * Links; _linkT = 0; _knock?.Play(); } _lastSign = sg; _off = 0; double gain = _angle * speed * Rate * Mult; Score += gain * dt; if (Score > Best) Best = Score;
+        _tickDue -= dt; if (_tickDue <= 0) { _tickDue = Math.Clamp(14.0 / Math.Max(gain, 1), 0.045, 0.16); if (_tick != null) { _tick.PitchScale = 0.92f + (float)_rnd.NextDouble() * 0.16f; _tick.Play(); } } }
       else if (live) { _off += dt; if (_off > EndAfter && Score > 0) { Total += Score; if (Score > Record) Record = Score; OnBank?.Invoke(Score); Score = 0; Mult = 1; Links = 0; Tier = -1; _lastSign = 0; } }
       _on = on;
       for (int k = Tiers.Length - 1; k > Tier; k--) if (Score >= Tiers[k].at) { Tier = k; _callTier = k; _callT = 0; _dust.Clear(); OnTier?.Invoke(k); break; }
