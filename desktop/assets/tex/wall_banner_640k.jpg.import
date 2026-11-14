@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cday1c0n3mec4"
-path.s3tc="res://.godot/imported/wall_banner_9.jpg-8ecbd6444742858fcfcb96052a70c96c.s3tc.ctex"
+uid="uid://dgf032yww1c36"
+path.s3tc="res://.godot/imported/wall_banner_640k.jpg-c65874380e3c76e8970aec3d1062aad9.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/tex/wall_banner_9.jpg"
-dest_files=["res://.godot/imported/wall_banner_9.jpg-8ecbd6444742858fcfcb96052a70c96c.s3tc.ctex"]
+source_file="res://assets/tex/wall_banner_640k.jpg"
+dest_files=["res://.godot/imported/wall_banner_640k.jpg-c65874380e3c76e8970aec3d1062aad9.s3tc.ctex"]
 
 [params]
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Draws what hangs on the room's walls (our own artwork, no one's brands) and the door's wood.
    usage: make_room.py <wood colour jpg (ambientCG Wood026, CC0)> <out dir>
-   wall_banner_1..9.png: vinyl banners in the manner of a club's sponsor wall, saying 640K, DRIFT MASTER, SEND IT and
-   WINNERS DON'T USE BRAKES.   door.jpg: a flush brown door.   caution.png: a yellow notice.   blinds.png: a window with
+   wall_banner_640k.jpg, wall_banner_dm.jpg: two printed PVC vinyl banners (640K in black and white, DRIFT MASTER in
+   colour) and wall_banner_n.png, the folds they hang in.   door.jpg: a flush brown door.   caution.png: a yellow notice.   blinds.png: a window with
    its slatted blind down, daylight behind.     Lettering: Saira Extra Bold Italic and Sacramento (OFL, tools/fonts)."""
 import sys, os, numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -18,40 +18,35 @@ def fit(d, text, font, w, h, start=400):
 def words(d, text, font, box, fill, stroke=0, sfill=None):
     x0, y0, x1, y1 = box; f, bb = fit(d, text, font, x1 - x0, y1 - y0)
     d.multiline_text((x0 + (x1 - x0 - (bb[2] - bb[0])) // 2 - bb[0], y0 + (y1 - y0 - (bb[3] - bb[1])) // 2 - bb[1]), text, font=f, fill=fill, align='center', spacing=f.size // 8, stroke_width=stroke, stroke_fill=sfill)
-def finish(im, name):   # a hem, an eyelet in each corner, and the slight unevenness of printed vinyl
-    W, H = im.size; d = ImageDraw.Draw(im); d.rectangle((0, 0, W - 1, H - 1), outline=(0, 0, 0, 70), width=5)
-    for x in (22, W - 22):
-        for y in (22, H - 22): d.ellipse((x - 9, y - 9, x + 9, y + 9), fill=(170, 172, 176, 255)); d.ellipse((x - 4, y - 4, x + 4, y + 4), fill=(40, 40, 44, 255))
-    a = np.asarray(im).astype(np.float32); sh = 1 + 0.05 * (np.asarray(Image.fromarray((rng.random((H // 40 + 2, W // 40 + 2)) * 255).astype(np.uint8)).resize((W, H), Image.BICUBIC)).astype(np.float32) / 255 - 0.5)
-    a[..., :3] = np.clip(a[..., :3] * sh[..., None], 0, 255); Image.fromarray(a.astype(np.uint8)).convert('RGB').save(os.path.join(out, name), quality=88)
+# ---- two banners of printed PVC vinyl, 2 : 1, hemmed, with eyelets along the edges. The sheet hangs from its corners, so
+# it is never quite flat: broad soft folds run in from the corners and a little sag shows along the top. The folds are
+# shaded into the print (gently) and also written out as a normal map, so the room's lights slide over them.
+BW_, BH_ = 1600, 800
+from scipy.ndimage import gaussian_filter
+yy, xx = np.mgrid[0:BH_, 0:BW_].astype(np.float32); hgt = np.zeros((BH_, BW_), np.float32)
+for cx, cy in ((0, 0), (BW_, 0), (0, BH_), (BW_, BH_)):       # folds fanning in from each corner tie
+    ang = np.arctan2(yy - cy, xx - cx); dist = np.hypot(xx - cx, yy - cy); hgt += 0.9 * np.sin(ang * 9 + cx * 0.01) * np.exp(-dist / 620.0)
+hgt += 0.5 * gaussian_filter(rng.normal(0, 1, (BH_, BW_)).astype(np.float32), 70) * 22 + 0.35 * np.sin(xx / 150.0 + 1.3) * np.exp(-yy / 260.0)   # slow billows, sag under the top hem
+hgt = gaussian_filter(hgt, 6); gy, gx = np.gradient(hgt); k = 5.0; nrm = np.stack([-gx * k, gy * k, np.ones_like(hgt)], -1); nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+Image.fromarray(((nrm * 0.5 + 0.5) * 255).astype(np.uint8)).save(os.path.join(out, 'wall_banner_n.png'), optimize=True)
+fold = np.clip(1 + (-gx * 0.9 - gy * 0.6) * 0.5, 0.86, 1.1)                                # light from the upper left
+def vinyl(im, name):
+    d = ImageDraw.Draw(im); W, H = im.size
+    d.rectangle((14, 14, W - 15, H - 15), outline=(0, 0, 0, 40), width=3)                  # the hem's stitch line
+    for x, y in [(34, 34), (W // 2, 30), (W - 34, 34), (34, H - 34), (W // 2, H - 30), (W - 34, H - 34), (30, H // 2), (W - 30, H // 2)]:
+        d.ellipse((x - 15, y - 15, x + 15, y + 15), fill=(196, 198, 202, 255), outline=(90, 92, 96, 255), width=2); d.ellipse((x - 7, y - 7, x + 7, y + 7), fill=(30, 30, 34, 255))
+    a = np.asarray(im.convert('RGB')).astype(np.float32) * fold[..., None]; Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).save(os.path.join(out, name), quality=90)
 def new(w, h, bg): im = Image.new('RGBA', (w, h), bg); return im, ImageDraw.Draw(im)
-BK, WH, RD, YL, BL, OR, GN, PK = (18, 18, 22, 255), (242, 242, 238, 255), (206, 24, 32, 255), (248, 206, 24, 255), (18, 70, 190, 255), (228, 120, 36, 255), (20, 92, 60, 255), (226, 30, 130, 255)
-# 1  DRIFT MASTER, the big one: white on black, a red bar breaking into speed lines
-im, d = new(1200, 480, BK); words(d, 'DRIFT MASTER', saira, (50, 60, 1150, 310), WH); d.polygon([(70, 340), (820, 340), (800, 372), (50, 372)], fill=RD)
-for k in range(5): d.polygon([(850 + k * 62, 340), (890 + k * 62 - k * 6, 340), (870 + k * 62 - k * 6, 372), (830 + k * 62, 372)], fill=RD)
-words(d, '1/10 RC DRIFT', saira, (60, 388, 700, 440), (200, 200, 200, 255)); finish(im, 'wall_banner_1.jpg')
-# 2  640K: white on orange, as a maker's banner
-im, d = new(1000, 440, OR); words(d, '640K', saira, (60, 30, 940, 320), WH, 6, (150, 70, 10, 255)); words(d, 'TINY WHOOP  ·  FPV  ·  RC', saira, (80, 330, 920, 400), WH); finish(im, 'wall_banner_2.jpg')
-# 3  SEND IT: script on pink with a white slash
-im, d = new(900, 420, PK); d.polygon([(0, 300), (900, 180), (900, 250), (0, 370)], fill=WH); words(d, 'Send it', script, (60, 10, 840, 330), WH, 3, WH); finish(im, 'wall_banner_3.jpg')
-# 4  WINNERS DON'T USE BRAKES: red and black on yellow
-im, d = new(1000, 440, YL); d.rectangle((0, 0, 1000, 70), fill=BK); d.rectangle((0, 370, 1000, 440), fill=BK); words(d, "WINNERS DON'T\nUSE BRAKES", saira, (40, 84, 960, 356), RD, 4, BK)
-for k in range(12): d.polygon([(k * 90, 0), (k * 90 + 45, 0), (k * 90 + 15, 70), (k * 90 - 30, 70)], fill=YL)
-finish(im, 'wall_banner_4.jpg')
-# 5  640K again: white on blue with a swoosh
-im, d = new(760, 360, BL); d.ellipse((-200, 210, 960, 560), fill=(240, 196, 30, 255)); d.ellipse((-200, 232, 960, 600), fill=BL); words(d, '640K', saira, (40, 20, 720, 250), WH); finish(im, 'wall_banner_5.jpg')
-# 6  DRIFT MASTER over a chequered flag
-im, d = new(1000, 420, (60, 62, 66, 255))
-for y in range(0, 420, 42):
-    for x in range(0, 1000, 42):
-        if (x // 42 + y // 42) % 2 == 0: d.rectangle((x, y, x + 41, y + 41), fill=(84, 86, 92, 255))
-words(d, 'DRIFT\nMASTER', saira, (60, 30, 940, 390), WH, 5, BK); finish(im, 'wall_banner_6.jpg')
-# 7  SEND IT in block capitals on green
-im, d = new(820, 380, GN); words(d, 'SEND IT', saira, (50, 50, 770, 270), WH); d.rectangle((60, 292, 760, 306), fill=YL[:3] + (255,)); words(d, 'NO LIFT', saira, (60, 312, 400, 356), YL); finish(im, 'wall_banner_7.jpg')
-# 8  WINNERS DON'T USE BRAKES, white on black with a red band
-im, d = new(1100, 380, BK); d.rectangle((0, 150, 1100, 250), fill=RD); words(d, "WINNERS DON'T", saira, (40, 22, 1060, 140), WH); words(d, 'USE BRAKES', saira, (40, 158, 1060, 244), WH); words(d, 'DRIFT MASTER', saira, (300, 270, 800, 350), (190, 190, 190, 255)); finish(im, 'wall_banner_8.jpg')
-# 9  DRIFT MASTER, white on red
-im, d = new(900, 300, RD); words(d, 'DRIFT MASTER', saira, (40, 40, 860, 260), WH, 3, (120, 10, 14, 255)); finish(im, 'wall_banner_9.jpg')
+# 1  640K: black and white
+im, d = new(BW_, BH_, (14, 14, 16, 255)); words(d, '640K', saira, (150, 90, 1450, 560), (244, 244, 240, 255))
+d.rectangle((150, 596, 1450, 612), fill=(244, 244, 240, 255)); words(d, 'TINY WHOOP  ·  FPV  ·  RC', saira, (150, 630, 1450, 720), (244, 244, 240, 255)); vinyl(im, 'wall_banner_640k.jpg')
+# 2  DRIFT MASTER: a white sheet, the lettering in a run of colour from orange through red and magenta to blue, cut into facets
+im, d = new(BW_, BH_, (244, 244, 240, 255)); mask = Image.new('L', (BW_, BH_), 0); md = ImageDraw.Draw(mask); words(md, 'DRIFT\nMASTER', saira, (120, 70, 1480, 730), 255)
+stops = np.array([(246, 150, 30), (232, 60, 40), (214, 24, 110), (120, 40, 170), (30, 110, 210)], np.float32); tpos = np.clip((xx * 0.8 + yy * 0.5) / (BW_ * 0.8 + BH_ * 0.5), 0, 1) * (len(stops) - 1)
+i0 = np.clip(tpos.astype(int), 0, len(stops) - 2); fr = (tpos - i0)[..., None]; grad = stops[i0] * (1 - fr) + stops[i0 + 1] * fr
+cell = 90; fac = rng.uniform(0.82, 1.12, (BH_ // cell + 2, BW_ // cell + 2)); tri = fac[(yy // cell).astype(int), (xx // cell).astype(int)] * np.where(((xx % cell) + (yy % cell)) > cell, 1.0, 0.9)   # facets
+col = Image.fromarray(np.clip(grad * tri[..., None], 0, 255).astype(np.uint8)).convert('RGBA'); im.paste(col, (0, 0), mask); vinyl(im, 'wall_banner_dm.jpg')
+BK, YL = (18, 18, 22, 255), (248, 206, 24, 255)
 # the door: the wood with its grain running up the door, a little darker towards the edges
 w = Image.open(wood).convert('RGB').rotate(90, expand=True).resize((512, 1024), Image.LANCZOS); a = np.asarray(w).astype(np.float32); yy, xx = np.mgrid[0:1024, 0:512]
 edge = np.minimum(np.minimum(xx, 511 - xx) / 40, 1) * 0.12 + 0.88; a *= edge[..., None]; Image.fromarray(np.clip(a * 0.92, 0, 255).astype(np.uint8)).save(os.path.join(out, 'door.jpg'), quality=88)

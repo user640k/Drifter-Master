@@ -3,9 +3,9 @@
 ## Changelog (this build)
 
 - New main track, CLUB, after a photo of a club's room: a run along the far wall to a hairpin in the door corner, a long S through the middle round turf islands, a wide bend, and a big sweeper. 37.5 m a lap, nothing straight. It is the first track in the list; HILLSIDE and INFIELD remain.
-- The room: a corner at the far right where the door is (brown door, yellow notices, bare concrete floor), a fire extinguisher and a wall television beside it, a wall of banners behind the track, and a window with its blind down in the left wall.
+- The room: a corner at the far right where the door is (brown door, yellow notices, bare concrete floor), a fire extinguisher and a wall television beside it, two PVC vinyl banners behind the track (640K in black and white, DRIFT MASTER in colour), and a window with its blind down in the left wall.
 - The television plays the overhead camera live; that camera is no longer in the camera cycle (driver, on board, roof stick).
-- Banners and flags now say 640K, DRIFT MASTER, SEND IT and WINNERS DON'T USE BRAKES.
+- Trackside flags say 640K, DRIFT MASTER, SEND IT and WINNERS DON'T USE BRAKES.
 - Tyres: a tyre wall in two places on each layout, three high, packed in a row along the outside of a bend.
 - MOUNT option on the CAR page: body posts with clips, or hidden magnets (nothing shows through the shell).
 - Neon: no more bright streak on the floor from its lights; the windows glow more gently.

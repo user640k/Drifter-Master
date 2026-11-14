@@ -1,5 +1,5 @@
 // What makes the hall a club's room, after a photo of one: a corner at the far right where the door is (set back from
-// the room, with a bare concrete floor), a fire extinguisher and a wall television beside it, a wall of banners behind
+// the room, with a bare concrete floor), a fire extinguisher and a wall television beside it, two vinyl banners behind
 // the track, and a window with its blind down in the left wall. None of it is in the car's way.
 using Godot;
 using System;
@@ -48,10 +48,14 @@ namespace DriftMaster {
       { float tx = hx - 1.3f, ty = 1.72f, tw = 1.02f, th = tw * 9 / 16; var bezel = Flat(new Color(0.02f, 0.02f, 0.024f), 0.4f);
         Box(root, new Vector3(tw + 0.04f, th + 0.04f, 0.035f), new Vector3(tx, ty, z0 + 0.03f), bezel); Box(root, new Vector3(0.2f, 0.2f, 0.02f), new Vector3(tx, ty, z0 + 0.008f), steel);
         Screen = Pic(root, new Vector2(tw, th), new Vector3(tx, ty, z0 + 0.0485f), 0, Flat(new Color(0.01f, 0.01f, 0.012f), 0.2f)); }
-      // ---- the wall of banners, behind the track (width in metres, height from each picture's own shape)
-      (int id, float x, float y, float w, float aspect)[] hang = { (1, -3.9f, 1.95f, 1.6f, 1200f / 480), (2, -4.2f, 1.2f, 1.25f, 1000f / 440), (8, -2.45f, 1.15f, 1.45f, 1100f / 380), (6, -2.15f, 1.9f, 1.2f, 1000f / 420),
-        (3, -0.75f, 1.95f, 1.1f, 900f / 420), (4, -0.7f, 1.2f, 1.25f, 1000f / 440), (5, 0.6f, 1.95f, 0.95f, 760f / 360), (7, 0.9f, 1.25f, 1.05f, 820f / 380), (9, 2.25f, 1.9f, 1.2f, 900f / 300), (2, 2.45f, 1.3f, 0.95f, 1000f / 440) };
-      foreach (var b in hang) Pic(root, new Vector2(b.w, b.w / b.aspect), new Vector3(b.x, b.y, z0 + 0.004f + 0.0006f * b.id), 0, Tex($"wall_banner_{b.id}.jpg", 0.55f));
+      // ---- two banners on the far wall, behind the track: printed PVC vinyl, 2.8 x 1.4 m, hung by cord from their corners.
+      // Vinyl has a soft sheen, and the sheet hangs in broad folds (a normal map), so the lights slide across it
+      { var cord = Flat(new Color(0.12f, 0.12f, 0.13f), 0.7f); var folds = GD.Load<Texture2D>("res://assets/tex/wall_banner_n.png"); const float bw = 2.8f, bh = 1.4f, by = 1.55f;
+        foreach (var (file, bx) in new[] { ("wall_banner_640k.jpg", -3.35f), ("wall_banner_dm.jpg", 0.55f) }) {
+          var m = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/" + file), NormalEnabled = true, NormalTexture = folds, NormalScale = 1.1f, Roughness = 0.36f, MetallicSpecular = 0.55f, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
+          Pic(root, new Vector2(bw, bh), new Vector3(bx, by, z0 + 0.018f), 0, m);
+          foreach (int sx in new[] { -1, 1 }) foreach (int sy in new[] { -1, 1 }) {   // a cord from each corner eyelet out to a hook in the wall
+            Box(root, new Vector3(0.17f, 0.006f, 0.006f), new Vector3(bx + sx * (bw / 2 + 0.05f), by + sy * (bh / 2 + 0.035f), z0 + 0.012f), cord, new Vector3(0, 0, sx * sy * 38)); Box(root, new Vector3(0.02f, 0.02f, 0.02f), new Vector3(bx + sx * (bw / 2 + 0.115f), by + sy * (bh / 2 + 0.085f), z0 + 0.01f), cord); } } }
       // ---- the window in the left wall: a white frame and sill, the blind down, daylight behind it
       { float wz = -0.6f, wy = 1.5f, ww = 1.9f, wh = 1.35f, wx = -hx + 0.004f; var white = Flat(new Color(0.93f, 0.93f, 0.91f), 0.5f);
         var blind = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), EmissionEnabled = true, EmissionTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), Emission = new Color(1, 1, 1), EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionEnergyMultiplier = 0.95f, AlbedoColor = new Color(0.5f, 0.5f, 0.5f), Roughness = 0.7f };   // lit from behind, but not so bright that the slats are lost
