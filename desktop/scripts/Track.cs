@@ -59,8 +59,11 @@ namespace DriftMaster {
     //     a raised road the joints between its deck boards
     const double TileS = 0.3048, Joint = 0.0004, JointW = 0.004, StepH = 0.00015, Und = 0.0008, Wl = 2.1;
     double[][] _humps, _seams, _corners; double _ph1, _ph2; int _seed; bool[] _kerb; double[] _kerbSide;
-    public const double KerbH = 0.0012, DeckJoint = 1.22;
+    public const double KerbH = 0.005, DeckJoint = 1.22;
     static double Hash2(int i, int j, int seed) { unchecked { int h = i * 374761393 + j * 668265263 + seed * 1442695041; h = (h ^ (int)((uint)h >> 13)) * 1274126177; return (uint)(h ^ (int)((uint)h >> 16)) / 4294967296.0; } }
+    /// a raised kerb along the lane's edge at this sample, and which side it is on (+1 or -1 along the normal)
+    public bool KerbAt(int i) { if (_kerb == null) MakeBumps(); return _kerb[i]; }
+    public double KerbSide(int i) { if (_kerb == null) MakeBumps(); return _kerbSide[i]; }
     void MakeBumps() {
       _seed = 41; foreach (char ch in Name) _seed = unchecked(_seed * 31 + ch); var r = new Random(_seed);
       double R(double a, double b) => a + r.NextDouble() * (b - a);
@@ -75,7 +78,8 @@ namespace DriftMaster {
       // kerbs: where the lane bends tighter than about 0.9 m, along its inner edge (as painted on the floor sheet)
       _kerb = new bool[N]; _kerbSide = new double[N];
       for (int i = 0; i < N; i++) { int a = (i - 1 + N) % N, b = (i + 1) % N; double dh = Math.Atan2(TX[b], TZ[b]) - Math.Atan2(TX[a], TZ[a]); dh = Math.Atan2(Math.Sin(dh), Math.Cos(dh)); double k = dh / (2 * Ds);
-        _kerb[i] = Boards && Math.Abs(k) > 1 / 0.9 && E[i] < 0.004; _kerbSide[i] = k > 0 ? 1 : -1; }
+        bool tight = Math.Abs(k) > 1 / 1.25, outer = Name == "CLUB 1" && X[i] < -2.15;   // (CLUB's big corner has its kerb on the outside, against the turf)
+        _kerb[i] = Boards && (tight || outer) && E[i] < 0.004; _kerbSide[i] = (k > 0 ? 1 : -1) * (tight ? 1 : -1); }
     }
     /// the floor away from the lane's own features (also what the floor's reflections are bent by)
     public double BumpBase(double x, double z, bool tiles = true) {
@@ -109,8 +113,8 @@ namespace DriftMaster {
     }
 
     // contacts for one of the car's two circles: (nx, nz) points back into free space, pen is the overlap
-    public void ContactsFor(double cx, double cz, List<(double nx, double nz, double pen)> hits) {
-      int i = NearestT(cx, cz, Idx); Idx = i;
+    public void ContactsFor(double cx, double cz, List<(double nx, double nz, double pen)> hits, double CarR = Track.CarR) {
+      int i = NearestT(cx, cz, Idx); if (CarR == Track.CarR) Idx = i;   // (only the axle circles move the place on the lap)
       double off = (cx - X[i]) * NX[i] + (cz - Z[i]) * NZ[i], edge = Hw - CarR;
       if (Math.Abs(off) > edge) { double sg = Math.Sign(off); hits.Add((-NX[i] * sg, -NZ[i] * sg, Math.Abs(off) - edge)); }
       double ix = HallX - 0.04, iz = HallZ - 0.04;

@@ -40,12 +40,8 @@ def new(w, h, bg): im = Image.new('RGBA', (w, h), bg); return im, ImageDraw.Draw
 # 1  640K: black and white
 im, d = new(BW_, BH_, (14, 14, 16, 255)); words(d, '640K', saira, (150, 90, 1450, 560), (244, 244, 240, 255))
 d.rectangle((150, 596, 1450, 612), fill=(244, 244, 240, 255)); words(d, 'TINY WHOOP  ·  FPV  ·  RC', saira, (150, 630, 1450, 720), (244, 244, 240, 255)); vinyl(im, 'wall_banner_640k.jpg')
-# 2  DRIFT MASTER: a white sheet, the lettering in a run of colour from orange through red and magenta to blue, cut into facets
-im, d = new(BW_, BH_, (244, 244, 240, 255)); mask = Image.new('L', (BW_, BH_), 0); md = ImageDraw.Draw(mask); words(md, 'DRIFT\nMASTER', saira, (120, 70, 1480, 730), 255)
-stops = np.array([(246, 150, 30), (232, 60, 40), (214, 24, 110), (120, 40, 170), (30, 110, 210)], np.float32); tpos = np.clip((xx * 0.8 + yy * 0.5) / (BW_ * 0.8 + BH_ * 0.5), 0, 1) * (len(stops) - 1)
-i0 = np.clip(tpos.astype(int), 0, len(stops) - 2); fr = (tpos - i0)[..., None]; grad = stops[i0] * (1 - fr) + stops[i0 + 1] * fr
-cell = 90; fac = rng.uniform(0.82, 1.12, (BH_ // cell + 2, BW_ // cell + 2)); tri = fac[(yy // cell).astype(int), (xx // cell).astype(int)] * np.where(((xx % cell) + (yy % cell)) > cell, 1.0, 0.9)   # facets
-col = Image.fromarray(np.clip(grad * tri[..., None], 0, 255).astype(np.uint8)).convert('RGBA'); im.paste(col, (0, 0), mask); vinyl(im, 'wall_banner_dm.jpg')
+# 2  DRIFT MASTER: black on a white sheet
+im, d = new(BW_, BH_, (244, 244, 240, 255)); words(d, 'DRIFT\nMASTER', saira, (120, 70, 1480, 730), (14, 14, 16, 255)); vinyl(im, 'wall_banner_dm.jpg')
 BK, YL = (18, 18, 22, 255), (248, 206, 24, 255)
 # the door: the wood with its grain running up the door, a little darker towards the edges
 w = Image.open(wood).convert('RGB').rotate(90, expand=True).resize((512, 1024), Image.LANCZOS); a = np.asarray(w).astype(np.float32); yy, xx = np.mgrid[0:1024, 0:512]

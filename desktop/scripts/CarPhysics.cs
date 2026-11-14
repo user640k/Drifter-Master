@@ -33,6 +33,7 @@ namespace DriftMaster {
     /// the chassis alone is about 1.32 kg with its centre of gravity 26 mm up; a shell adds its own mass at its own height
     public void SetBody(double shellKg, double shellCgUp, double halfWidth, double halfLength) {
       const double mc = 1.32, hc = 0.0262;
+      ShellHalfL = Math.Clamp(halfLength, 0.17, 0.24); ShellHalfW = Math.Clamp(halfWidth, 0.08, 0.105);
       M = mc + shellKg; H = (mc * hc + shellKg * shellCgUp) / M;
       IXX = 0.0044 + shellKg * (halfWidth * halfWidth / 3 + (shellCgUp - H) * (shellCgUp - H)) + mc * (hc - H) * (hc - H);
       IZ = 0.0186 + shellKg * (halfLength * halfLength + halfWidth * halfWidth) / 3;
@@ -46,6 +47,7 @@ namespace DriftMaster {
     public const double RollStop = 0.078, PitchStop = 0.052;
 
     public double X, Z, Hd, U, V, Rr, W, Vx, Vz, Steer, Thr, GyroOut, Beta;
+    public double ShellHalfL = 0.21, ShellHalfW = 0.095; public const double CornerR = 0.03;
     public double Roll, RollV, Pitch, PitchV, Ax, Ay, Y, Vy, Heave, HeaveV, RoadR, RoadP, RoadH;
     public double ShellZ, ShellV, ShellR, ShellRV; double _heaveV0, _rollV0, _roadHV0, _roadRV0; /* the shell's own shiver on its posts: up/down (m) and rocking (rad) */
     public bool Air, Reversing, Braking, Spinning;
@@ -207,9 +209,12 @@ namespace DriftMaster {
       // barriers and walls: push each axle circle out, lose speed into the barrier, turn to run along it
       bool touched = false;
       if (walls && T != null) {
-        for (int pass = 0; pass < 2; pass++) for (int c = 0; c < 2; c++) {
-          double fx = Math.Sin(Hd), fz = Math.Cos(Hd), sgn = c == 0 ? 1 : -1, cx = X + fx * 0.1285 * sgn, cz = Z + fz * 0.1285 * sgn;
-          _hits.Clear(); T.ContactsFor(cx, cz, _hits);
+        // (the shape that meets a barrier: a circle on each axle, and a small one in each corner of the shell, so a corner
+        // cannot poke through a board when the car meets it at an angle)
+        for (int pass = 0; pass < 2; pass++) for (int c = 0; c < 6; c++) {
+          double fx = Math.Sin(Hd), fz = Math.Cos(Hd), fore = c < 2 ? (c == 0 ? 0.1285 : -0.1285) : (c < 4 ? 1 : -1) * (ShellHalfL - CornerR), side = c < 2 ? 0 : (c % 2 == 0 ? 1 : -1) * (ShellHalfW - CornerR);
+          double cx = X + fx * fore + fz * side, cz = Z + fz * fore - fx * side;
+          _hits.Clear(); T.ContactsFor(cx, cz, _hits, c < 2 ? Track.CarR : CornerR);
           foreach (var (nx, nz, pen) in _hits) {
             touched = true; X += nx * pen; Z += nz * pen;
             double vn = -(Vx * nx + Vz * nz);

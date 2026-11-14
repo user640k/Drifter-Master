@@ -24,7 +24,7 @@ namespace DriftMaster {
       ("RED", new Color(0.8f, 0.03f, 0.05f), false), ("BLUE", new Color(0.02f, 0.2f, 0.78f), false), ("PURPLE", new Color(0.42f, 0.08f, 0.78f), false) };
     int _rimIdx, _livery, _body; /* rim colour, bonnet (0 body colour, 1 carbon), body shell */
     /// the tracks: name, data file, how far the layout is moved along z, floor sheet, white boards all round?
-    public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB", "club", 0.0, "floor_wear_club", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };   // CLUB is the main track
+    public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB 1", "club", 0.0, "floor_wear_club", true), ("CLUB 2", "club2", 0.0, "floor_wear_club2", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };   // CLUB is the main track
     static bool _trackChosen; public static int TrackIdx; /* kept across a change of track: the scene is loaded again */
 
     public override void _Ready() {
@@ -67,6 +67,12 @@ namespace DriftMaster {
       _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
       BuildHud(); BuildCompetition(); BuildTv();
       if (!_bare) AddChild(Decor.Build(_t, _course, DriverEye));
+      if (!_bare && _t.Name == "CLUB 1") { // three cars on show on the turf island by the wide bend: they stand still
+        var tt = Track.FromJson(FileAccess.GetFileAsString("res://assets/club.json"), Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); var park = new CarPhysics { T = tt };
+        foreach (var (body, paint, rims, zc, hd) in new[] { (1, 4, 0, -1.9, Math.PI / 2), (3, 7, 1, -1.5, Math.PI / 2), (0, 8, 4, -1.1, Math.PI / 2) }) {   // one above the other in the bays of the pits, beside the right-hand side
+          double x = 3.1;
+          var show = new CarView { Body = body, Name = "Show" + body, Show = true }; AddChild(show); show.SetPaint(Paints[paint].col, false); show.SetRims(Rims[rims].col, Rims[rims].metal); show.SetCamber(-7, -2); show.SetMounts(true);
+          park.Place(x, zc, hd); show.Pose(park, tt); show.Freeze(); } }
       _ghostLap = LoadGhost(false); _ghostRun = LoadGhost(true);
       if (CompTest == "solo" || CompTest == "solo2") StartSolo(); else if (CompTest == "park") Park();
       if (_menuAt != null) { _pause.Open(true); _pause.Goto(_menuAt[0], _menuAt[1]); }
@@ -111,6 +117,10 @@ namespace DriftMaster {
       _tvView = new SubViewport { Size = new Vector2I(384, 216), RenderTargetUpdateMode = SubViewport.UpdateMode.Once, Msaa3D = Viewport.Msaa.Disabled }; AddChild(_tvView);
       var cam = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = (float)_t.HallZ * 2 - 0.2f, Near = 0.05f, Far = 6, Position = new Vector3(0, Hall.CeilY - 0.06f, 0) }; _tvView.AddChild(cam);
       cam.LookAt(new Vector3(0, 0, 0), Vector3.Forward); cam.MakeCurrent();
+      // the television's picture has to be cheap: it sees the room (layer 1) and a plain block for each car (layer 3), not
+      // the cars' own meshes (layer 2), and it is lit by a light of its own that throws no shadow, so it has no shadow pass
+      cam.CullMask = 1 | 4; _cam.CullMask = 0xFFFFF & ~4u; _fpvCam.CullMask = 0xFFFFF & ~4u; _sun.Layers = 2;
+      var tvSun = new DirectionalLight3D { LightEnergy = _sun.LightEnergy, LightColor = _sun.LightColor, ShadowEnabled = false, Layers = 4 }; tvSun.RotationDegrees = _sun.RotationDegrees; AddChild(tvSun);
       Room.Screen.MaterialOverride = new StandardMaterial3D { AlbedoColor = Colors.Black, EmissionEnabled = true, EmissionTexture = _tvView.GetTexture(), Emission = Colors.White, EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionEnergyMultiplier = 1.15f, Roughness = 0.25f };
     }
     void OnBoard(bool on) {
@@ -357,11 +367,12 @@ namespace DriftMaster {
         _tx.Position = new Vector2(vs.X - _tx.Size.X - 14, vs.Y - _tx.Size.Y - 44); _tx.Show(show.Steer, show.Thr, show.Brk, Input.GetConnectedJoypads().Count > 0 || _radio.Fake != null); }
       if (_tvView != null && ++_tvTick % 3 == 0) _tvView.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;   // the television's picture: every third frame is plenty
       StepSplash(delta); StepMusic(delta);
+      _view.Detail = _camMode != 1 || (_pause.Visible && _pause.Preview);   // from the stand the shocks are a pixel: they are drawn in the close views
       StepCompetition(delta); _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
         var earXf = new Transform3D(Basis.Identity, DriverEye).LookingAt(new Vector3(0, 0.5f, 0), Vector3.Up); // the driver's place: the same corner as the camera, facing the middle of the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
-      if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()}"); GetTree().Quit(); }
+      if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()} draws {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0} objects {Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame):0} tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}"); GetTree().Quit(); }
     }
 
     // a lap counts when the car passes the three checkpoints in order and then the line

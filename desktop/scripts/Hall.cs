@@ -69,6 +69,7 @@ namespace DriftMaster {
       }
 
       Room.Build(root, t, wall, skirt);
+      Merge.Static(root, false, Room.Screen);
       BuildDeck(root, t, floorMat);
       BuildBarriers(root, t);
       BuildStartLine(root, t);

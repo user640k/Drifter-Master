@@ -70,6 +70,7 @@ namespace DriftMaster {
       _trigger = new Node3D { Position = new Vector3(0, 0.126f, 0.034f) }; root.AddChild(_trigger);
       Box(_trigger, new Vector3(0.012f, 0.036f, 0.007f), new Vector3(0, -0.019f, 0.006f), new Vector3(-12, 0, 0), trig); Box(_trigger, new Vector3(0.012f, 0.007f, 0.02f), new Vector3(0, -0.038f, -0.002f), new Vector3(-12, 0, 0), trig);
       Box(_trigger, new Vector3(0.012f, 0.026f, 0.005f), new Vector3(0, -0.025f, -0.012f), new Vector3(-12, 0, 0), trig);                              // the loop the finger sits in
+      Merge.Static(root, false, _wheel, _trigger);   // the fixed parts as one mesh for each material: it is on screen all the time
     }
     /// steer: +1 full left; thr and brk 0..1; lit: a controller is connected
     public void Show(double steer, double thr, double brk, bool lit) {

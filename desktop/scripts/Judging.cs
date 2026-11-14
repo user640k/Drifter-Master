@@ -31,6 +31,9 @@ namespace DriftMaster {
           c.Bends.Add((i, best, j, sd, -1)); if (fromStart > skip && fromStart < n - skip / 2) bends.Add((best, k[best])); }   // marks: not in the launch, not at the line
         i = j;
       }
+      // at most six marks, at the corners that turn the car the most (a weaving run has many small bends: they are driven, not judged one by one)
+      if (bends.Count > 6) { double Turn(int apex) { double sum = 0; for (int d = 0; d < n; d++) { int q = (apex + d) % n; if (!c.Bend[q] || Math.Sign(k[q]) != Math.Sign(k[apex])) break; sum += Math.Abs(k[q]) * t.Ds; } for (int d = 1; d < n; d++) { int q = ((apex - d) % n + n) % n; if (!c.Bend[q] || Math.Sign(k[q]) != Math.Sign(k[apex])) break; sum += Math.Abs(k[q]) * t.Ds; } return sum; }
+        bends.Sort((a, b) => Turn(b.apex).CompareTo(Turn(a.apex))); bends.RemoveRange(6, bends.Count - 6); }
       bends.Sort((a, b) => (((a.apex - s0) % n + n) % n).CompareTo(((b.apex - s0) % n + n) % n));
       for (int q = 0; q < bends.Count; q++) {
         int i = bends[q].apex; bool outer = q % 2 == 1; int a = ((i - 1) % n + n) % n, b = (i + 1) % n;

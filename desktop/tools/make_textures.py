@@ -81,7 +81,7 @@ def arr(im, blur=0):
     a = np.asarray(im).astype(np.float32) / 255
     return gaussian_filter(a, blur) if blur else a
 # one sheet per track: (data file, how far its layout was moved along z, name suffix, turf and kerbs?)
-for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True), ('club.json', 1.0, '_club', 'club')):   # (each layout sits 1 m towards -z of the hall's middle)
+for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True), ('club.json', 1.0, '_club', 'club'), ('club2.json', 1.0, '_club2', 'club2')):   # (each layout sits 1 m towards -z of the hall's middle)
     wr = np.random.default_rng(777); tj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', TFILE)))
     rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
     # broad dust haze
@@ -121,15 +121,15 @@ for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json'
         for k in range(int(rr(4, 12))): a += rr(-0.7, 0.7); s = rr(0.02, 0.07); x += math.cos(a) * s; z += math.sin(a) * s; pts.append(px(x, z))
         d.line(pts, fill=255, width=1)
     over(arr(im, 0.4) * 0.5, (120, 120, 116), 0.2)
-    # tape left from old layouts, some torn short
-    for i in range(13):
+    # tape left from old layouts, some torn short (not on the club's floors: they are laid out like a printed mat, and kept clean)
+    for i in range(0 if str(TURF).startswith('club') else 13):
         im, d = layer(); x, z, a, L = rr(-HX + 0.4, HX - 0.4), rr(-HZ + 0.4, HZ - 0.4), rr(0, 3.14), rr(0.12, 0.7)
         cx, cz = px(x, z); ux, uz = math.cos(a) * L / 2 * PXM, math.sin(a) * L / 2 * PXM
         d.line([(cx - ux, cz - uz), (cx + ux, cz + uz)], fill=255, width=int(0.048 * PXM))
         m = arr(im) * (0.75 + 0.25 * gaussian_filter(wr.random((Hp // 8 + 1, Wp // 8 + 1)).astype(np.float32), 2).repeat(8, 0).repeat(8, 1)[:Hp, :Wp])
         over(m * (1 - 0.6 * lm) * 0.2, (220, 200, 90) if wr.random() < 0.3 else (225, 225, 215), 0.2)
     # faded paint from an old layout: broken arcs
-    for i in range(6):
+    for i in range(0 if str(TURF).startswith('club') else 6):
         im, d = layer(); cx, cz = px(rr(-HX + 1, HX - 1), rr(-HZ + 1, HZ - 1)); R = rr(0.6, 2.0) * PXM; a0 = rr(0, 360); a = a0
         while a < a0 + rr(60, 170):
             if wr.random() < 0.75: d.arc((cx - R, cz - R, cx + R, cz + R), a, a + 11, fill=255, width=int(0.022 * PXM))
@@ -152,41 +152,68 @@ for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json'
         lanes = arr(im) > 0.5
         hull = ConvexHull(np.c_[cx, cz]); im, d = layer(); d.polygon([px(*np.c_[cx, cz][i]) for i in hull.vertices], fill=255); inside = arr(im) > 0.5
         grass = inside & ~lanes
-        if TURF == 'club':   # the club's floor is bare between the lanes but for three islands of turf, one inside each tight bend
-            isl = np.zeros_like(grass)
+        if TURF == 'club':
+            q = px(-2.05, 0.15 - Z0); rr2 = (xx - q[0]) ** 2 + (yy - q[1]) ** 2   # turf only outside the big corner, out to the corners of the mat
+            grass = (xx < q[0]) & (rr2 > ((2.05 + hw + 0.035) * PXM) ** 2) & (xx > q[0] - 2.55 * PXM) & (np.abs(yy - q[1]) < 2.55 * PXM)
+        blue2 = None
+        if TURF == 'club2':   # CLUB 2: bare between the lanes but for three islands of turf, one inside each tight bend, each with a blue tip
+            isl = np.zeros_like(grass); tip = np.zeros_like(grass)
             for ix, iz in ((2.85, -1.33), (-1.0, -0.17), (2.75, 1.21)):
-                q = px(ix, iz - Z0); isl |= ((xx - q[0]) / (1.5 * PXM)) ** 2 + ((yy - q[1]) / (0.62 * PXM)) ** 2 < 1
-            grass &= isl
+                q = px(ix, iz - Z0); isl |= ((xx - q[0]) / (1.5 * PXM)) ** 2 + ((yy - q[1]) / (0.62 * PXM)) ** 2 < 1; tip |= ((xx - q[0]) / (2.5 * PXM)) ** 2 + ((yy - q[1]) / (0.62 * PXM)) ** 2 < 1
+            blue2 = grass & tip & ~isl; grass &= isl
         g = wr.random((Hp, Wp)).astype(np.float32); blade = gaussian_filter(g, (0.6, 0.6)); clump = gaussian_filter(wr.random((Hp, Wp)).astype(np.float32), 9)
         tone = 0.78 + 0.5 * (blade - 0.5) * 2.2 + 0.5 * (clump - 0.5) * 3
         for k, base in enumerate((0.16, 0.42, 0.14)): rgb[..., k] = np.where(grass, base * tone, rgb[..., k])
         al[:] = np.where(grass, 1.0, al); ro[:] = np.where(grass, 0.45, ro)
+        if blue2 is not None:
+            w = np.clip(gaussian_filter(blue2.astype(np.float32), 0.75) * 1.15 - 0.075, 0, 1)
+            for k, v in enumerate((0.07, 0.5, 0.86)): rgb[..., k] = rgb[..., k] * (1 - w) + v * w
+            al[:] = al * (1 - w) + w; ro[:] = ro * (1 - w) - 0.1 * w
         # kerbs: where the lane bends tighter than about 0.9 m, along its inner edge
         hd = np.arctan2(np.roll(cx, -1) - np.roll(cx, 1), np.roll(cz, -1) - np.roll(cz, 1)); dh = np.roll(hd, -1) - np.roll(hd, 1); kap = np.arctan2(np.sin(dh), np.cos(dh)) / (2 * tj['ds'])
         step = max(1, int(round(0.09 / tj['ds'])))
         for i in range(0, n, step):
-            if abs(kap[i]) < 1 / 0.9: continue
-            j = (i + step) % n; sgn = 1 if kap[i] > 0 else -1
+            tight = abs(kap[i]) > 1 / 1.25; outer = TURF == 'club' and cx[i] < -2.15   # (the big corner's kerb is on its outside, against the turf)
+            if not (tight or outer): continue
+            j = (i + step) % n; sgn = (1 if kap[i] > 0 else -1) * (1 if tight else -1)
             def edge(q, o):
                 tx, tz = np.cos(hd[q]), -np.sin(hd[q]); return (cx[q] + sgn * tx * o, cz[q] + sgn * tz * o)   # across the lane, to the inside
             quad = [px(*edge(i, hw - 0.005)), px(*edge(j, hw - 0.005)), px(*edge(j, hw - 0.075)), px(*edge(i, hw - 0.075))]
             im, d = layer(); d.polygon(quad, fill=255); m = arr(im) > 0.5; red = (i // step) % 2 == 0
             for k, v in enumerate((0.78, 0.08, 0.07) if red else (0.9, 0.9, 0.88)): rgb[..., k] = np.where(m, v, rgb[..., k])
             al[:] = np.where(m, 1.0, al); ro[:] = np.where(m, 0.1, ro)
-    if TURF == 'club':   # three yellow lines along the outside of each wide bend, as the club marks its outer zones
-        for o in (0.10, 0.17, 0.24):
-            im, d = layer(); run = []
-            for i in range(n + 1):
-                q = i % n
-                if 1 / 2.6 < abs(kap[q]) < 1 / 0.9 or (abs(kap[q]) >= 1 / 0.9 and False):
-                    sg = 1 if kap[q] > 0 else -1; tx, tz = np.cos(hd[q]), -np.sin(hd[q]); run.append(px(cx[q] - sg * tx * (hw - o), cz[q] - sg * tz * (hw - o)))
-                else:
-                    if len(run) > 3: d.line(run, fill=255, width=max(2, int(0.022 * PXM)))
-                    run = []
-            if len(run) > 3: d.line(run, fill=255, width=max(2, int(0.022 * PXM)))
-            m = arr(im, 0.6) * (0.55 + 0.45 * (wr.random((Hp, Wp)) > 0.25))
-            for k, v in enumerate((0.9, 0.74, 0.08)): rgb[..., k] = np.where(m > 0.3, v, rgb[..., k])
-            al[:] = np.where(m > 0.3, np.maximum(al, 0.9 * m), al)
+    if TURF == 'club':
+        def paint(m, col, rough):   # (edges softened over a pixel, so a marking seen close has a clean edge and not steps)
+            w = np.clip(gaussian_filter(m.astype(np.float32), 0.75) * 1.15 - 0.075, 0, 1)
+            for k, v in enumerate(col): rgb[..., k] = rgb[..., k] * (1 - w) + v * w
+            al[:] = al * (1 - w) + w; ro[:] = ro * (1 - w) + rough * w
+        def side(q, sg, o): tx, tz = np.cos(hd[q]), -np.sin(hd[q]); return px(cx[q] + sg * tx * o, cz[q] + sg * tz * o)
+        # world coordinates of every pixel (x, and z as in the track file)
+        q0, q1 = px(0, -Z0), px(1, 1 - Z0); wx = (xx - q0[0]) / (q1[0] - q0[0]); wz = (yy - q0[1]) / (q1[1] - q0[1])
+        # the blue sections, where the mat has them. One fills the long island between the near side and the lane coming
+        # back through the middle, and runs on up the outside of the roundabout hairpin; the other is a band along the
+        # inside of the diagonal.
+        dB = np.hypot(wx + 2.05, wz - 0.15); dR = np.hypot(wx + 1.75, wz - 0.155); dH = np.hypot(wx + 0.55, wz - 1.52); dD = np.hypot(wx - 0.5, wz - 0.87)
+        isl = (wz > 1.32) & (wz < 1.72) & (wx > -1.75) & (wx < -0.55) | (dH < 0.2) | (wx <= -1.75) & (wz > 0.45) & (dR > 1.17) & (dB < 1.57) & ((wz < 1.72) | (wx < -2.05))
+        band = (dD > 0.7) & (dD < 0.92) & (wx > 0.75) & (wz <= 0.87) | (wx > 1.2) & (wx < 1.42) & (wz > 0.87) & (wz < 1.2)
+        paint(isl | band, (0.07, 0.5, 0.86), -0.1)
+        paint(dR < 0.2, (0.34, 0.34, 0.35), 0.1)   # the middle of the roundabout
+        # yellow floor tape (30 mm, clean-edged, a little glossier than the tile): three short lines round the outside of the
+        # big corner at its middle, and three arrows across the lane before the line
+        im, d = layer(); w = max(3, int(round(0.03 * PXM)))
+        for o in (0.13, 0.2, 0.27):
+            run = [side(q, -(1 if kap[q] > 0 else -1), hw - o) for q in range(n) if cx[q] < -3.75]
+            run.sort(key=lambda p: p[1])
+            for a in range(0, len(run) - 1, 4): d.line(run[a:a + 5], fill=255, width=w)
+        for back in (0.4, 0.62, 0.84):
+            x = cx[0] - back; d.line([px(x + 0.13, cz[0] - 0.24), px(x, cz[0]), px(x + 0.13, cz[0] + 0.24)], fill=255, width=int(round(0.045 * PXM)), joint='curve')
+        paint(arr(im) > 0.5, (0.93, 0.76, 0.05), -0.12)
+        # the pits, inside the wide end: bays marked out in white
+        im, d = layer()
+        wl = max(2, int(round(0.02 * PXM)))
+        for z in (-1.1, -0.7, -0.3, 0.1): d.line([px(2.78, z - Z0), px(3.42, z - Z0)], fill=255, width=wl)
+        d.line([px(3.42, -1.1 - Z0), px(3.42, 0.1 - Z0)], fill=255, width=wl)
+        paint(arr(im) > 0.5, (0.9, 0.9, 0.88), -0.05)
     out_rgba = np.dstack([rgb.clip(0, 1), al.clip(0, 1)])
     Image.fromarray((out_rgba * 255).astype(np.uint8), 'RGBA').save(f'{out}/floor_wear{SUF}.png', optimize=True)
     Image.fromarray(((0.5 + ro).clip(0, 1) * 255).astype(np.uint8)).save(f'{out}/floor_wear{SUF}_rough.jpg', quality=85)

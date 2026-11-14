@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lays out a track and writes its file: make_track.py <out.json> [infield|club]. First INFIELD (assets/infield.json (same form as hillside.json: 480 points along the
+"""Lays out a track and writes its file: make_track.py <out.json> [infield|club|club2]. First INFIELD (assets/infield.json (same form as hillside.json: 480 points along the
    centre of the lane, evenly spaced, with the lane's half width).
    After a photo of a club track: an oval round the outside with a twisting S inside it, turf between the lanes.
    It is 2 m longer than the first version (the hall was widened to 11 m for it): the long straight runs past the pilot, a hairpin at the right-hand end turns
@@ -21,8 +21,27 @@ if which == 'infield':
     line((4.2, -1.85), (-3.05, -1.85)),          # the far straight
     arc((-3.05, 0.0), 1.85, 270, 90),            # the wide left-hand end, all the way round
   ]); NAME, START = 'INFIELD', (-0.6, 1.9)
+elif which == 'club':
+  # CLUB 1: the route drawn in red on a picture of a printed drift mat. Along the far side to the left with the line on
+  # it, the big corner all the way round, back along the near side, a left hairpin round the tip of the long island,
+  # back to the left through the middle, a right hairpin round the roundabout, then the long diagonal sweeping right
+  # and down across the mat, a wide left hairpin under the pits, up the right-hand side and left onto the far side.
+  path = np.vstack([
+    line((3.2, -1.9), (-2.05, -1.9)),            # the far straight, with the line
+    arc((-2.05, 0.15), 2.05, -90, -270),         # the big corner
+    line((-2.05, 2.2), (-0.55, 2.2)),            # the near side
+    arc((-0.55, 1.52), 0.68, 90, -90),           # left hairpin round the tip of the island
+    line((-0.55, 0.84), (-1.75, 0.84)),          # back to the left
+    arc((-1.75, 0.155), 0.685, 90, 270),         # right hairpin round the roundabout
+    line((-1.75, -0.53), (0.5, -0.53)),
+    arc((0.5, 0.87), 1.4, -90, 0),               # the diagonal: a long right-hander down across the mat
+    line((1.9, 0.87), (1.9, 1.1)),
+    arc((3.0, 1.1), 1.1, 180, 0),                # the wide left hairpin under the pits
+    line((4.1, 1.1), (4.1, -1.0)),               # up the right-hand side
+    arc((3.2, -1.0), 0.9, 0, -90),               # left onto the far straight
+  ]); NAME, START = 'CLUB 1', (-0.6, -1.9)
 else:
-  # CLUB: after a photo of a club's track, seen from a corner of its room. Nothing in it is straight: a run along the
+  # CLUB 2: after a photo of a club's track, seen from a corner of its room. Nothing in it is straight: a run along the
   # far wall to a hairpin in the corner by the door, back through the middle in a long S round two islands, a wide
   # bend at the door end onto the near side, and a big sweeper round the far end. A smooth curve through these points:
   from scipy.interpolate import splprep, splev
@@ -36,7 +55,7 @@ else:
        + [(2.7, 1.98), (0.8, 1.9), (-1.0, 2.0), (-2.6, 1.94)]                      # the near side, past the driver
        + bend(-2.85, 0.0, 1.92, 108, 252, 5))                                      # the big sweeper round the far end
   P = np.array(P); tck, _ = splprep([np.append(P[:, 0], P[0, 0]), np.append(P[:, 1], P[0, 1])], s=0, per=True)
-  path = np.array(splev(np.linspace(0, 1, 4000, endpoint=False), tck)).T; NAME, START = 'CLUB', (0.6, 1.92)
+  path = np.array(splev(np.linspace(0, 1, 4000, endpoint=False), tck)).T; NAME, START = 'CLUB 2', (0.6, 1.92)
 # even steps, the joints between straights and arcs eased (a car cannot change curvature in no distance)
 d = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(np.vstack([path, path[:1]]), axis=0).T))]); L = d[-1]
 m = 6000; sm = np.linspace(0, L, m, endpoint=False); px = np.interp(sm, d, np.append(path[:, 0], path[0, 0])); pz = np.interp(sm, d, np.append(path[:, 1], path[0, 1]))

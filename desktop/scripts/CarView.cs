@@ -11,7 +11,16 @@ namespace DriftMaster {
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
       ("SEDAN", "sedan", 0.130, 0.068, 0.006f), ("COUPE", "coupe", 0.115, 0.060, -0.012f), ("PICKUP", "pickup", 0.165, 0.074, 0.03f), ("TUNER", "tuner", 0.120, 0.060, 0.02f), ("VAN", "zuk", 0.175, 0.090, 0.10f) };
     public float RideOffset; /* ride height above or below 7 mm (m) */
-    Node3D _mounts;
+    public bool Detail = true; int _layTick; MeshInstance3D _proxy; StandardMaterial3D _proxyMat;
+    // which camera sees what: the car's own meshes are on layer 2 (every camera but the television's), a plain block in
+    // the body colour on layer 3 (the television only). What is under the shell casts no shadow while the shell is on.
+    void Lay() {
+      if (_proxy == null && !Ghost) { _proxyMat = new StandardMaterial3D { AlbedoColor = new Color(0.5f, 0.5f, 0.5f), Roughness = 0.5f }; _proxy = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(HalfW * 2, 0.09f, HalfL * 2) }, Position = new Vector3(0, 0.06f, 0), MaterialOverride = _proxyMat, Layers = 4, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Name = "TvProxy" }; AddChild(_proxy); }
+      bool under = _shell != null && _shell.Visible;
+      foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) { var mi = (MeshInstance3D)node; if (mi == _proxy) continue; if (mi.Layers != 2) mi.Layers = 2;
+        if (!Show && ((_chassis != null && _chassis.IsAncestorOf(mi)) || (_mounts != null && _mounts.IsAncestorOf(mi)))) { var want = under ? GeometryInstance3D.ShadowCastingSetting.Off : GeometryInstance3D.ShadowCastingSetting.On; if (mi.CastShadow != want) mi.CastShadow = want; } }
+    }
+    Node3D _mounts, _chassis; Suspension _susp; public bool Show; /* a car on show: it never moves, so it gets no working suspension */
     public bool Ghost; /* a see-through replay of the car: one pale tint, no shadow, no stickers */
     public int Body; public float RoofY = 0.133f, HalfW = 0.095f, HalfL = 0.21f;
     public static readonly string[] Bonnets = { "BODY COLOUR", "CARBON" }; /* one livery template: a solid colour, the bonnet in it or in carbon, and the rims in their own colour */
@@ -22,14 +31,14 @@ namespace DriftMaster {
     public Node3D Fpv; // the on-board camera's seat: inside the cabin, on the centre line, behind the windscreen; it leans with the body
     public Node3D StickCam; Node3D _stick; // a second FPV camera on a short stick: fixed to the roof, reaching back, looking forward over the car
     public static int StickSide = 1; public static float StickUp = 0, StickFwd = 0.03f; /* door sticker placement (test) */
-    public static float StickY = 0.195f, StickZ = -0.5f, StickTilt = 7f; // 19.5 cm up: it has to pass under the bridge (23 cm)
+    public static float StickY = 0.215f, StickZ = -0.46f, StickTilt = 10f; // 21.5 cm up (it has to pass under the bridge, 23 cm), 46 cm back, looking down 10 degrees: the car in the lower half, the track ahead above it
     public static float FpvX = 0, FpvY = 0.102f, FpvZ = 0.006f, FpvTilt = 5f;
     static readonly string[] Names = { "WheelFa", "WheelFb", "WheelRa", "WheelRb" };
 
     public override void _Ready() {
       var model = GD.Load<PackedScene>("res://assets/" + Bodies[Body % Bodies.Length].file + ".glb").Instantiate<Node3D>(); AddChild(model);
       _body = new Node3D { Name = "Body" }; AddChild(_body);
-      foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; if (n == "Mounts") _mounts = p; }
+      foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; if (n == "Mounts") _mounts = p; if (n == "Chassis") _chassis = p; }
       for (int i = 0; i < 4; i++) {
         _wheel[i] = model.FindChild(Names[i], true, false) as Node3D; _spin[i] = model.FindChild(Names[i] + "_Spin", true, false) as Node3D;
         if (_spin[i] != null) { _camber[i] = _spin[i].Quaternion; _leanIn[i] = Mathf.Sign(_camber[i].X) == 0 ? 1 : Mathf.Sign(_camber[i].X); _camber[i] = Quaternion.Identity; } // the model came with 9 degrees of negative camber: which way is 'in' for this wheel is taken from it, then the wheel is stood upright
@@ -174,14 +183,15 @@ namespace DriftMaster {
       Fpv.Position = new Vector3(FpvX, RoofY - 0.031f, cab); StickCam.Position = new Vector3(0, Math.Max(StickY, RoofY + 0.045f), StickZ);
       foreach (var ch in _stick.GetChildren()) ch.QueueFree();
       { var carbon = new StandardMaterial3D { AlbedoColor = new Color(0.05f, 0.05f, 0.055f), Roughness = 0.45f };
-        Vector3 foot = new Vector3(0, RoofY - 0.002f, cab - 0.05f), end = StickCam.Position + new Vector3(0, -0.022f, 0.012f), d = end - foot;
+        Vector3 foot = new Vector3(0, 0.05f, -HalfL + 0.004f), end = StickCam.Position + new Vector3(0, -0.022f, 0.012f), d = end - foot;   // clamped to the rear bumper, so the rod crosses the floor behind the car and not the car
         var y = d.Normalized(); var x = y.Cross(Vector3.Right).Normalized(); var z = x.Cross(y);
         _stick.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.002f, BottomRadius = 0.002f, Height = d.Length(), RadialSegments = 8, Rings = 1 }, MaterialOverride = carbon, Transform = new Transform3D(new Basis(x, y, z), (foot + end) / 2), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
-        _stick.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.03f, 0.006f, 0.03f) }, MaterialOverride = carbon, Position = foot, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
+        _stick.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.03f, 0.012f, 0.008f) }, MaterialOverride = carbon, Position = foot, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
     }
 
     // from the driver's seat the tint is light enough to see the track through
-    public void SetPaint(Color a, bool carbon) {
+    public void SetPaint(Color a, bool carbon) { if (_proxyMat == null) Lay(); if (_proxyMat != null) _proxyMat.AlbedoColor = a; SetPaintInner(a, carbon); }
+    void SetPaintInner(Color a, bool carbon) {
       // shut lines are shadow, not ink: a much darker shade of the body colour, so they do not look drawn on
       foreach (var g in _gaps) g.AlbedoColor = new Color(a.R * 0.3f + 0.006f, a.G * 0.3f + 0.006f, a.B * 0.3f + 0.006f); Paint.SetShaderParameter("col_a", a); Paint.SetShaderParameter("carbon", carbon && HasBonnet ? 1f : 0f); }
     public bool HasBonnet => Bodies[Body % Bodies.Length].file != "zuk";   /* the van has a flat nose */
@@ -195,6 +205,10 @@ namespace DriftMaster {
     public void SetWindows(bool clear) { _clear = clear; Glass(); }
     void Glass() { _glass.SetShaderParameter("tint", _clear ? new Color(0.75f, 0.82f, 0.88f, 0.1f) : new Color(0.05f, 0.065f, 0.085f, _onBoard ? 0.16f : 0.8f)); _glass.SetShaderParameter("metal", _clear ? 0.1f : 0.3f); _glass.SetShaderParameter("strip_show", _onBoard ? 0f : 1f); }
     // shell off: the bare chassis, as on a setup stand (the body posts stay)
+    /// a car on show that will never move: what is under the shell is not drawn, and it casts no shadow but the soft one under it
+    /// (its meshes are left as they are: they carry the model's levels of detail, which a merged mesh would lose)
+    public void Freeze() { foreach (var n in new[] { "Chassis", "Mounts" }) if (_body.FindChild(n, true, false) is Node3D p) p.Visible = false;
+      foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) ((MeshInstance3D)node).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off; }
     public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; }
     /// how the shell is held on: body posts with clips (they stand through the bonnet and boot), or hidden magnets (nothing shows)
     public void SetMounts(bool magnets) { if (_mounts != null) _mounts.Visible = !magnets; }
@@ -231,6 +245,10 @@ namespace DriftMaster {
       // the shell shivers on its posts over the bumps: shown three times life size, or it could not be seen (a third of a millimetre)
       if (_shell != null) { if (!_shellHome.HasValue) _shellHome = _shell.Transform; var h0 = _shellHome.Value; _shell.Transform = new Transform3D(new Basis(Vector3.Back, (float)c.ShellR * 3f) * h0.Basis, h0.Origin + new Vector3(0, (float)c.ShellZ * 3f, 0)); }
       _body.Transform = new Transform3D(new Basis(Vector3.Right, -(float)c.Pitch) * new Basis(Vector3.Back, (float)c.Roll * 1.6f), new Vector3(0, (float)c.Heave + RideOffset, 0));
+      if (_susp == null && _chassis != null && !Ghost && !Show && _wheel[0] != null && _wheel[3] != null) { var w = new Vector3[4]; for (int i = 0; i < 4; i++) w[i] = _wheelBase[i].Origin; _susp = Suspension.Build(_chassis, w); if (_susp == null) _chassis = null; }
+      if (_susp != null && _susp.Visible != Detail) _susp.Visible = Detail;
+      if (_layTick++ % 45 == 0) Lay();
+      if (Detail) _susp?.Update((_body.Transform * _chassis.Transform).AffineInverse(), (float)c.Ax, (float)c.Ay);
       _blob.Visible = !c.Air && !Ghost; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {
         if (_wheel[i] == null || _spin[i] == null) continue;

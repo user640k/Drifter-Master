@@ -1,6 +1,6 @@
 // What makes the hall a club's room, after a photo of one: a corner at the far right where the door is (set back from
 // the room, with a bare concrete floor), a fire extinguisher and a wall television beside it, two vinyl banners behind
-// the track, and a window with its blind down in the left wall. None of it is in the car's way.
+// the track, a window with its blind down in the left wall, and the breaker boxes at the far end of that wall. None of it is in the car's way.
 using Godot;
 using System;
 
@@ -56,6 +56,15 @@ namespace DriftMaster {
           Pic(root, new Vector2(bw, bh), new Vector3(bx, by, z0 + 0.018f), 0, m);
           foreach (int sx in new[] { -1, 1 }) foreach (int sy in new[] { -1, 1 }) {   // a cord from each corner eyelet out to a hook in the wall
             Box(root, new Vector3(0.17f, 0.006f, 0.006f), new Vector3(bx + sx * (bw / 2 + 0.05f), by + sy * (bh / 2 + 0.035f), z0 + 0.012f), cord, new Vector3(0, 0, sx * sy * 38)); Box(root, new Vector3(0.02f, 0.02f, 0.02f), new Vector3(bx + sx * (bw / 2 + 0.115f), by + sy * (bh / 2 + 0.085f), z0 + 0.01f), cord); } } }
+      // ---- the breaker boxes, on the left wall at the far end: a tall grey panel, and above it a smaller box on a square of
+      // plywood, with conduit running up to the ceiling
+      { var grey = Flat(new Color(0.42f, 0.45f, 0.44f), 0.55f, 0.3f); var ply = Flat(new Color(0.55f, 0.47f, 0.3f), 0.8f); var pipe = Flat(new Color(0.6f, 0.61f, 0.62f), 0.4f, 0.7f); float wx = -hx, bz = z0 + 0.75f;
+        Box(root, new Vector3(0.11f, 1.15f, 0.62f), new Vector3(wx + 0.055f, 0.95f, bz), grey); Box(root, new Vector3(0.006f, 1.05f, 0.5f), new Vector3(wx + 0.113f, 0.95f, bz), Flat(new Color(0.37f, 0.4f, 0.39f), 0.5f, 0.3f));   // the panel and its door
+        Box(root, new Vector3(0.012f, 0.06f, 0.025f), new Vector3(wx + 0.122f, 0.95f, bz + 0.2f), Flat(new Color(0.08f, 0.08f, 0.09f), 0.4f));                                                  // its latch
+        Box(root, new Vector3(0.018f, 0.8f, 0.8f), new Vector3(wx + 0.009f, 2.0f, bz + 0.5f), ply); Box(root, new Vector3(0.09f, 0.42f, 0.32f), new Vector3(wx + 0.062f, 2.02f, bz + 0.5f), grey);  // the plywood and the small box
+        Box(root, new Vector3(0.06f, 0.2f, 0.14f), new Vector3(wx + 0.05f, 2.05f, bz + 0.8f), Flat(new Color(0.9f, 0.9f, 0.88f), 0.5f));                                                          // a white junction box beside it
+        foreach (float dzp in new[] { -0.2f, -0.1f, 0.0f }) root.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.012f, BottomRadius = 0.012f, Height = H - 1.52f, RadialSegments = 8 }, MaterialOverride = pipe, Position = new Vector3(wx + 0.03f, 1.52f + (H - 1.52f) / 2, bz + dzp) });
+        root.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.01f, BottomRadius = 0.01f, Height = H - 2.23f, RadialSegments = 8 }, MaterialOverride = pipe, Position = new Vector3(wx + 0.03f, 2.23f + (H - 2.23f) / 2, bz + 0.5f) }); }
       // ---- the window in the left wall: a white frame and sill, the blind down, daylight behind it
       { float wz = -0.6f, wy = 1.5f, ww = 1.9f, wh = 1.35f, wx = -hx + 0.004f; var white = Flat(new Color(0.93f, 0.93f, 0.91f), 0.5f);
         var blind = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), EmissionEnabled = true, EmissionTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), Emission = new Color(1, 1, 1), EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionEnergyMultiplier = 0.95f, AlbedoColor = new Color(0.5f, 0.5f, 0.5f), Roughness = 0.7f };   // lit from behind, but not so bright that the slats are lost

@@ -44,18 +44,19 @@ namespace DriftMaster {
 
     void BuildCompetition() {
       _course = Course.Build(_t);
+      var marks = new Node3D { Name = "Marks" }; AddChild(marks);
       if (!_bare) {
         // course marks: a cone at each inner clipping point, a striped board along each outer zone
         var cone = new StandardMaterial3D { AlbedoColor = new Color(1f, 0.38f, 0.02f), Roughness = 0.6f }; var white = new StandardMaterial3D { AlbedoColor = new Color(0.95f, 0.95f, 0.92f), Roughness = 0.6f };
-        var zone = new StandardMaterial3D { AlbedoColor = new Color(1f, 0.85f, 0.05f), Roughness = 0.5f, EmissionEnabled = true, Emission = new Color(1f, 0.85f, 0.05f), EmissionEnergyMultiplier = 0.25f };
+        var zone = new StandardMaterial3D { AlbedoColor = new Color(0.9f, 0.9f, 0.87f), Roughness = 0.5f };   // (white: the only yellow on the floor is the tape)
         foreach (var m in _course.Marks) {
           if (!m.Outer) { var p = new Vector3((float)m.X, (float)m.Y, (float)m.Z);
-            AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.004f, BottomRadius = 0.017f, Height = 0.05f, RadialSegments = 12 }, MaterialOverride = cone, Position = p + new Vector3(0, 0.027f, 0) });
-            AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0105f, BottomRadius = 0.0125f, Height = 0.009f, RadialSegments = 12 }, MaterialOverride = white, Position = p + new Vector3(0, 0.032f, 0) });
-            AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.04f, 0.003f, 0.04f) }, MaterialOverride = cone, Position = p + new Vector3(0, 0.0015f, 0) }); }
+            marks.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.004f, BottomRadius = 0.017f, Height = 0.05f, RadialSegments = 12 }, MaterialOverride = cone, Position = p + new Vector3(0, 0.027f, 0) });
+            marks.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0105f, BottomRadius = 0.0125f, Height = 0.009f, RadialSegments = 12 }, MaterialOverride = white, Position = p + new Vector3(0, 0.032f, 0) });
+            marks.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.04f, 0.003f, 0.04f) }, MaterialOverride = cone, Position = p + new Vector3(0, 0.0015f, 0) }); }
           else for (int i = m.I0; i < m.I1; i += 2) { int a = ((i % _t.N) + _t.N) % _t.N; if ((i - m.I0) / 2 % 2 == 1) continue;   // dashes on the floor, a hand's width in from the outside barrier
               var p = new Vector3((float)(_t.X[a] - _t.NX[a] * m.Side * (_t.Hw - 0.07)), (float)_t.E[a] + 0.0012f, (float)(_t.Z[a] - _t.NZ[a] * m.Side * (_t.Hw - 0.07)));
-              AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.05f, 0.0012f, (float)_t.Ds * 2.05f) }, MaterialOverride = zone, Position = p, Rotation = new Vector3(0, (float)Math.Atan2(_t.TX[a], _t.TZ[a]), 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
+              marks.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.05f, 0.0012f, (float)_t.Ds * 2.05f) }, MaterialOverride = zone, Position = p, Rotation = new Vector3(0, (float)Math.Atan2(_t.TX[a], _t.TZ[a]), 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
         }
       }
       // the parking bay: the clear patch of floor nearest the driver's stand, off the lane and away from the walls
@@ -66,8 +67,9 @@ namespace DriftMaster {
       _bayHd = Mathf.Pi / 2;
       if (!_bare && best < 1e8) { var paint = new StandardMaterial3D { AlbedoColor = new Color(0.92f, 0.92f, 0.88f), Roughness = 0.7f }; float w = 0.56f, d = 0.3f;
         foreach (var (sz, off) in new[] { (new Vector3(w, 0.001f, 0.012f), new Vector3(0, 0, d / 2)), (new Vector3(w, 0.001f, 0.012f), new Vector3(0, 0, -d / 2)), (new Vector3(0.012f, 0.001f, d), new Vector3(-w / 2, 0, 0)) })
-          AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = sz }, MaterialOverride = paint, Position = _bay + off + new Vector3(0, 0.001f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+          marks.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = sz }, MaterialOverride = paint, Position = _bay + off + new Vector3(0, 0.001f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         var lb = new Label3D { Text = "P", FontSize = 96, PixelSize = 0.0016f, Modulate = new Color(0.92f, 0.92f, 0.88f), Position = _bay + new Vector3(0, 0.002f, 0), RotationDegrees = new Vector3(-90, 0, 0), Shaded = false }; AddChild(lb); }
+      Merge.Static(marks);   // cones, dashes and bay lines: one mesh for each material
     }
     /// take the car off the track into the bay (it stays there until it is reset to the start line)
     void Park() { if (_comp != 0) StopComp(); _recOn = false; _parked = true; _car.T.Idx = -1; _car.Place(_bay.X, _bay.Z, _bayHd); _car.Y = 0; _car.Air = true; /* (drawn at floor height, wherever the nearest piece of track is) */ _timing = false; _lap = 0; _camSnap = true; Say("PARKED   (R: back to the start line)"); }

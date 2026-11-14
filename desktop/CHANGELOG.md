@@ -2,11 +2,23 @@
 
 ## Changelog (this build)
 
-- New main track, CLUB, after a photo of a club's room: a run along the far wall to a hairpin in the door corner, a long S through the middle round turf islands, a wide bend, and a big sweeper. 37.5 m a lap, nothing straight. It is the first track in the list; HILLSIDE and INFIELD remain.
+- Two club tracks. CLUB 1, the main track, is the mat layout below. CLUB 2 is the previous club track (37.5 m, the long S round three turf islands) with no yellow on it and a blue tip on each island. F1 goes CLUB 1, CLUB 2, HILLSIDE, INFIELD.
+- Working suspension: at each corner the lower arm follows its wheel up and down and the coil-over shock works with it (the shaft slides, the spring squeezes). The antenna whips with the car. Seen best on board with the shell off, or in the CAR and SETUP previews.
+- Barriers: the shell's four corners now meet the boards as well as the two axle circles, so a corner no longer pokes through a board when the car meets it at an angle. Tested by an hour of random driving on each track: no way through a barrier, no car left stuck.
+- Performance: about half the draw calls from the driver's stand on CLUB 1 (690 to 337). The wall television no longer draws the whole room, cars and shadows again every third frame (it shows the room and a plain block for each car, lit without shadows), which was a regular hitch. Fixed parts of the room, trackside dressing, course marks and the transmitter are merged; the display cars draw no chassis and cast no shadow; what is under the shell casts no shadow.
+- Roof-stick camera: 21.5 cm up, 46 cm back, looking down 10 degrees, and its rod is clamped to the rear bumper, so it crosses the floor behind the car and not the car.
+- The club floors are clean: no left-over tape or faded arcs from old layouts, and the painted markings have smooth edges close up.
+- CLUB is laid out again, along the route drawn in red on a picture of a printed drift mat: along the far side to the left with the line on it, the big corner all the way round, back along the near side, a left hairpin round the tip of the long island, back to the left through the middle, a right hairpin round the roundabout, the long diagonal sweeping right and down, a wide left hairpin under the pits, up the right-hand side and left onto the far side. 30.2 m a lap, tightest bend 0.67 m. The pits are inside the right-hand end: three marked bays with three display cars in them.
+- Kerbs stand up off the floor now (5 mm, ramped on the lane's side) and the car feels them: inside the tight bends (the roundabout among them), and round the outside of the big corner against the turf. Turf only outside the big corner. INFIELD's kerbs are raised too.
+- The blue sections, where the mat has them: the long island between the near side and the lane through the middle, running on up the outside of the roundabout hairpin, and a band along the inside of the diagonal.
+- Yellow tape: three short lines round the outside of the big corner, and three arrows after the line. Nothing else on the floor is yellow (the judged run's outer-zone dashes are white). A judged run on CLUB has at most six marks.
+- Tyres: a few stacks only (three stacks together, lying flat, inside two bends), in place of the rows.
+- Three of the feather flags are blue, yellow and purple. DRIFT MASTER on the white wall banner is black.
+- Breaker boxes on the left wall at the far end: a grey panel on a plywood board, a small box, a junction box and conduit.
+
 - The room: a corner at the far right where the door is (brown door, yellow notices, bare concrete floor), a fire extinguisher and a wall television beside it, two PVC vinyl banners behind the track (640K in black and white, DRIFT MASTER in colour), and a window with its blind down in the left wall.
 - The television plays the overhead camera live; that camera is no longer in the camera cycle (driver, on board, roof stick).
 - Trackside flags say 640K, DRIFT MASTER, SEND IT and WINNERS DON'T USE BRAKES.
-- Tyres: a tyre wall in two places on each layout, three high, packed in a row along the outside of a bend.
 - MOUNT option on the CAR page: body posts with clips, or hidden magnets (nothing shows through the shell).
 - Neon: no more bright streak on the floor from its lights; the windows glow more gently.
 
