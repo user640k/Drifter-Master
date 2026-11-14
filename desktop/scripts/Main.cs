@@ -25,6 +25,7 @@ namespace DriftMaster {
     int _rimIdx, _livery, _body; /* rim colour, bonnet (0 body colour, 1 carbon), body shell */
     /// the tracks: name, data file, how far the layout is moved along z, floor sheet, white boards all round?
     public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB 1", "club", 0.0, "floor_wear_club", true), ("CLUB 2", "club2", 0.0, "floor_wear_club2", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };   // CLUB is the main track
+    static bool _darkChosen; bool _lampsOn;
     static bool _trackChosen; public static int TrackIdx; /* kept across a change of track: the scene is loaded again */
 
     public override void _Ready() {
@@ -44,7 +45,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--stk=")) { var q = a.Substring(6).Split(','); CarView.StickSide = int.Parse(q[0]); CarView.StickUp = float.Parse(q[1], System.Globalization.CultureInfo.InvariantCulture); CarView.StickFwd = float.Parse(q[2], System.Globalization.CultureInfo.InvariantCulture); }
         else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
-        else if (a == "--bare") _bare = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
+        else if (a == "--bare") _bare = true; else if (a == "--dark") { Hall.Dark = true; _darkChosen = true; } else if (a == "--lamps") _lampsOn = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
         else if (a.StartsWith("--orbit=")) { _view6 = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 8; }
         else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
@@ -82,14 +83,14 @@ namespace DriftMaster {
     void BuildLights() {
       var env = new Godot.Environment {
         BackgroundMode = _bare ? Godot.Environment.BGMode.ClearColor : Godot.Environment.BGMode.Color, BackgroundColor = new Color(0.05f, 0.05f, 0.055f),
-        AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.82f, 0.84f, 0.88f), AmbientLightEnergy = 0.4f,
+        AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.82f, 0.84f, 0.88f), AmbientLightEnergy = Hall.Dark ? 0.035f : 0.4f,
         TonemapMode = Godot.Environment.ToneMapper.Filmic, TonemapWhite = 1.6f,
       };
       AddChild(new WorldEnvironment { Environment = env });
       // the tube lights overhead as one soft downward light with a shadow, plus two fills so the walls fall off
-      _sun = new DirectionalLight3D { LightEnergy = 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.0f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
+      _sun = new DirectionalLight3D { LightEnergy = Hall.Dark ? 0.012f : 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.0f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
       _sun.RotationDegrees = new Vector3(-78, 24, 0); AddChild(_sun);
-      foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
+      foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = Hall.Dark ? 0 : 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
       // one probe for the whole room: the glossy tiles mirror the ceiling lights
       // the box reaches a little past the floor, walls and ceiling: a surface lying exactly on the box's face is half in, half out,
       // and its reflection flickers on and off
@@ -233,6 +234,7 @@ namespace DriftMaster {
         R("MOUNT", () => _magnets ? "MAGNETS" : "POSTS", d => { _magnets = !_magnets; ApplyOptions(true); }, "How the shell is held on. Posts and clips show through the bonnet and boot; magnets are hidden under it."),
         R("SHELL", () => _shellOn ? "ON" : "OFF", d => { _shellOn = !_shellOn; ApplyOptions(true); }, "Off: the bare chassis, as on a setup stand."),
         R("WINDOWS", () => _clearGlass ? "CLEAR" : "TINTED", d => { _clearGlass = !_clearGlass; ApplyOptions(true); }),
+        R("HEADLIGHTS", () => _lampsOn ? "ON" : "OFF", d => { _lampsOn = !_lampsOn; ApplyOptions(true); }, "A beam ahead of the car and red lamps behind. Made for LIGHTS OUT (GAME page)."),
         R("NEON", () => CarView.Neons[_neonIdx].name, d => { _neonIdx = Cyc(_neonIdx, d, CarView.Neons.Length); ApplyOptions(true); }, "Lit tubes under the chassis."),
       };
       string[] labels = { "MOTOR", "FRONT CAMBER", "REAR CAMBER", "FRONT CASTER", "FRONT TOE", "REAR TOE", "SHOCK OIL", "RIDE HEIGHT", "GYRO GAIN", "SPRINGS", "DIFFERENTIAL", "WEIGHT BIAS (F / R)" };
@@ -253,6 +255,7 @@ namespace DriftMaster {
         R("VOLUME", () => $"{Math.Round(_audio.Volume * 10)}", d => { _audio.Volume = Math.Clamp(_audio.Volume + 0.1f * d, 0, 1); ApplyOptions(true); }, "The car's sound."),
         R("MUSIC", () => _musicOn ? "ON" : "OFF", d => { _musicOn = !_musicOn; if (!_musicOn && _music != null) _music.Stop(); ApplyOptions(true); if (_musicOn) { ApplyMusic(); StartMusicLabel(); } }, MusicTitle + " by " + MusicArtist + ", heard as if from the hall's speakers."),
         R("MUSIC VOLUME", () => $"{Math.Round(_musicVol * 10)}", d => { _musicVol = Math.Clamp(_musicVol + 0.1f * d, 0, 1); ApplyOptions(true); }),
+        R("LIGHTS", () => Hall.Dark ? "OUT" : "ON", d => { Hall.Dark = !Hall.Dark; _darkChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Lights out: the room goes dark and the track is lit by LED strips on its barriers, kerbs and line. Turn HEADLIGHTS on (CAR page)."),
         R("SHADOWS", () => _sun.ShadowEnabled ? "ON" : "OFF", d => { _sun.ShadowEnabled = !_sun.ShadowEnabled; }),
         R("RESOLUTION", () => $"{_scales[_scaleIdx] * 100:0}%", d => { _scaleIdx = Cyc(_scaleIdx, d, _scales.Length); GetViewport().Scaling3DScale = _scales[_scaleIdx]; }, "Lower it if the frame rate is low."),
         R("FULL SCREEN", () => GetWindow().Mode == Window.ModeEnum.Fullscreen ? "ON" : "OFF", d => { var w = GetWindow(); w.Mode = w.Mode == Window.ModeEnum.Fullscreen ? Window.ModeEnum.Windowed : Window.ModeEnum.Fullscreen; }),
@@ -291,13 +294,14 @@ namespace DriftMaster {
       _view.SetPaint(Paints[_paintIdx % Paints.Length].col, _livery == 1); { var rm = Rims[_rimIdx % Rims.Length]; _view.SetRims(rm.col, rm.metal); }
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
       _view.SetCamber((float)CamberFDeg[_setup[1]], (float)CamberRDeg[_setup[2]]); _car.H += (RideMm - 7) * 0.001; _view.RideOffset = (float)((RideMm - 7) * 0.001);
-      _view.SetShell(_shellOn); _view.SetMounts(_magnets); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup4", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "magnets", _magnets); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+      _view.SetShell(_shellOn); _view.SetMounts(_magnets); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass); _view.SetLamps(_lampsOn);
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup4", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "magnets", _magnets); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.SetValue("car", "lamps", _lampsOn); cf.SetValue("game", "dark", Hall.Dark); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup4", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
+      _lampsOn = (bool)cf.GetValue("car", "lamps", false); if (!_darkChosen) Hall.Dark = (bool)cf.GetValue("game", "dark", false);
       _vol0 = (float)(double)cf.GetValue("game", "volume", 0.4); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _assist = (bool)cf.GetValue("game", "assist", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _magnets = (bool)cf.GetValue("car", "magnets", false); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);

@@ -26,9 +26,13 @@ namespace DriftMaster {
       Box(root, new Vector3(0.06f, H, NookW), new Vector3(x1 + 0.03f, H / 2, z0 + NookW / 2), wall);                         // its end wall
       Box(root, new Vector3(NookD + 0.06f, H, 0.06f), new Vector3(hx + NookD / 2 + 0.03f, H / 2, z1 + 0.03f), wall);        // the return wall between it and the room
       Box(root, new Vector3(NookD, 0.07f, 0.012f), new Vector3(hx + NookD / 2, 0.035f, z1 - 0.006f), skirt); Box(root, new Vector3(0.012f, 0.07f, NookW), new Vector3(x1 - 0.006f, 0.035f, z0 + NookW / 2), skirt);
-      root.AddChild(new OmniLight3D { Position = new Vector3(hx + NookD / 2, H - 0.3f, z0 + NookW / 2), OmniRange = 3f, LightEnergy = 0.5f, LightColor = new Color(1, 0.96f, 0.88f), ShadowEnabled = false });
+      root.AddChild(new OmniLight3D { Position = new Vector3(hx + NookD / 2, H - 0.3f, z0 + NookW / 2), OmniRange = 3f, LightEnergy = Hall.Dark ? 0 : 0.5f, LightColor = new Color(1, 0.96f, 0.88f), ShadowEnabled = false });
       // the door: a flush brown door in a dark frame, lever handle, closer at the top
-      float dx = hx + 0.72f, dz = z0 + 0.012f; var frame = Flat(new Color(0.2f, 0.17f, 0.15f), 0.6f); var steel = Flat(new Color(0.72f, 0.73f, 0.75f), 0.35f, 0.8f);
+      float dx = hx + 0.72f, dz = z0 + 0.012f;
+      { // a lit EXIT sign over it (the one light that is never off)
+        Box(root, new Vector3(0.34f, 0.14f, 0.03f), new Vector3(dx, 2.2f, dz + 0.02f), new StandardMaterial3D { AlbedoColor = new Color(0.02f, 0.25f, 0.08f), EmissionEnabled = true, Emission = new Color(0.1f, 1f, 0.35f), EmissionEnergyMultiplier = 1.4f });
+        root.AddChild(new Label3D { Text = "EXIT", FontSize = 64, PixelSize = 0.0016f, Modulate = Colors.White, OutlineSize = 0, Shaded = false, Position = new Vector3(dx, 2.2f, dz + 0.037f) });
+        if (Hall.Dark) root.AddChild(new OmniLight3D { Position = new Vector3(dx, 2.1f, dz + 0.3f), OmniRange = 2.2f, LightEnergy = 0.28f, LightColor = new Color(0.2f, 1f, 0.45f), ShadowEnabled = false }); } var frame = Flat(new Color(0.2f, 0.17f, 0.15f), 0.6f); var steel = Flat(new Color(0.72f, 0.73f, 0.75f), 0.35f, 0.8f);
       Box(root, new Vector3(0.9f, 2.03f, 0.03f), new Vector3(dx, 1.015f, dz + 0.004f), Tex("door.jpg", 0.45f));
       foreach (float sx in new[] { -0.475f, 0.475f }) Box(root, new Vector3(0.05f, 2.08f, 0.05f), new Vector3(dx + sx, 1.04f, dz + 0.012f), frame);
       Box(root, new Vector3(1.0f, 0.05f, 0.05f), new Vector3(dx, 2.055f, dz + 0.012f), frame);
@@ -67,11 +71,11 @@ namespace DriftMaster {
         root.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.01f, BottomRadius = 0.01f, Height = H - 2.23f, RadialSegments = 8 }, MaterialOverride = pipe, Position = new Vector3(wx + 0.03f, 2.23f + (H - 2.23f) / 2, bz + 0.5f) }); }
       // ---- the window in the left wall: a white frame and sill, the blind down, daylight behind it
       { float wz = -0.6f, wy = 1.5f, ww = 1.9f, wh = 1.35f, wx = -hx + 0.004f; var white = Flat(new Color(0.93f, 0.93f, 0.91f), 0.5f);
-        var blind = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), EmissionEnabled = true, EmissionTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), Emission = new Color(1, 1, 1), EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionEnergyMultiplier = 0.95f, AlbedoColor = new Color(0.5f, 0.5f, 0.5f), Roughness = 0.7f };   // lit from behind, but not so bright that the slats are lost
+        var blind = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), EmissionEnabled = true, EmissionTexture = GD.Load<Texture2D>("res://assets/tex/blinds.jpg"), Emission = new Color(1, 1, 1), EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionEnergyMultiplier = Hall.Dark ? 0.02f : 0.95f, AlbedoColor = new Color(0.5f, 0.5f, 0.5f), Roughness = 0.7f };   // lit from behind, but not so bright that the slats are lost
         Pic(root, new Vector2(ww, wh), new Vector3(wx, wy, wz), 90, blind);
         foreach (float s in new[] { -1f, 1f }) { Box(root, new Vector3(0.05f, wh + 0.1f, 0.06f), new Vector3(wx + 0.02f, wy, wz + s * (ww / 2 + 0.03f)), white); Box(root, new Vector3(0.05f, 0.06f, ww + 0.12f), new Vector3(wx + 0.02f, wy + s * (wh / 2 + 0.03f), wz), white); }
         Box(root, new Vector3(0.14f, 0.03f, ww + 0.2f), new Vector3(wx + 0.07f, wy - wh / 2 - 0.045f, wz), white);         // the sill
-        root.AddChild(new OmniLight3D { Position = new Vector3(-hx + 0.5f, wy, wz), OmniRange = 4.5f, OmniAttenuation = 1.3f, LightEnergy = 0.6f, LightColor = new Color(0.86f, 0.93f, 1f), ShadowEnabled = false }); }
+        root.AddChild(new OmniLight3D { Position = new Vector3(-hx + 0.5f, wy, wz), OmniRange = 4.5f, OmniAttenuation = 1.3f, LightEnergy = Hall.Dark ? 0 : 0.6f, LightColor = new Color(0.86f, 0.93f, 1f), ShadowEnabled = false }); }
     }
   }
 }

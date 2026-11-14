@@ -7,6 +7,7 @@ using System.Collections.Generic;
 
 namespace DriftMaster {
   public static class Hall {
+    public static bool Dark; /* lights out: ceiling lights and daylight off, the track lit by its LED strips */
     public const float CeilY = 2.6f, Tile = 1.2192f; // the floor texture holds 4 x 4 tiles of 304.8 mm
 
     static StandardMaterial3D Mat(string tex, Color? col = null, float rough = 0.8f, float uv = 1) {
@@ -33,6 +34,7 @@ namespace DriftMaster {
           (row0, row1) = (row1, row0); }
         var img = Image.CreateFromData(W, H, false, Image.Format.Rg8, px); img.GenerateMipmaps(); m.SetShaderParameter("bump_slope", ImageTexture.CreateFromImage(img)); }
       m.SetShaderParameter("hall_half", new Vector2((float)t.HallX, (float)t.HallZ)); m.SetShaderParameter("tile_size", Tile);
+      { string led = "res://assets/tex/" + t.Wear.Replace("floor_wear", "led") + ".png"; if (Dark && ResourceLoader.Exists(led)) { m.SetShaderParameter("led", GD.Load<Texture2D>(led)); m.SetShaderParameter("led_on", 1.0f); } }
       return m;
     }
 
@@ -60,7 +62,7 @@ namespace DriftMaster {
       var ceil = Mat("ceiling.jpg", new Color(0.86f, 0.86f, 0.84f), 0.95f, 1); ceil.Uv1Scale = new Vector3(hx * 2 / 3.6f, hz * 2 / 3.6f, 1);
       var cm = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2), FlipFaces = true }, Position = new Vector3(0, CeilY, 0), MaterialOverride = ceil, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(cm);
       var lamp = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = new Color(1, 0.99f, 0.95f) };
-      var lampOn = new StandardMaterial3D { AlbedoColor = Colors.Black, EmissionEnabled = true, Emission = new Color(1, 0.98f, 0.93f), EmissionEnergyMultiplier = 2.2f };
+      var lampOn = new StandardMaterial3D { AlbedoColor = Colors.Black, EmissionEnabled = true, Emission = new Color(1, 0.98f, 0.93f), EmissionEnergyMultiplier = Dark ? 0.015f : 2.2f };
       var frame = Mat(null, new Color(0.75f, 0.76f, 0.77f), 0.5f);
       for (int ix = 0; ix < 4; ix++) for (int iz = 0; iz < 2; iz++) {
         float x = (ix - 1.5f) * (hx * 2 / 4), z = (iz - 0.5f) * (hz * 2 / 2);

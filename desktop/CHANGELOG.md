@@ -2,6 +2,9 @@
 
 ## Changelog (this build)
 
+- LIGHTS OUT (GAME page, LIGHTS: ON or OUT). The ceiling lights and the window go dark and the track is lit by LED strips: ice blue along the barriers on the left of travel, pink on the right, red under the kerbs, white across the line. Their light on the floor is baked for each track; the barriers and the lower walls take a wash of the nearest strip's colour; the cars are lit as they pass. CLUB 1 has more: amber start arrows, lit pit bays and blue sections, an amber ring on the roundabout, a white strip inside the arch. A green EXIT sign over the door.
+- HEADLIGHTS (CAR page): a beam ahead of the car that lights the floor, barriers and walls, lit lenses in the nose, red lamps and a red glow behind.
+- A tyre arch on CLUB 1, over the right-hand side of the lap with its face to the driver: DRIFT MASTER round the sidewall, tread on top, a yellow panel underneath.
 - Two club tracks. CLUB 1, the main track, is the mat layout below. CLUB 2 is the previous club track (37.5 m, the long S round three turf islands) with no yellow on it and a blue tip on each island. F1 goes CLUB 1, CLUB 2, HILLSIDE, INFIELD.
 - Working suspension: at each corner the lower arm follows its wheel up and down and the coil-over shock works with it (the shaft slides, the spring squeezes). The antenna whips with the car. Seen best on board with the shell off, or in the CAR and SETUP previews.
 - Barriers: the shell's four corners now meet the boards as well as the two axle circles, so a corner no longer pokes through a board when the car meets it at an angle. Tested by an hour of random driving on each track: no way through a barrier, no car left stuck.

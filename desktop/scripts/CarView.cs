@@ -209,6 +209,18 @@ namespace DriftMaster {
     /// (its meshes are left as they are: they carry the model's levels of detail, which a merged mesh would lose)
     public void Freeze() { foreach (var n in new[] { "Chassis", "Mounts" }) if (_body.FindChild(n, true, false) is Node3D p) p.Visible = false;
       foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) ((MeshInstance3D)node).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off; }
+    Node3D _lamps;
+    /// headlights: one beam ahead of the car that lights the floor, the barriers and the walls, two lit lenses in the
+    /// nose, two red ones in the tail with a small red glow behind
+    public void SetLamps(bool on) {
+      if (_lamps == null) { if (!on) return; _lamps = new Node3D { Name = "Lamps" }; _body.AddChild(_lamps);
+        _lamps.AddChild(new SpotLight3D { Position = new Vector3(0, 0.055f, HalfL - 0.012f), Rotation = new Vector3(Mathf.DegToRad(-7), Mathf.Pi, 0), SpotRange = 2.8f, SpotAngle = 32, SpotAngleAttenuation = 0.8f, SpotAttenuation = 1.1f, LightEnergy = Hall.Dark ? 2.4f : 0.8f, LightColor = new Color(1f, 0.95f, 0.84f), ShadowEnabled = false });
+        _lamps.AddChild(new OmniLight3D { Position = new Vector3(0, 0.05f, -HalfL - 0.03f), OmniRange = 0.4f, LightEnergy = Hall.Dark ? 0.7f : 0.25f, LightColor = new Color(1f, 0.1f, 0.06f), ShadowEnabled = false });
+        var lens = new SphereMesh { Radius = 0.0075f, Height = 0.015f, RadialSegments = 10, Rings = 5 };
+        foreach (var (z, c) in new[] { (HalfL - 0.006f, new Color(1f, 0.97f, 0.88f)), (-HalfL + 0.006f, new Color(1f, 0.08f, 0.05f)) }) foreach (int sx in new[] { -1, 1 })
+            _lamps.AddChild(new MeshInstance3D { Mesh = lens, Position = new Vector3(sx * HalfW * 0.66f, 0.056f, z), Scale = new Vector3(1.3f, 0.8f, 0.45f), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = c } }); }
+      _lamps.Visible = on;
+    }
     public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; }
     /// how the shell is held on: body posts with clips (they stand through the bonnet and boot), or hidden magnets (nothing shows)
     public void SetMounts(bool magnets) { if (_mounts != null) _mounts.Visible = !magnets; }

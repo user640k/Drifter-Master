@@ -53,6 +53,48 @@ namespace DriftMaster {
         else { // a banner: two posts and two rails, the cloth hung between them
           foreach (float sx in new[] { -0.045f, 0.045f }) { Box(new Vector3(0.006f, 0.24f, 0.006f), new Vector3(sx, 0.12f, 0)); Box(new Vector3(0.03f, 0.005f, 0.04f), new Vector3(sx, 0.0025f, 0)); }
           Box(new Vector3(0.096f, 0.005f, 0.005f), new Vector3(0, 0.237f, 0)); Box(new Vector3(0.096f, 0.005f, 0.005f), new Vector3(0, 0.045f, 0)); Quad(new Vector2(0.066f, 0.185f), new Vector3(0, 0.141f, 0.001f), cloth[kind]); } }
+      // ---- CLUB 1: a tyre arch over the right-hand side of the lap, its face to the driver: half a giant tyre standing
+      // across the lane, feet outside the boards, DRIFT MASTER round its sidewall, a yellow panel underneath
+      if (t.Name == "CLUB 1") { const float R = 0.62f, a = 0.11f, b = 0.085f, ky = 0.8f; const int N = 64, K = 24; var c0 = new Vector3(4.1f, 0, -0.4f);
+        var st = new SurfaceTool(); st.Begin(Mesh.PrimitiveType.Triangles); float Sp(float x) => Mathf.Sign(x) * Mathf.Pow(Mathf.Abs(x), 0.55f);
+        for (int i = 0; i <= N; i++) for (int k = 0; k <= K; k++) { float u = i / (float)N, v = k / (float)K, th = Mathf.Pi * (1 - u), ph = (v - 0.5f) * Mathf.Tau, rad = R + b * Sp(Mathf.Sin(ph));
+            st.SetUV(new Vector2(u, v)); st.AddVertex(c0 + new Vector3(Mathf.Cos(th) * rad, Mathf.Sin(th) * rad * ky, a * Sp(Mathf.Cos(ph)))); }
+        for (int i = 0; i < N; i++) for (int k = 0; k < K; k++) { int p = i * (K + 1) + k, q = p + K + 1; st.AddIndex(p); st.AddIndex(q); st.AddIndex(p + 1); st.AddIndex(p + 1); st.AddIndex(q); st.AddIndex(q + 1); }
+        st.GenerateNormals();
+        var rubber = new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/arch.jpg"), RoughnessTexture = GD.Load<Texture2D>("res://assets/tex/arch_rough.jpg"), Roughness = 1f, CullMode = BaseMaterial3D.CullModeEnum.Disabled, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
+        root.AddChild(new MeshInstance3D { Mesh = st.Commit(), MaterialOverride = rubber, Name = "Arch" }); }
+      // ---- lights out: the LED strips, as glowing ribbons where tools/make_led.py puts their light, and small lights
+      // along the lane that reach only the cars (the floor's light is baked; the cars have to be lit as they pass)
+      if (Hall.Dark) { var ls = new SurfaceTool(); ls.Begin(Mesh.PrimitiveType.Triangles);
+        Color ICE = new(0.35f, 0.85f, 1f), PINK = new(1f, 0.25f, 0.68f), RED = new(1f, 0.12f, 0.08f), WHITE = new(1f, 0.97f, 0.9f), AMB = new(1f, 0.64f, 0.12f), BLUE = new(0.15f, 0.5f, 1f);
+        void Rib(IList<Vector3> p, Color col, float w, Vector3? wdir = null) { for (int i = 0; i + 1 < p.Count; i++) { Vector3 a = p[i], b = p[i + 1], dir = (b - a).Normalized(), sd = (wdir ?? new Vector3(dir.Z, 0, -dir.X)) * (w / 2);
+            foreach (var v in new[] { a - sd, b - sd, b + sd, a - sd, b + sd, a + sd }) { ls.SetColor(col); ls.AddVertex(v); } } }
+        Vector3 E(int i, double side, double off, float y) => new((float)(t.X[i] + t.NX[i] * side * off), y + (float)t.E[i], (float)(t.Z[i] + t.NZ[i] * side * off));
+        foreach (var (side, col) in new[] { (1.0, ICE), (-1.0, PINK) }) { var p = new List<Vector3>(); for (int i = 0; i <= n; i++) p.Add(E(i % n, side, t.Hw + (t.Boards ? 0.006 : 0.025), t.Boards ? 0.0515f : 0.0615f)); Rib(p, col, 0.008f); }   // on top of the boards
+        if (t.Boards) { var run = new List<Vector3>(); for (int i = 0; i <= n; i++) { int q = i % n; if (i < n && t.KerbAt(q)) run.Add(E(q, t.KerbSide(q), t.Hw - 0.081, (float)Track.KerbH * 0.5f)); else { if (run.Count > 2) Rib(run, RED, 0.006f); run.Clear(); } } }   // under the lip of each kerb
+        Rib(new[] { E(0, -1, t.Hw - 0.01, 0.003f), E(0, 1, t.Hw - 0.01, 0.003f) }, WHITE, 0.012f);
+        if (t.Name == "CLUB 1") {
+          foreach (float back in new[] { 0.4f, 0.62f, 0.84f }) { float x = (float)t.X[0] - back, z = (float)t.Z[0]; Rib(new[] { new Vector3(x + 0.13f, 0.003f, z - 0.24f), new Vector3(x, 0.003f, z), new Vector3(x + 0.13f, 0.003f, z + 0.24f) }, AMB, 0.008f); }
+          var arc = new List<Vector3>(); for (int k = 0; k <= 40; k++) { float th = Mathf.DegToRad(10 + 160f * k / 40); arc.Add(new Vector3(4.1f + Mathf.Cos(th) * 0.531f, Mathf.Sin(th) * 0.531f * 0.8f, -0.4f)); } Rib(arc, WHITE, 0.03f, Vector3.Back);   // round the inside of the arch
+          foreach (float z in new[] { -2.1f, -1.7f, -1.3f, -0.9f }) Rib(new[] { new Vector3(2.78f, 0.003f, z), new Vector3(3.42f, 0.003f, z) }, new Color(0.85f, 0.93f, 1f), 0.008f);
+          Rib(new[] { new Vector3(3.42f, 0.003f, -2.1f), new Vector3(3.42f, 0.003f, -0.9f) }, new Color(0.85f, 0.93f, 1f), 0.008f);
+          var ring = new List<Vector3>(); for (int k = 0; k <= 36; k++) ring.Add(new Vector3(-1.75f + 0.2f * Mathf.Cos(k / 36f * Mathf.Tau), 0.003f, -0.845f + 0.2f * Mathf.Sin(k / 36f * Mathf.Tau))); Rib(ring, AMB, 0.01f);
+          Rib(new[] { new Vector3(-0.7f, 0.302f, driver.Z - 0.455f), new Vector3(0.6f, 0.302f, driver.Z - 0.455f) }, AMB, 0.008f); }
+        // the strips' light on what stands near them: down the faces of the barriers, and low on the walls, in the colour of
+        // the nearest strip and fainter with distance (drawn as light added over the surface, brightest next to the strip)
+        var ws = new SurfaceTool(); ws.Begin(Mesh.PrimitiveType.Triangles);
+        void Wash(Vector3 a, Vector3 b, float h, Color ca0, Color cb0, Color ca1, Color cb1) { Vector3 up = Vector3.Up * h; foreach (var (v, c) in new[] { (a, ca0), (b, cb0), (b + up, cb1), (a, ca0), (b + up, cb1), (a + up, ca1) }) { ws.SetColor(c); ws.AddVertex(v); } }
+        foreach (var (side, col) in new[] { (1.0, ICE), (-1.0, PINK) }) foreach (double off in new[] { t.Hw - 0.0008, t.Hw + (t.Boards ? 0.0128 : 0.0508) }) for (int i = 0; i < n; i += 2) { int j = (i + 2) % n; float y0 = 0.001f, y1 = 0.001f;
+              Wash(E(i, side, off, y0), E(j, side, off, y1), t.Boards ? 0.049f : 0.059f, col * 0.05f, col * 0.05f, col * 0.42f, col * 0.42f); }
+        (Color c, float k) Near(float x, float z) { double best = 1e9; int bi = 0; for (int i = 0; i < n; i += 3) { double dx = x - t.X[i], dz = z - t.Z[i], d = dx * dx + dz * dz; if (d < best) { best = d; bi = i; } }
+          double offs = (x - t.X[bi]) * t.NX[bi] + (z - t.Z[bi]) * t.NZ[bi]; float dist = (float)Math.Max(0, Math.Sqrt(best) - t.Hw), k = Mathf.Clamp(1 - (dist - 0.1f) / 2.2f, 0, 1); return (offs > 0 ? ICE : PINK, k * k * k * 0.2f); }
+        float hx = (float)t.HallX - 0.012f, hz = (float)t.HallZ - 0.012f; const float step = 0.25f;
+        void WallRun(Vector3 from, Vector3 to) { int m = Mathf.Max(1, Mathf.RoundToInt((to - from).Length() / step)); for (int s = 0; s < m; s++) { Vector3 a = from.Lerp(to, s / (float)m), b = from.Lerp(to, (s + 1) / (float)m); var (ca, ka) = Near(a.X, a.Z); var (cb, kb) = Near(b.X, b.Z);
+            if (ka + kb > 0.004f) Wash(a + Vector3.Up * 0.1f, b + Vector3.Up * 0.1f, 1.0f, ca * ka, cb * kb, Colors.Black, Colors.Black); } }
+        WallRun(new Vector3(-hx, 0, -hz), new Vector3(hx, 0, -hz)); WallRun(new Vector3(-hx, 0, -hz), new Vector3(-hx, 0, hz)); WallRun(new Vector3(hx, 0, -hz + Room.NookW), new Vector3(hx, 0, hz));
+        root.AddChild(new MeshInstance3D { Mesh = ws.Commit(), Name = "LedWash", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, VertexColorUseAsAlbedo = true, BlendMode = BaseMaterial3D.BlendModeEnum.Add, CullMode = BaseMaterial3D.CullModeEnum.Disabled } });
+        root.AddChild(new MeshInstance3D { Mesh = ls.Commit(), Name = "Leds", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, VertexColorUseAsAlbedo = true, CullMode = BaseMaterial3D.CullModeEnum.Disabled } });
+        for (int q = 0; q < 16; q++) { int i = q * n / 16; bool left = q % 2 == 0; root.AddChild(new OmniLight3D { Position = E(i, left ? 1 : -1, t.Hw * 0.85, 0.12f), LightColor = left ? ICE : PINK, LightEnergy = 0.55f, OmniRange = 1.5f, OmniAttenuation = 1.0f, ShadowEnabled = false, LightCullMask = 2 }); } }
       Merge.Static(root);
       return root;
     }
