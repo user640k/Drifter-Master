@@ -46,6 +46,10 @@ namespace DriftMaster {
       _oppDrv.Step(_pause.Visible ? 0 : dt, _oppT, _oppCar, pace); _oppView.Eye = _view.Eye; _oppView.Detail = _view.Detail; _oppView.Visible = true; _oppView.Pose(_oppCar, _oppT);
       if (_oppLamp != null) { _oppLamp.Visible = true; _oppLamp.Position = new Vector3((float)_oppCar.X, 0.3f, (float)_oppCar.Z); }
     }
+    DriftCounter _drift; bool _driftOn = true; /* the drift counter (GAME page) */
+    // the drift counter's records, kept between sessions: the best run on each track and the points banked in all
+    static readonly System.Collections.Generic.Dictionary<string, double> DriftBest = new(); static double DriftTotal; AudioStreamPlayer _voice;
+    void SaveDrift() { if (_shot != null) return; var cf = new ConfigFile(); cf.Load("user://settings.cfg"); foreach (var kv in DriftBest) cf.SetValue("drift", "best_" + kv.Key, kv.Value); cf.SetValue("drift", "total", DriftTotal); cf.Save("user://settings.cfg"); }
     Centrepiece _centre; /* the Warehouse's tyre stack and its drone */
     OmniLight3D _ledL, _ledR; /* lights out: the strips' light on the car, ice blue from its left barrier and pink from its right: two lights that go with it */
     static int[] _menuBack; /* the menu's page and row, kept across a change that builds the hall again (track, lights): the menu comes back where it was */
@@ -91,7 +95,7 @@ namespace DriftMaster {
       if (at >= 0) { int i = at % _t.N; _car.Place(_t.X[i], _t.Z[i], Math.Atan2(_t.TX[i], _t.TZ[i])); } else ResetCar();
       _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
       BuildOnBoard();
-      _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
+      _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (k > 0.25) _drift?.Knock(); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
       BuildHud(); BuildCompetition(); BuildTv();
       if (_t.Name == "BIG S" && !_bare) { _centre = new Centrepiece(new Vector3(3.5f, 0, 0.62f), 0.72f, Hall.Dark); AddChild(_centre.Root); }   // BIG S: on the strip of open floor between the right-hand side and the hook
       if (_top) { _cam.Projection = Camera3D.ProjectionType.Orthogonal; _cam.Size = (float)_t.HallZ * 2 + 0.1f; _cam.Near = 0.02f; _view6 = new[] { 0f, Hall.CeilY - (Hall.Map == 1 ? 1.25f : 0.05f), 0.002f, 0f, 0f, 0f, 50f }; _camMode = 9; }
@@ -217,6 +221,12 @@ namespace DriftMaster {
 
     void BuildHud() {
       var layer = new CanvasLayer(); AddChild(layer);
+      _drift = new DriftCounter(); layer.AddChild(_drift);
+      { string tf = Tracks[TrackIdx % Tracks.Length].file; _drift.Record = DriftBest.TryGetValue(tf, out var rec) ? rec : 0; _drift.Total = DriftTotal;
+        _drift.OnBank = pts => { if (pts <= 0) return; DriftTotal = _drift.Total; if (_drift.Record > (DriftBest.TryGetValue(tf, out var old) ? old : 0)) DriftBest[tf] = _drift.Record; SaveDrift(); };
+        // the announcer: plays assets/snd/monster_drift.wav at the top call-out, if that recording is there
+        if (ResourceLoader.Exists("res://assets/snd/monster_drift.wav")) { _voice = new AudioStreamPlayer { Stream = GD.Load<AudioStream>("res://assets/snd/monster_drift.wav"), VolumeDb = -4 }; AddChild(_voice); }
+        _drift.OnTier = k => { if (k == DriftCounter.Tiers.Length - 1) _voice?.Play(); }; }
       Label L(Vector2 pos, int size, Color col) { var l = new Label { Position = pos }; l.AddThemeFontSizeOverride("font_size", size); l.AddThemeColorOverride("font_color", col); l.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.75f)); l.AddThemeConstantOverride("outline_size", 6); layer.AddChild(l); return l; }
       _hud = L(new Vector2(24, 18), 22, Colors.White);
       _card = L(new Vector2(60, 250), 19, Colors.White); _card.Visible = false; { var bg = new StyleBoxFlat { BgColor = new Color(0.02f, 0.02f, 0.03f, 0.82f), ContentMarginLeft = 22, ContentMarginRight = 22, ContentMarginTop = 16, ContentMarginBottom = 16 }; _card.AddThemeStyleboxOverride("normal", bg); }   /* the judges' score card */
@@ -288,6 +298,8 @@ namespace DriftMaster {
         R("MUSIC", () => _musicOn ? "ON" : "OFF", d => { _musicOn = !_musicOn; if (!_musicOn && _music != null) _music.Stop(); ApplyOptions(true); if (_musicOn) { ApplyMusic(); StartMusicLabel(); } }, MusicTitle + " by " + MusicArtist + ", heard as if from the hall's speakers."),
         R("MUSIC VOLUME", () => $"{Math.Round(_musicVol * 10)}", d => { _musicVol = Math.Clamp(_musicVol + 0.1f * d, 0, 1); ApplyOptions(true); }),
         R("LIGHTS", () => Hall.Dark ? "OUT" : "ON", d => { Hall.Dark = !Hall.Dark; _darkChosen = true; Rebuild(); }, "Lights out: the room goes dark and the track is lit by LED strips on its barriers, kerbs and line. Turn HEADLIGHTS on (CAR page)."),
+        R("DRIFT RECORDS", () => $"BEST {(_drift?.Record ?? 0):#,0}   TOTAL {DriftTotal:#,0}", null, "Your best single drift on this track, and all the drift points you have banked on every track. Kept between sessions."),
+        R("DRIFT COUNTER", () => _driftOn ? "ON" : "OFF", d => { _driftOn = !_driftOn; ApplyOptions(true); }, "A small read-out in the top right corner: points while the car is sideways, a LINK for each change of direction without straightening up (each raises the multiplier), and a call-out when a drift gets big. A hard knock loses the run."),
         R("SHADOWS", () => _sun.ShadowEnabled ? "ON" : "OFF", d => { _sun.ShadowEnabled = !_sun.ShadowEnabled; }),
         R("RESOLUTION", () => $"{_scales[_scaleIdx] * 100:0}%", d => { _scaleIdx = Cyc(_scaleIdx, d, _scales.Length); GetViewport().Scaling3DScale = _scales[_scaleIdx]; }, "Lower it if the frame rate is low."),
         R("FULL SCREEN", () => GetWindow().Mode == Window.ModeEnum.Fullscreen ? "ON" : "OFF", d => { var w = GetWindow(); w.Mode = w.Mode == Window.ModeEnum.Fullscreen ? Window.ModeEnum.Windowed : Window.ModeEnum.Fullscreen; }),
@@ -328,13 +340,13 @@ namespace DriftMaster {
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
       _view.SetCamber((float)CamberFDeg[_setup[1]], (float)CamberRDeg[_setup[2]]); _car.H += (RideMm - 7) * 0.001; _view.RideOffset = (float)((RideMm - 7) * 0.001);
       _view.SetShell(_shellOn); _view.SetMounts(_magnets); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass); _view.SetLamps(_lampsOn);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup4", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "magnets", _magnets); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.SetValue("car", "lamps", _lampsOn); cf.SetValue("game", "dark", Hall.Dark); cf.SetValue("game", "opponent", _oppOn); cf.Save("user://settings.cfg"); }
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup4", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "magnets", _magnets); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.SetValue("car", "lamps", _lampsOn); cf.SetValue("game", "dark", Hall.Dark); cf.SetValue("game", "opponent", _oppOn); cf.SetValue("game", "drift_counter", _driftOn); foreach (var kv in DriftBest) cf.SetValue("drift", "best_" + kv.Key, kv.Value); cf.SetValue("drift", "total", DriftTotal); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup4", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
-      _oppOn = (bool)cf.GetValue("game", "opponent", false); _lampsOn = (bool)cf.GetValue("car", "lamps", false); if (!_darkChosen) Hall.Dark = (bool)cf.GetValue("game", "dark", false);
+      _driftOn = (bool)cf.GetValue("game", "drift_counter", true); foreach (var tk in Tracks) { double v = (double)cf.GetValue("drift", "best_" + tk.file, 0.0); if (v > 0) DriftBest[tk.file] = v; } DriftTotal = (double)cf.GetValue("drift", "total", 0.0); _oppOn = (bool)cf.GetValue("game", "opponent", false); _lampsOn = (bool)cf.GetValue("car", "lamps", false); if (!_darkChosen) Hall.Dark = (bool)cf.GetValue("game", "dark", false);
       _vol0 = (float)(double)cf.GetValue("game", "volume", 0.4); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _assist = (bool)cf.GetValue("game", "assist", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
       _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _magnets = (bool)cf.GetValue("car", "magnets", false); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
@@ -409,11 +421,13 @@ namespace DriftMaster {
       if (_centre != null && !_pause.Visible) _centre.Step(delta);
       _view.Eye = (_fpvScreen != null && _fpvScreen.Visible ? _fpvCam : _cam).GlobalPosition;
       StepCompetition(delta); _view.Pose(_car, _t); StepOpponent(Math.Min(delta, 0.05));
+      if (_drift != null) { _drift.Visible = _driftOn && !_bare && !_pause.Visible; if (_drift.Visible) _drift.Tick(Math.Min(delta, 0.05), _car.Beta * 180 / Math.PI, Math.Sqrt(_car.U * _car.U + _car.V * _car.V), !_parked && !_car.Air && !_car.Reversing); }
       if (_ledL != null) { int li = Math.Max(0, _t.Idx); var at = new Vector3((float)_car.X, (float)_car.Y + 0.13f, (float)_car.Z); var nrm = new Vector3((float)_t.NX[li], 0, (float)_t.NZ[li]) * 0.42f; _ledL.Position = at + nrm; _ledR.Position = at - nrm; } UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
         var earXf = new Transform3D(Basis.Identity, DriverEye).LookingAt(new Vector3(0, 0.5f, 0), Vector3.Up); // the driver's place: the same corner as the camera, facing the middle of the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
       if (_dump != null && _frame >= 2) GetViewport().GetTexture().GetImage().SaveJpg($"{_dump}/{_frame:00000}.jpg", 0.92f);
+      if (_dump != null && _frame >= 2) { using var df = FileAccess.Open($"{_dump}/data.csv", _frame == 2 ? FileAccess.ModeFlags.Write : FileAccess.ModeFlags.ReadWrite); if (df != null) { df.SeekEnd(); df.StoreLine(FormattableString.Invariant($"{_frame},{_car.Beta:0.0000},{Math.Sqrt(_car.U * _car.U + _car.V * _car.V):0.000}")); } }   // (and the drift angle and speed, a line a frame)
       if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()} draws {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0} objects {Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame):0} tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}"); GetTree().Quit(); }
     }
 
