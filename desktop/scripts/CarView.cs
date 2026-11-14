@@ -209,19 +209,43 @@ namespace DriftMaster {
     /// (its meshes are left as they are: they carry the model's levels of detail, which a merged mesh would lose)
     public void Freeze() { foreach (var n in new[] { "Chassis", "Mounts" }) if (_body.FindChild(n, true, false) is Node3D p) p.Visible = false;
       foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) ((MeshInstance3D)node).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off; }
-    Node3D _lamps;
-    /// headlights: one beam ahead of the car that lights the floor, the barriers and the walls, two lit lenses in the
-    /// nose, two red ones in the tail with a small red glow behind
+    readonly System.Collections.Generic.List<(MeshInstance3D h, Vector3 onShell, Vector3 onKit)> _halos = new();
+    /// the halos sit where the light leaves the car: at the shell's lamps, or at the LEDs themselves when the shell is off
+    void PlaceHalos() { bool shell = _shell != null && _shell.Visible; foreach (var (h, a, b) in _halos) h.Position = shell ? a : b; }
+    Node3D _lamps, _lampKit, _lampFloor; static ImageTexture _glowTex, _poolTex;
+    static ImageTexture Tex(int w, int h, Func<float, float, float> f) { var img = Image.CreateEmpty(w, h, false, Image.Format.Rgb8); for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) { float v = Mathf.Clamp(f((x + 0.5f) / w, (y + 0.5f) / h), 0, 1); img.SetPixel(x, y, new Color(v, v, v)); } return ImageTexture.CreateFromImage(img); }
+    /// headlights, as RC drift cars carry them: LEDs in holders on a bar across the front of the chassis (red ones on a bar
+    /// at the back), shining out through the shell's lamps. Each is a small hot point with a halo, and on the glossy floor
+    /// a streak under each lamp and a soft pool ahead of the car. None of it is a real light: it is drawn, not computed,
+    /// so it costs next to nothing and nothing has to be prepared when it is switched on.
     public void SetLamps(bool on) {
-      if (_lamps == null) { if (!on) return; _lamps = new Node3D { Name = "Lamps" }; _body.AddChild(_lamps);
-        _lamps.AddChild(new SpotLight3D { Position = new Vector3(0, 0.055f, HalfL - 0.012f), Rotation = new Vector3(Mathf.DegToRad(-7), Mathf.Pi, 0), SpotRange = 2.8f, SpotAngle = 32, SpotAngleAttenuation = 0.8f, SpotAttenuation = 1.1f, LightEnergy = Hall.Dark ? 2.4f : 0.8f, LightColor = new Color(1f, 0.95f, 0.84f), ShadowEnabled = false });
-        _lamps.AddChild(new OmniLight3D { Position = new Vector3(0, 0.05f, -HalfL - 0.03f), OmniRange = 0.4f, LightEnergy = Hall.Dark ? 0.7f : 0.25f, LightColor = new Color(1f, 0.1f, 0.06f), ShadowEnabled = false });
-        var lens = new SphereMesh { Radius = 0.0075f, Height = 0.015f, RadialSegments = 10, Rings = 5 };
-        foreach (var (z, c) in new[] { (HalfL - 0.006f, new Color(1f, 0.97f, 0.88f)), (-HalfL + 0.006f, new Color(1f, 0.08f, 0.05f)) }) foreach (int sx in new[] { -1, 1 })
-            _lamps.AddChild(new MeshInstance3D { Mesh = lens, Position = new Vector3(sx * HalfW * 0.66f, 0.056f, z), Scale = new Vector3(1.3f, 0.8f, 0.45f), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = c } }); }
-      _lamps.Visible = on;
+      if (_lamps == null) { if (!on || Ghost) return;
+        _glowTex ??= Tex(64, 64, (u, v) => { float r = Mathf.Sqrt((u - 0.5f) * (u - 0.5f) + (v - 0.5f) * (v - 0.5f)) * 2; return Mathf.Pow(Mathf.Max(0, 1 - r), 2.2f) + 0.9f * Mathf.Exp(-r * r * 40); });
+        _poolTex ??= Tex(64, 128, (u, v) => { float w = 0.1f + 0.36f * v, du = (u - 0.5f) / w, cone = Mathf.Exp(-du * du * 2.6f) * Mathf.Min(1, v / 0.05f) * Mathf.Pow(1 - v, 1.6f) * 0.5f, st = 0;
+          foreach (float c in new[] { 0.5f - 0.11f, 0.5f + 0.11f }) { float d = (u - c) / 0.03f; st += Mathf.Exp(-d * d) * Mathf.Exp(-v / 0.2f) * Mathf.Min(1, v / 0.02f); } return cone + st * 0.8f; });
+        StandardMaterial3D Add(Texture2D t, Color c, bool billboard) => new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = t, AlbedoColor = c, BlendMode = BaseMaterial3D.BlendModeEnum.Add, CullMode = BaseMaterial3D.CullModeEnum.Disabled, BillboardMode = billboard ? BaseMaterial3D.BillboardModeEnum.Enabled : BaseMaterial3D.BillboardModeEnum.Disabled, DisableReceiveShadows = true };
+        float k = Hall.Dark ? 1f : 0.45f; Color cool = new(0.72f, 0.86f, 1f), red = new(1f, 0.1f, 0.06f);
+        // the kit on the chassis: a bar on two posts at each end, an LED in a holder at each end of the bar
+        _lampKit = new Node3D { Name = "LampKit" }; (_chassis ?? _body).AddChild(_lampKit);
+        var alu = new StandardMaterial3D { AlbedoColor = new Color(0.1f, 0.1f, 0.11f), Roughness = 0.4f, Metallic = 0.6f };
+        foreach (var (z, c, x) in new[] { (0.166f, new Color(0.9f, 0.96f, 1f), 0.052f), (-0.168f, red, 0.05f) }) { float dir = Mathf.Sign(z);
+          _lampKit.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(x * 2 + 0.02f, 0.004f, 0.006f) }, MaterialOverride = alu, Position = new Vector3(0, 0.047f, z) });
+          foreach (int sx in new[] { -1, 1 }) {
+            _lampKit.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.004f, 0.04f, 0.004f) }, MaterialOverride = alu, Position = new Vector3(sx * 0.028f, 0.027f, z) });
+            _lampKit.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0065f, BottomRadius = 0.0055f, Height = 0.011f, RadialSegments = 12, Rings = 1 }, MaterialOverride = alu, Position = new Vector3(sx * x, 0.047f, z + dir * 0.004f), Rotation = new Vector3(Mathf.Pi / 2 * dir, 0, 0) });
+            _lampKit.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0052f, BottomRadius = 0.0052f, Height = 0.001f, RadialSegments = 12, Rings = 1 }, Position = new Vector3(sx * x, 0.047f, z + dir * 0.0098f), Rotation = new Vector3(Mathf.Pi / 2, 0, 0), MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = c } }); } }
+        foreach (var n in _lampKit.GetChildren()) ((MeshInstance3D)n).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        // the light itself, where it leaves the shell: halos at the nose and tail (they sit just outside the body, so the car hides them from the other end)
+        _lamps = new Node3D { Name = "Lamps" }; _body.AddChild(_lamps);
+        void Halo(Vector3 onShell, Vector3 onKit, float size, Color c) { var h = new MeshInstance3D { Mesh = new QuadMesh { Size = new Vector2(size, size) }, MaterialOverride = Add(_glowTex, c, true), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; _lamps.AddChild(h); _halos.Add((h, onShell, onKit)); }
+        foreach (int sx in new[] { -1, 1 }) { Halo(new Vector3(sx * HalfW * 0.62f, 0.057f, HalfL + 0.004f), new Vector3(sx * 0.052f, 0.044f, 0.18f), 0.085f, cool * (0.9f * k + 0.25f)); Halo(new Vector3(sx * HalfW * 0.64f, 0.06f, -HalfL - 0.004f), new Vector3(sx * 0.05f, 0.044f, -0.182f), 0.075f, red * (1.0f * k + 0.3f)); }
+        // and on the floor (fixed to the car's place on the floor, not to the body, which leans)
+        _lampFloor = new Node3D { Name = "LampFloor" }; AddChild(_lampFloor);
+        _lampFloor.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.62f, 1.0f) }, Position = new Vector3(0, 0.0026f, HalfL + 0.48f), MaterialOverride = Add(_poolTex, cool * (0.75f * k), false), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        _lampFloor.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.3f, 0.3f) }, Position = new Vector3(0, 0.0026f, -HalfL - 0.1f), MaterialOverride = Add(_glowTex, red * (0.5f * k), false), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
+      _lamps.Visible = on; _lampKit.Visible = on; _lampFloor.Visible = on; PlaceHalos();
     }
-    public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; }
+    public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; PlaceHalos(); }
     /// how the shell is held on: body posts with clips (they stand through the bonnet and boot), or hidden magnets (nothing shows)
     public void SetMounts(bool magnets) { if (_mounts != null) _mounts.Visible = !magnets; }
     /// Neon, as fitted to RC drift cars: LED strips under the edges of the chassis and across its ends. The light pools on
@@ -261,6 +285,7 @@ namespace DriftMaster {
       if (_susp != null && _susp.Visible != Detail) _susp.Visible = Detail;
       if (_layTick++ % 45 == 0) Lay();
       if (Detail) _susp?.Update((_body.Transform * _chassis.Transform).AffineInverse(), (float)c.Ax, (float)c.Ay);
+      if (_lampFloor != null && _lamps.Visible) _lampFloor.Visible = !c.Air;
       _blob.Visible = !c.Air && !Ghost; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {
         if (_wheel[i] == null || _spin[i] == null) continue;

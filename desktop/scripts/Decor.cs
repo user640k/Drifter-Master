@@ -94,7 +94,7 @@ namespace DriftMaster {
         WallRun(new Vector3(-hx, 0, -hz), new Vector3(hx, 0, -hz)); WallRun(new Vector3(-hx, 0, -hz), new Vector3(-hx, 0, hz)); WallRun(new Vector3(hx, 0, -hz + Room.NookW), new Vector3(hx, 0, hz));
         root.AddChild(new MeshInstance3D { Mesh = ws.Commit(), Name = "LedWash", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, VertexColorUseAsAlbedo = true, BlendMode = BaseMaterial3D.BlendModeEnum.Add, CullMode = BaseMaterial3D.CullModeEnum.Disabled } });
         root.AddChild(new MeshInstance3D { Mesh = ls.Commit(), Name = "Leds", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, VertexColorUseAsAlbedo = true, CullMode = BaseMaterial3D.CullModeEnum.Disabled } });
-        for (int q = 0; q < 16; q++) { int i = q * n / 16; bool left = q % 2 == 0; root.AddChild(new OmniLight3D { Position = E(i, left ? 1 : -1, t.Hw * 0.85, 0.12f), LightColor = left ? ICE : PINK, LightEnergy = 0.55f, OmniRange = 1.5f, OmniAttenuation = 1.0f, ShadowEnabled = false, LightCullMask = 2 }); } }
+        if (t.Name == "CLUB 1") root.AddChild(new OmniLight3D { Position = new Vector3(3.1f, 0.5f, -1.5f), LightColor = new Color(0.85f, 0.93f, 1f), LightEnergy = 0.5f, OmniRange = 1.6f, ShadowEnabled = false, LightCullMask = 2 }); }   // the cars in the pits, under the bays' strips
       Merge.Static(root);
       return root;
     }

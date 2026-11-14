@@ -14,11 +14,11 @@ namespace DriftMaster {
     // ---- the ghost
     const int GF = 10; const double GDt = 1.0 / 60;   // each frame: x, z, y, heading, steer, roll, pitch, rear spin, front spin, lap index
     sealed class Rec { public readonly List<float> F = new(); public double Mark; public int Body; public int Count => F.Count / GF; }   // Mark: the lap time (s) or the run's score
-    Rec _ghostLap, _ghostRun, _rec; bool _recOn, _ghostOn = true, _ghostPlay; double _recAcc, _ghostT; Track _t2; CarPhysics _ghostCar; CarView _ghostView; int _ghostBody = -1;
+    Rec _ghostLap, _ghostRun, _rec; bool _recOn, _ghostOn = true, _ghostPlay; double _recAcc, _ghostT; Track _t2; CarPhysics _ghostCar; CarView _ghostView; int _ghostBody = -1, _ghostWarm;
     string GhostFile(bool run) => $"user://ghost_{Tracks[TrackIdx % Tracks.Length].file}_{(run ? "run" : "lap")}.bin";
-    void SaveGhost(Rec r, bool run) { if (_shot != null && CompTest == null) return; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Write); if (f == null) return; f.Store32(3); f.StoreDouble(r.Mark); f.Store32((uint)r.Body); f.Store32((uint)r.F.Count); foreach (var v in r.F) f.StoreFloat(v); }
+    void SaveGhost(Rec r, bool run) { if (_shot != null && CompTest == null) return; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Write); if (f == null) return; f.Store32(3); f.StoreDouble(r.Mark); f.Store32((uint)r.Body); f.Store32((uint)r.F.Count); var raw = new byte[r.F.Count * 4]; Buffer.BlockCopy(r.F.ToArray(), 0, raw, 0, raw.Length); f.StoreBuffer(raw); }
     Rec LoadGhost(bool run) { if (!FileAccess.FileExists(GhostFile(run))) return null; using var f = FileAccess.Open(GhostFile(run), FileAccess.ModeFlags.Read); if (f == null || f.Get32() != 3) return null;   // (2: since the layouts moved 1 m in the hall)
-      var r = new Rec { Mark = f.GetDouble(), Body = (int)f.Get32() }; uint n = f.Get32(); if (n == 0 || n % GF != 0 || n > 2000000) return null; for (uint i = 0; i < n; i++) r.F.Add(f.GetFloat()); return r; }
+      var r = new Rec { Mark = f.GetDouble(), Body = (int)f.Get32() }; uint n = f.Get32(); if (n == 0 || n % GF != 0 || n > 2000000) return null; var raw = f.GetBuffer(n * 4); if (raw.Length != n * 4) return null; var fl = new float[n]; Buffer.BlockCopy(raw, 0, fl, 0, raw.Length); r.F.AddRange(fl); return r; }
     void RecStart() { _rec = new Rec { Body = _body }; _recOn = true; _recAcc = GDt; }
     void RecStep(double dt) { if (!_recOn) return; _recAcc += dt; if (_recAcc < GDt) return; _recAcc -= GDt; if (_rec.Count > 60 * 180) { _recOn = false; return; }   // (three minutes: not a lap)
       _rec.F.AddRange(new[] { (float)_car.X, (float)_car.Z, (float)_car.Y, (float)_car.Hd, (float)_car.Steer, (float)_car.Roll, (float)_car.Pitch, (float)_car.Spin, (float)_car.SpinF, (float)Math.Max(0, _t.Idx) }); }
@@ -27,6 +27,11 @@ namespace DriftMaster {
       var g = _comp == 1 ? _ghostRun : _ghostLap; bool show = _ghostOn && _ghostPlay && g != null && g.Count > 2 && !_parked && !(_comp == 1 && _phase == 0);
       if (show && _phase != 2 && !_pause.Visible) _ghostT += Math.Min(delta, 0.05); double ft = _ghostT / GDt; int i = (int)ft;
       if (show && i >= g.Count - 1) { show = false; _ghostPlay = false; }
+      if (_ghostCar == null) { var td0 = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td0.file + ".json"), td0.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _ghostCar = new CarPhysics { T = _t2 }; }
+      // the ghost car is made at the start and drawn for a few frames under the floor, so its model and materials are ready
+      // and nothing is loaded (no hitch) at the moment it first appears
+      if (_ghostOn && !_bare && _ghostView == null) { _ghostBody = g?.Body ?? _body; _ghostView = new CarView { Body = _ghostBody, Ghost = true }; AddChild(_ghostView); _ghostWarm = 6; }
+      if (_ghostWarm > 0 && _ghostView != null) { _ghostWarm--; _ghostCar.X = _car.X; _ghostCar.Z = _car.Z; _ghostCar.Hd = _car.Hd; _ghostCar.Y = -0.6; _ghostCar.Air = true; _ghostView.Visible = true; _ghostView.Pose(_ghostCar, _t2); return; }
       if (!show) { if (_ghostView != null) _ghostView.Visible = false; return; }
       if (_ghostView == null || _ghostBody != g.Body) { _ghostView?.QueueFree(); _ghostBody = g.Body; _ghostView = new CarView { Body = g.Body, Ghost = true }; AddChild(_ghostView); }
       if (_ghostCar == null) { var td = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _ghostCar = new CarPhysics { T = _t2 }; }

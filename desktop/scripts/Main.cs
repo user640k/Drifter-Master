@@ -25,7 +25,8 @@ namespace DriftMaster {
     int _rimIdx, _livery, _body; /* rim colour, bonnet (0 body colour, 1 carbon), body shell */
     /// the tracks: name, data file, how far the layout is moved along z, floor sheet, white boards all round?
     public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB 1", "club", 0.0, "floor_wear_club", true), ("CLUB 2", "club2", 0.0, "floor_wear_club2", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };   // CLUB is the main track
-    static bool _darkChosen; bool _lampsOn;
+    OmniLight3D _ledL, _ledR; /* lights out: the strips' light on the car, ice blue from its left barrier and pink from its right: two lights that go with it */
+    static bool _darkChosen; bool _lampsOn; string _dump; /* test: every frame saved as a picture in this folder (run with --fixed-fps) */
     static bool _trackChosen; public static int TrackIdx; /* kept across a change of track: the scene is loaded again */
 
     public override void _Ready() {
@@ -45,7 +46,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--stk=")) { var q = a.Substring(6).Split(','); CarView.StickSide = int.Parse(q[0]); CarView.StickUp = float.Parse(q[1], System.Globalization.CultureInfo.InvariantCulture); CarView.StickFwd = float.Parse(q[2], System.Globalization.CultureInfo.InvariantCulture); }
         else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
-        else if (a == "--bare") _bare = true; else if (a == "--dark") { Hall.Dark = true; _darkChosen = true; } else if (a == "--lamps") _lampsOn = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
+        else if (a == "--bare") _bare = true; else if (a.StartsWith("--dump=")) _dump = a.Substring(7); else if (a == "--dark") { Hall.Dark = true; _darkChosen = true; } else if (a == "--lamps") _lampsOn = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
         else if (a.StartsWith("--orbit=")) { _view6 = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 8; }
         else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
@@ -67,6 +68,7 @@ namespace DriftMaster {
       BuildOnBoard();
       _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
       BuildHud(); BuildCompetition(); BuildTv();
+      if (Hall.Dark && !_bare) { _ledL = new OmniLight3D { LightColor = new Color(0.35f, 0.85f, 1f), LightEnergy = 0.42f, OmniRange = 1.2f, OmniAttenuation = 1.0f, ShadowEnabled = false, LightCullMask = 2 }; _ledR = new OmniLight3D { LightColor = new Color(1f, 0.25f, 0.68f), LightEnergy = 0.42f, OmniRange = 1.2f, OmniAttenuation = 1.0f, ShadowEnabled = false, LightCullMask = 2 }; AddChild(_ledL); AddChild(_ledR); }
       if (!_bare) AddChild(Decor.Build(_t, _course, DriverEye));
       if (!_bare && _t.Name == "CLUB 1") { // three cars on show on the turf island by the wide bend: they stand still
         var tt = Track.FromJson(FileAccess.GetFileAsString("res://assets/club.json"), Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); var park = new CarPhysics { T = tt };
@@ -372,10 +374,12 @@ namespace DriftMaster {
       if (_tvView != null && ++_tvTick % 3 == 0) _tvView.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;   // the television's picture: every third frame is plenty
       StepSplash(delta); StepMusic(delta);
       _view.Detail = _camMode != 1 || (_pause.Visible && _pause.Preview);   // from the stand the shocks are a pixel: they are drawn in the close views
-      StepCompetition(delta); _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
+      StepCompetition(delta); _view.Pose(_car, _t);
+      if (_ledL != null) { int li = Math.Max(0, _t.Idx); var at = new Vector3((float)_car.X, (float)_car.Y + 0.13f, (float)_car.Z); var nrm = new Vector3((float)_t.NX[li], 0, (float)_t.NZ[li]) * 0.42f; _ledL.Position = at + nrm; _ledR.Position = at - nrm; } UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
         var earXf = new Transform3D(Basis.Identity, DriverEye).LookingAt(new Vector3(0, 0.5f, 0), Vector3.Up); // the driver's place: the same corner as the camera, facing the middle of the hall
         _audio.Step(_car, _view.GlobalTransform, earXf, _pause.Visible, (float)Math.Min(delta, 0.05)); }
+      if (_dump != null && _frame >= 2) GetViewport().GetTexture().GetImage().SaveJpg($"{_dump}/{_frame:00000}.jpg", 0.92f);
       if (_shot != null && ++_frame >= _frames) { GetViewport().GetTexture().GetImage().SavePng(_shot); GD.Print($"shot {_shot} car {_car.X:F2} {_car.Z:F2} y {_car.Y:F3} speed {Math.Sqrt(_car.U * _car.U + _car.V * _car.V):F2} beta {_car.Beta:F2} fps {Engine.GetFramesPerSecond()} draws {Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0} objects {Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame):0} tris {Performance.GetMonitor(Performance.Monitor.RenderTotalPrimitivesInFrame):0}"); GetTree().Quit(); }
     }
 
