@@ -12,7 +12,9 @@ namespace DriftMaster {
     readonly Vector3[] _path; readonly float[] _len; float _s; const float Speed = 2.6f;
 
     /// loop: how big the drone's loop is (1: as in the web version's warehouse; smaller for a smaller room)
-    public Centrepiece(Vector3 at, float loop = 1) {
+    readonly StandardMaterial3D[] _bulbs = new StandardMaterial3D[4]; StandardMaterial3D _led; float _time;
+    /// lights: lights out, so the stack is hung with a string of coloured bulbs
+    public Centrepiece(Vector3 at, float loop = 1, bool lights = false) {
       // a tyre: its section turned round the axle
       var prof = new[] { (0.2f, -0.1f), (0.27f, -0.105f), (0.31f, -0.09f), (0.325f, -0.06f), (0.33f, 0f), (0.325f, 0.06f), (0.31f, 0.09f), (0.27f, 0.105f), (0.2f, 0.1f) };
       var st = new SurfaceTool(); st.Begin(Mesh.PrimitiveType.Triangles); const int seg = 28;
@@ -22,6 +24,15 @@ namespace DriftMaster {
       st.GenerateNormals(); var tyre = st.Commit(); var rubber = new StandardMaterial3D { AlbedoColor = new Color(0.035f, 0.035f, 0.038f), Roughness = 0.85f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
       for (int i = 0; i < 3; i++) Root.AddChild(new MeshInstance3D { Mesh = tyre, MaterialOverride = rubber, Position = at + new Vector3(Mathf.Sin(i * 2.1f) * 0.025f, 0.105f + i * 0.21f, Mathf.Cos(i * 1.7f) * 0.025f), Rotation = new Vector3(Mathf.Sin(i) * 0.015f, i * 0.9f, 0) });
       float hy = 0.63f + 0.33f; Root.AddChild(new MeshInstance3D { Mesh = tyre, MaterialOverride = rubber, Position = at + new Vector3(0, hy, 0), Rotation = new Vector3(0, 0, Mathf.Pi / 2) });   // upright: its hole faces along x
+      if (lights) { // a string of Christmas lights: a dozen bulbs wound up round the stack and eight round the rim of the upright tyre, red, green, gold and blue, on a dark flex
+        var cols = new[] { new Color(1f, 0.12f, 0.08f), new Color(0.1f, 1f, 0.25f), new Color(1f, 0.72f, 0.15f), new Color(0.15f, 0.45f, 1f) };
+        for (int k = 0; k < 4; k++) _bulbs[k] = new StandardMaterial3D { AlbedoColor = cols[k] * 0.4f, EmissionEnabled = true, Emission = cols[k], EmissionEnergyMultiplier = 2.2f, Roughness = 0.3f };
+        var flex = new StandardMaterial3D { AlbedoColor = new Color(0.02f, 0.05f, 0.03f), Roughness = 0.7f }; var bulb = new SphereMesh { Radius = 0.013f, Height = 0.032f, RadialSegments = 10, Rings = 5 };
+        var pts = new List<Vector3>(); for (int k = 0; k < 12; k++) { float a = k * 0.85f, y = 0.05f + k * 0.05f; pts.Add(at + new Vector3(Mathf.Cos(a) * 0.342f, y, Mathf.Sin(a) * 0.342f)); }
+        for (int k = 0; k < 8; k++) { float a = Mathf.Pi * 0.5f + (k + 0.5f) * Mathf.Tau / 8; pts.Add(at + new Vector3(0.11f * (k % 2 == 0 ? 1 : -1), hy + Mathf.Sin(a) * 0.345f, Mathf.Cos(a) * 0.345f)); }
+        for (int k = 0; k < pts.Count; k++) { Root.AddChild(new MeshInstance3D { Mesh = bulb, MaterialOverride = _bulbs[k % 4], Position = pts[k], CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+          if (k + 1 < pts.Count && k != 11) { Vector3 a = pts[k], b = pts[k + 1], d = b - a; var y = d.Normalized(); var x = y.Cross(Vector3.Up).Length() > 0.01f ? y.Cross(Vector3.Up).Normalized() : Vector3.Right; var z = x.Cross(y);
+            Root.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0025f, BottomRadius = 0.0025f, Height = d.Length(), RadialSegments = 5, Rings = 1 }, MaterialOverride = flex, Transform = new Transform3D(new Basis(x, y, z), (a + b) / 2), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); } } }
       // the drone's loop, round the stack: straight through the hole along x, then up and round behind
       var ctl = new[] { new Vector3(-0.75f, 0, 0), new Vector3(0, 0, 0), new Vector3(0.75f, 0, 0), new Vector3(1.55f, 0.2f, -0.35f), new Vector3(2.0f, 0.42f, -1.05f), new Vector3(1.35f, 0.62f, -1.6f), new Vector3(0, 0.7f, -1.55f), new Vector3(-1.35f, 0.55f, -1.45f), new Vector3(-2.0f, 0.32f, -0.9f), new Vector3(-1.55f, 0.1f, -0.28f) };
       int n = ctl.Length; const int per = 40; _path = new Vector3[n * per]; _len = new float[n * per + 1];
@@ -48,6 +59,9 @@ namespace DriftMaster {
       Add(_body, new CylinderMesh { TopRadius = 0.0009f, BottomRadius = 0.0009f, Height = 0.03f, RadialSegments = 6, Rings = 1 }, blk, new Vector3(0, 0.014f, -0.014f), new Vector3(-0.75f, 0, 0));
       Add(_body, new BoxMesh { Size = new Vector3(0.012f, 0.006f, 0.03f) }, M(new Color(0.9f, 0.9f, 0.88f)), new Vector3(0, -0.006f, 0));
       Add(_body, new SphereMesh { Radius = 0.0015f, Height = 0.003f, RadialSegments = 6, Rings = 4 }, new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = new Color(0.25f, 1f, 0.38f) }, new Vector3(0, 0.004f, -0.012f));
+      // a little LED on its belly, cool white, that pulses as it flies: easy to follow in the dark
+      _led = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = new Color(0.55f, 0.85f, 1f) };
+      Add(_body, new SphereMesh { Radius = lights ? 0.006f : 0.003f, Height = lights ? 0.012f : 0.006f, RadialSegments = 8, Rings = 4 }, _led, new Vector3(0, -0.011f, 0.004f));
       Step(0);
     }
 
@@ -60,6 +74,8 @@ namespace DriftMaster {
       float yaw = Mathf.Atan2(t.X, t.Z), turn = Mathf.AngleDifference(yaw, Mathf.Atan2(t2.X, t2.Z));
       _drone.Rotation = new Vector3(0, yaw, 0); _body.Rotation = new Vector3(0.32f - t.Y * 0.8f, 0, -Mathf.Clamp(turn * 4.5f, -0.7f, 0.7f));   // nose down to fly forward, banked into the turns
       foreach (var (n, dir) in _props) n.RotateY(dir * (float)dt * 160);
+      _time += (float)dt; for (int k = 0; k < 4; k++) if (_bulbs[k] != null) _bulbs[k].EmissionEnergyMultiplier = 1.7f + 1.0f * Mathf.Sin(_time * 1.6f + k * 1.57f);   // the bulbs breathe, each colour in its turn
+      if (_led != null) { float pulse = 0.75f + 0.25f * Mathf.Sin(_time * 9f); _led.AlbedoColor = new Color(0.55f * pulse, 0.85f * pulse, 1f * pulse); }
     }
   }
 }

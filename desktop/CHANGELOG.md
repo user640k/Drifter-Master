@@ -2,6 +2,8 @@
 
 ## Changelog (this build)
 
+- OPPONENT (TRAINING page, ON or OFF): a pace car on a clean drift line, to follow and learn the track from. It holds the middle of the lane with a drift angle that suits each bend, never touches a barrier and makes no mistakes. It cannot be hit (your car passes through it), and it waits when it gets a few metres ahead. R puts you both back on the line. Free practice only.
+- Lights out, on BIG S: the tyre stack is hung with a string of Christmas lights (twenty bulbs, red, green, gold and blue, breathing slowly), and the drone carries a little cool-white LED that pulses.
 - The room has a name: CAVE, shown in the corner of the screen with the track's name.
 - BIG S, a fifth track in the Cave (42.8 m a lap, the longest): the line drawn over a photo of a club's track, laid out to fit the room. From the line on the right-hand side: up to the far wall and all along it, down the left, back under the far-left island and up in an S onto a second run to the right, down round a hook, up to a hairpin, down the middle of the room, left along the near side, a step up, out to the left, the big left-hander, and the long near straight. It fills the room, so its S-bends are tight (0.45 to 0.5 m).
 - On BIG S: a stack of three full-size tyres with a fourth upright on top, and a tiny whoop drone flying a loop through its hole and round the stack (both after the web version).
