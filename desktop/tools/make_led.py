@@ -6,10 +6,11 @@ by scripts/Decor.cs. Every track has strips on its barriers, under its kerbs and
 import sys, json, numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import gaussian_filter
-A = sys.argv[1]; P = 96; HX, HZ = 5.5, 3.5; W, H = int(2 * HX * P), int(2 * HZ * P)
+A = sys.argv[1]; P = 96
 ICE, PINK, RED, WHITE, AMB, BLUE = (0.25, 0.8, 1.0), (1.0, 0.2, 0.62), (1.0, 0.1, 0.06), (1.0, 0.97, 0.9), (1.0, 0.62, 0.1), (0.1, 0.42, 1.0)
-def px(x, z): return ((x + HX) * P, (z + HZ) * P)
-for FILE, Z0, OUT, BOARDS in (('club', 1.0, 'led_club', True), ('club2', 1.0, 'led_club2', True), ('infield', 1.0, 'led_infield', True), ('hillside', -2.4, 'led', False)):
+for FILE, Z0, OUT, BOARDS, HX, HZ in (('club', 1.0, 'led_club', True, 5.5, 3.5), ('club2', 1.0, 'led_club2', True, 5.5, 3.5), ('infield', 1.0, 'led_infield', True, 5.5, 3.5), ('hillside', -2.4, 'led', False, 5.5, 3.5), ('bigs', 1.0, 'led_bigs', True, 5.5, 3.5)):
+    W, H = int(2 * HX * P), int(2 * HZ * P)
+    def px(x, z): return ((x + HX) * P, (z + HZ) * P)
     CLUB1 = FILE == 'club'; tj = json.load(open(f'{A}/{FILE}.json')); X = np.array(tj['x']); Z = np.array(tj['z']) - Z0; hw = tj['hw']; n = len(X)
     tx = np.roll(X, -1) - np.roll(X, 1); tz = np.roll(Z, -1) - np.roll(Z, 1); l = np.hypot(tx, tz); tx /= l; tz /= l; nx, nz = tz, -tx
     hd = np.arctan2(tx, tz); dh = np.roll(hd, -1) - np.roll(hd, 1); kap = np.arctan2(np.sin(dh), np.cos(dh)) / (2 * tj['ds'])

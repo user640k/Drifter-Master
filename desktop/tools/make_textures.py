@@ -2,7 +2,7 @@
 """Builds the desktop version's textures from CC0 photo scans (ambientCG.com, CC0 1.0).
    usage: make_textures.py <dir with unzipped ambientCG sets> <out dir>
    Sets used: PaintedPlaster017, Sponge001, OfficeCeiling001, Chipboard004 (1K)."""
-import sys, glob, numpy as np
+import os, sys, glob, numpy as np
 from PIL import Image, ImageFilter
 src, out = sys.argv[1], sys.argv[2]
 rng = np.random.default_rng(7)
@@ -63,6 +63,7 @@ simple('Chipboard004', 'board.jpg', 1024)
 # floor_wear.png is colour + how much of it covers the tile; floor_wear_rough.jpg shifts the gloss (grey = no change).
 import json, os, math
 from PIL import ImageDraw
+ONLY = os.environ.get('DM_ONLY')   # make one track's sheet only (its file name without .json)
 HX, HZ, PXM = 5.5, 3.5, 256   # the hall is 11 x 7 m: the 11 x 5 m the layouts may fill, and 2 m of clear floor on the driver's side (+z)
 Wp, Hp = int(HX * 2 * PXM), int(HZ * 2 * PXM)
 rr = lambda a, b: a + wr.random() * (b - a)
@@ -81,7 +82,8 @@ def arr(im, blur=0):
     a = np.asarray(im).astype(np.float32) / 255
     return gaussian_filter(a, blur) if blur else a
 # one sheet per track: (data file, how far its layout was moved along z, name suffix, turf and kerbs?)
-for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True), ('club.json', 1.0, '_club', 'club'), ('club2.json', 1.0, '_club2', 'club2')):   # (each layout sits 1 m towards -z of the hall's middle)
+for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True), ('club.json', 1.0, '_club', 'club'), ('club2.json', 1.0, '_club2', 'club2'), ('bigs.json', 1.0, '_bigs', 'bigs')):
+    if ONLY and TFILE != ONLY + '.json': continue   # (each layout sits 1 m towards -z of the hall's middle)
     wr = np.random.default_rng(777); tj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', TFILE)))
     rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
     # broad dust haze
@@ -122,14 +124,14 @@ for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json'
         d.line(pts, fill=255, width=1)
     over(arr(im, 0.4) * 0.5, (120, 120, 116), 0.2)
     # tape left from old layouts, some torn short (not on the club's floors: they are laid out like a printed mat, and kept clean)
-    for i in range(0 if str(TURF).startswith('club') else 13):
+    for i in range(0 if TURF in ('club', 'club2', 'bigs') else 13):
         im, d = layer(); x, z, a, L = rr(-HX + 0.4, HX - 0.4), rr(-HZ + 0.4, HZ - 0.4), rr(0, 3.14), rr(0.12, 0.7)
         cx, cz = px(x, z); ux, uz = math.cos(a) * L / 2 * PXM, math.sin(a) * L / 2 * PXM
         d.line([(cx - ux, cz - uz), (cx + ux, cz + uz)], fill=255, width=int(0.048 * PXM))
         m = arr(im) * (0.75 + 0.25 * gaussian_filter(wr.random((Hp // 8 + 1, Wp // 8 + 1)).astype(np.float32), 2).repeat(8, 0).repeat(8, 1)[:Hp, :Wp])
         over(m * (1 - 0.6 * lm) * 0.2, (220, 200, 90) if wr.random() < 0.3 else (225, 225, 215), 0.2)
     # faded paint from an old layout: broken arcs
-    for i in range(0 if str(TURF).startswith('club') else 6):
+    for i in range(0 if TURF in ('club', 'club2', 'bigs') else 6):
         im, d = layer(); cx, cz = px(rr(-HX + 1, HX - 1), rr(-HZ + 1, HZ - 1)); R = rr(0.6, 2.0) * PXM; a0 = rr(0, 360); a = a0
         while a < a0 + rr(60, 170):
             if wr.random() < 0.75: d.arc((cx - R, cz - R, cx + R, cz + R), a, a + 11, fill=255, width=int(0.022 * PXM))
@@ -156,10 +158,10 @@ for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json'
             q = px(-2.05, 0.15 - Z0); rr2 = (xx - q[0]) ** 2 + (yy - q[1]) ** 2   # turf only outside the big corner, out to the corners of the mat
             grass = (xx < q[0]) & (rr2 > ((2.05 + hw + 0.035) * PXM) ** 2) & (xx > q[0] - 2.55 * PXM) & (np.abs(yy - q[1]) < 2.55 * PXM)
         blue2 = None
-        if TURF == 'club2':   # CLUB 2: bare between the lanes but for three islands of turf, one inside each tight bend, each with a blue tip
+        if TURF in ('club2', 'bigs'):   # bare between the lanes but for islands of turf, each with a blue tip (CLUB 2: one inside each tight bend; BIG S: far left, middle and near left)
             isl = np.zeros_like(grass); tip = np.zeros_like(grass)
-            for ix, iz in ((2.85, -1.33), (-1.0, -0.17), (2.75, 1.21)):
-                q = px(ix, iz - Z0); isl |= ((xx - q[0]) / (1.5 * PXM)) ** 2 + ((yy - q[1]) / (0.62 * PXM)) ** 2 < 1; tip |= ((xx - q[0]) / (2.5 * PXM)) ** 2 + ((yy - q[1]) / (0.62 * PXM)) ** 2 < 1
+            for ix, iz, rx, rz, tx in ((2.85, -1.33, 1.5, 0.62, 2.5), (-1.0, -0.17, 1.5, 0.62, 2.5), (2.75, 1.21, 1.5, 0.62, 2.5)) if TURF == 'club2' else ((-3.0, -1.05, 1.05, 0.45, 1.6), (1.85, 0.3, 0.4, 0.75, 0.4), (-3.5, 1.9, 0.6, 0.55, 0.9)):
+                q = px(ix, iz - Z0); isl |= ((xx - q[0]) / (rx * PXM)) ** 2 + ((yy - q[1]) / (rz * PXM)) ** 2 < 1; tip |= ((xx - q[0]) / (tx * PXM)) ** 2 + ((yy - q[1]) / (rz * PXM)) ** 2 < 1
             blue2 = grass & tip & ~isl; grass &= isl
         g = wr.random((Hp, Wp)).astype(np.float32); blade = gaussian_filter(g, (0.6, 0.6)); clump = gaussian_filter(wr.random((Hp, Wp)).astype(np.float32), 9)
         tone = 0.78 + 0.5 * (blade - 0.5) * 2.2 + 0.5 * (clump - 0.5) * 3

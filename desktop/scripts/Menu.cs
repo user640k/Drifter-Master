@@ -32,6 +32,7 @@ namespace DriftMaster {
     public string Page => Pages.Count > 0 ? Pages[_page].title : ""; public bool Preview => Page == "CAR" || Page == "SETUP";
 
     public void Open(bool on) { Visible = on; if (on) Refresh(); }
+    public int PageIdx => _page; public int RowIdx => _row;
     public void Goto(int page, int row) { _page = page % Pages.Count; _row = row; Refresh(); } // (test shots)
 
     public void Refresh() {

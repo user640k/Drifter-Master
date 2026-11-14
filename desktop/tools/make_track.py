@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lays out a track and writes its file: make_track.py <out.json> [infield|club|club2]. First INFIELD (assets/infield.json (same form as hillside.json: 480 points along the
+"""Lays out a track and writes its file: make_track.py <out.json> [infield|club|club2|bigs]. First INFIELD (assets/infield.json (same form as hillside.json: 480 points along the
    centre of the lane, evenly spaced, with the lane's half width).
    After a photo of a club track: an oval round the outside with a twisting S inside it, turf between the lanes.
    It is 2 m longer than the first version (the hall was widened to 11 m for it): the long straight runs past the pilot, a hairpin at the right-hand end turns
@@ -21,6 +21,27 @@ if which == 'infield':
     line((4.2, -1.85), (-3.05, -1.85)),          # the far straight
     arc((-3.05, 0.0), 1.85, 270, 90),            # the wide left-hand end, all the way round
   ]); NAME, START = 'INFIELD', (-0.6, 1.9)
+elif which == 'bigs':
+  # BIG S: the line drawn over a photo of a club's track, laid out to fit the Cave. From the line on the right-hand side:
+  # up to the far wall and all along it, down the left, back along under the far-left island and up in an S onto a
+  # second run to the right, down round a hook, up to a hairpin (the finger), down the middle of the room, left along
+  # the near side, a step up, out to the left, the big left-hander, and the long near straight back to the line.
+  # It is given as its corners, each rounded with its own radius.
+  C = [((4.3, 1.6), 0), ((4.3, -2.0), 1.25), ((-4.5, -2.0), 1.0), ((-4.5, -0.1), 0.9), ((-1.6, -0.1), 0.5), ((-1.6, -1.05), 0.45), ((2.7, -1.05), 0.9),
+       ((2.7, 1.35), 0.85), ((1.0, 1.35), 0.85), ((1.0, -0.05), 0.55), ((-0.1, -0.05), 0.55), ((-0.1, 1.9), 0.75), ((-2.3, 1.9), 0.5), ((-2.3, 0.9), 0.5),
+       ((-4.55, 0.9), 1.0), ((-4.55, 2.9), 1.0), ((4.3, 2.9), 1.15)]
+  pts = []
+  for k in range(len(C)):
+    a, (b, R), c = np.array(C[k - 1][0]), (np.array(C[k][0]), C[k][1]), np.array(C[(k + 1) % len(C)][0])
+    if R <= 0: pts.append(b[None, :]); continue
+    u = (a - b) / np.linalg.norm(a - b); v = (c - b) / np.linalg.norm(c - b); phi = np.arccos(np.clip(u @ v, -1, 1)); tl = R / np.tan(phi / 2)
+    cen = b + (u + v) / np.linalg.norm(u + v) * R / np.sin(phi / 2); p1, p2 = b + u * tl, b + v * tl
+    a1 = np.arctan2(*(p1 - cen)[::-1]); a2 = np.arctan2(*(p2 - cen)[::-1]); d = (a2 - a1 + np.pi) % (2 * np.pi) - np.pi; ang = a1 + d * np.linspace(0, 1, 60)
+    pts.append(np.c_[cen[0] + R * np.cos(ang), cen[1] + R * np.sin(ang)])
+  dense = [];
+  for k in range(len(pts)):
+    q0, q1 = pts[k][-1], pts[(k + 1) % len(pts)][0]; dense.append(pts[k]); dense.append(line(tuple(q0), tuple(q1), max(2, int(np.linalg.norm(q1 - q0) / 0.02)))[1:])
+  path = np.vstack(dense); N = 820; NAME, START = 'BIG S', (4.3, 0.9)
 elif which == 'club':
   # CLUB 1: the route drawn in red on a picture of a printed drift mat. Along the far side to the left with the line on
   # it, the big corner all the way round, back along the near side, a left hairpin round the tip of the long island,

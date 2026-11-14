@@ -27,14 +27,14 @@ namespace DriftMaster {
       var g = _comp == 1 ? _ghostRun : _ghostLap; bool show = _ghostOn && _ghostPlay && g != null && g.Count > 2 && !_parked && !(_comp == 1 && _phase == 0);
       if (show && _phase != 2 && !_pause.Visible) _ghostT += Math.Min(delta, 0.05); double ft = _ghostT / GDt; int i = (int)ft;
       if (show && i >= g.Count - 1) { show = false; _ghostPlay = false; }
-      if (_ghostCar == null) { var td0 = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td0.file + ".json"), td0.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _ghostCar = new CarPhysics { T = _t2 }; }
+      if (_ghostCar == null) { var td0 = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td0.file + ".json"), td0.z0 + Hall.Shift, Hall.HalfX, Hall.HalfZ); _ghostCar = new CarPhysics { T = _t2 }; }
       // the ghost car is made at the start and drawn for a few frames under the floor, so its model and materials are ready
       // and nothing is loaded (no hitch) at the moment it first appears
       if (_ghostOn && !_bare && _ghostView == null) { _ghostBody = g?.Body ?? _body; _ghostView = new CarView { Body = _ghostBody, Ghost = true }; AddChild(_ghostView); _ghostWarm = 6; }
       if (_ghostWarm > 0 && _ghostView != null) { _ghostWarm--; _ghostCar.X = _car.X; _ghostCar.Z = _car.Z; _ghostCar.Hd = _car.Hd; _ghostCar.Y = -0.6; _ghostCar.Air = true; _ghostView.Visible = true; _ghostView.Pose(_ghostCar, _t2); return; }
       if (!show) { if (_ghostView != null) _ghostView.Visible = false; return; }
       if (_ghostView == null || _ghostBody != g.Body) { _ghostView?.QueueFree(); _ghostBody = g.Body; _ghostView = new CarView { Body = g.Body, Ghost = true }; AddChild(_ghostView); }
-      if (_ghostCar == null) { var td = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _ghostCar = new CarPhysics { T = _t2 }; }
+      if (_ghostCar == null) { var td = Tracks[TrackIdx % Tracks.Length]; _t2 = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Shift, Hall.HalfX, Hall.HalfZ); _ghostCar = new CarPhysics { T = _t2 }; }
       float f = (float)(ft - i); int a = i * GF, b = a + GF; float L(int k) => g.F[a + k] + (g.F[b + k] - g.F[a + k]) * f; float A(int k) => g.F[a + k] + Mathf.AngleDifference(g.F[a + k], g.F[b + k]) * f;
       _ghostCar.X = L(0); _ghostCar.Z = L(1); _ghostCar.Y = L(2); _ghostCar.Hd = A(3); _ghostCar.Steer = L(4); _ghostCar.Roll = L(5); _ghostCar.Pitch = L(6); _ghostCar.Spin = L(7); _ghostCar.SpinF = L(8); _t2.Idx = (int)g.F[a + 9]; _ghostCar.Air = false;
       _ghostView.Visible = true; _ghostView.Pose(_ghostCar, _t2);

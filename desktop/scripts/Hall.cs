@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace DriftMaster {
   public static class Hall {
     public static bool Dark; /* lights out: ceiling lights and daylight off, the track lit by its LED strips */
-    public const float CeilY = 2.6f, Tile = 1.2192f; // the floor texture holds 4 x 4 tiles of 304.8 mm
+    public static float CeilY => Map == 1 ? 6.0f : 2.6f; public const float Tile = 1.2192f; // the floor texture holds 4 x 4 tiles of 304.8 mm
 
     static StandardMaterial3D Mat(string tex, Color? col = null, float rough = 0.8f, float uv = 1) {
       var m = new StandardMaterial3D { AlbedoColor = col ?? Colors.White, Roughness = rough, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };
@@ -40,12 +40,25 @@ namespace DriftMaster {
 
     /// clear floor behind the layouts on the driver's side (+z), in metres: room to stand back from the track
     public const double Back = 2.0;
-    /// half the hall's length (x), in metres: 11 m in all
-    public const double HalfX = 5.5;
+    /// which room: 0 the Cave (11 x 7 m, a 2.6 m tiled ceiling), 1 the Warehouse (the web version's hall, 11.2 x 12.8 m and 6 m high)
+    public static int Map; public static readonly string[] MapNames = { "CAVE", "WAREHOUSE" };
+    /// half the hall's length (x) and depth (z), in metres, and how far a layout is moved towards the far wall
+    public static double HalfX => Map == 1 ? 5.6 : 5.5; public static double HalfZ => Map == 1 ? 6.4 : 2.5 + Back / 2; public static double Shift => Map == 1 ? 0 : Back / 2;
+    /// the Warehouse's track deck, seen from above (x, z pairs round its edge): the P-tile is laid on it
+    public static readonly float[] DeckEdge = { -3.300f, -6.000f, -3.476f, -5.983f, -3.644f, -5.931f, -3.800f, -5.848f, -3.936f, -5.736f, -4.048f, -5.600f, -4.131f, -5.444f, -4.183f, -5.276f, -4.200f, -5.100f, -4.200f, 3.900f, -4.190f, 3.998f, -4.162f, 4.091f, -4.116f, 4.178f, -4.054f, 4.254f, -3.978f, 4.316f, -3.891f, 4.362f, -3.798f, 4.390f, -3.700f, 4.400f, 1.600f, 4.400f, 2.029f, 4.358f, 2.442f, 4.233f, 2.822f, 4.029f, 3.156f, 3.756f, 3.429f, 3.422f, 3.633f, 3.042f, 3.758f, 2.629f, 3.800f, 2.200f, 3.800f, -4.500f, 3.771f, -4.793f, 3.686f, -5.074f, 3.547f, -5.333f, 3.361f, -5.561f, 3.133f, -5.747f, 2.874f, -5.886f, 2.593f, -5.971f, 2.300f, -6.000f };
     public static Node3D Build(Track t) {
       var root = new Node3D { Name = "Hall" };
       float hx = (float)t.HallX, hz = (float)t.HallZ;
       var floorMat = FloorMat(t);
+      if (Map == 1) { // the Warehouse: the web version's hall as it is (walls, stand, doors, fence, fixtures), brought over as a model.
+        // Only its track deck is changed: the P-tile floor is laid over it, in the deck's own outline. The model sits 12 mm low so the tile is the top surface.
+        var room = GD.Load<PackedScene>("res://assets/warehouse.glb").Instantiate<Node3D>(); room.Position = new Vector3(0, -0.012f, 0); root.AddChild(room);
+        foreach (var node in room.FindChildren("*", "MeshInstance3D", true, false)) ((MeshInstance3D)node).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        var pts = new Vector2[DeckEdge.Length / 2]; for (int i = 0; i < pts.Length; i++) pts[i] = new Vector2(DeckEdge[i * 2], DeckEdge[i * 2 + 1]);
+        var tri = Geometry2D.TriangulatePolygon(pts); var st = new SurfaceTool(); st.Begin(Mesh.PrimitiveType.Triangles);
+        for (int i = 0; i < tri.Length; i++) { st.SetNormal(Vector3.Up); st.AddVertex(new Vector3(pts[tri[i]].X, 0, pts[tri[i]].Y)); }
+        root.AddChild(new MeshInstance3D { Mesh = st.Commit(), MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Name = "Tile" });
+        BuildBarriers(root, t); BuildStartLine(root, t); return root; }
       var floor = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(hx * 2, hz * 2) }, MaterialOverride = floorMat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; root.AddChild(floor);
 
       // walls: painted plaster and a dark skirting board, nothing else
@@ -53,7 +66,7 @@ namespace DriftMaster {
       var skirt = Mat(null, new Color(0.13f, 0.14f, 0.15f), 0.6f);
       foreach (int s in new[] { -1, 1 }) {
         Box(root, new Vector3(hx * 2, CeilY, 0.06f), new Vector3(0, CeilY / 2, s * (hz + 0.03f)), wall);
-        float cut = s > 0 ? Room.NookW : 0;   // the right-hand wall stops short at the far end: the door corner opens off it there
+        float cut = s > 0 ? Room.Cut : 0;   // the right-hand wall stops short at the far end: the door corner opens off it there
         Box(root, new Vector3(0.06f, CeilY, hz * 2 - cut), new Vector3(s * (hx + 0.03f), CeilY / 2, cut / 2), wall);
         Box(root, new Vector3(hx * 2, 0.07f, 0.012f), new Vector3(0, 0.035f, s * (hz - 0.006f)), skirt);
         Box(root, new Vector3(0.012f, 0.07f, hz * 2 - cut), new Vector3(s * (hx - 0.006f), 0.035f, cut / 2), skirt);

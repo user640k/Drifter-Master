@@ -8,7 +8,7 @@ namespace DriftMaster {
   public static class Room {
     public const float NookW = 1.8f, NookD = 1.3f;   // the door corner: its width along the far wall's line, and how far it is set back
     /// where the television's screen is, for the game to put the overhead camera's picture on
-    public static MeshInstance3D Screen;
+    public static MeshInstance3D Screen; public static float Cut => Hall.Map == 1 ? 0 : NookW;   /* how much of the right-hand wall the door corner takes */
 
     static StandardMaterial3D Flat(Color c, float rough = 0.7f, float metal = 0) => new StandardMaterial3D { AlbedoColor = c, Roughness = rough, Metallic = metal };
     static StandardMaterial3D Tex(string file, float rough = 0.7f) => new StandardMaterial3D { AlbedoTexture = GD.Load<Texture2D>("res://assets/tex/" + file), Roughness = rough, TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic };

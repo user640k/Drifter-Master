@@ -209,22 +209,25 @@ namespace DriftMaster {
     /// (its meshes are left as they are: they carry the model's levels of detail, which a merged mesh would lose)
     public void Freeze() { foreach (var n in new[] { "Chassis", "Mounts" }) if (_body.FindChild(n, true, false) is Node3D p) p.Visible = false;
       foreach (var node in FindChildren("*", "MeshInstance3D", true, false)) ((MeshInstance3D)node).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off; }
-    readonly System.Collections.Generic.List<(MeshInstance3D h, Vector3 onShell, Vector3 onKit)> _halos = new();
+    readonly System.Collections.Generic.List<(Node3D h, Vector3 onShell, Vector3 onKit)> _halos = new(); readonly System.Collections.Generic.List<(MeshInstance3D plain, MeshInstance3D lit)> _lit = new();
     /// the halos sit where the light leaves the car: at the shell's lamps, or at the LEDs themselves when the shell is off
     void PlaceHalos() { bool shell = _shell != null && _shell.Visible; foreach (var (h, a, b) in _halos) h.Position = shell ? a : b; }
-    Node3D _lamps, _lampKit, _lampFloor; static ImageTexture _glowTex, _poolTex;
+    Node3D _lamps, _lampKit, _lampFloor; static ImageTexture _glowTex, _streakTex; public Vector3 Eye; /* where the picture is taken from (set by the game each frame) */
+    readonly System.Collections.Generic.List<(MeshInstance3D streak, Node3D halo, Color col)> _refl = new();
     static ImageTexture Tex(int w, int h, Func<float, float, float> f) { var img = Image.CreateEmpty(w, h, false, Image.Format.Rgb8); for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) { float v = Mathf.Clamp(f((x + 0.5f) / w, (y + 0.5f) / h), 0, 1); img.SetPixel(x, y, new Color(v, v, v)); } return ImageTexture.CreateFromImage(img); }
     /// headlights, as RC drift cars carry them: LEDs in holders on a bar across the front of the chassis (red ones on a bar
-    /// at the back), shining out through the shell's lamps. Each is a small hot point with a halo, and on the glossy floor
-    /// a streak under each lamp and a soft pool ahead of the car. None of it is a real light: it is drawn, not computed,
-    /// so it costs next to nothing and nothing has to be prepared when it is switched on.
+    /// at the back), shining out through the shell's lamps. Each lamp is a small lit lens that faces the way it shines (so
+    /// it is bright from in front and nothing from the side or above), and each has its reflection in the glossy floor: a
+    /// streak lying flat on the floor, between the lamp and whoever is looking, where a mirror would show it. None of it
+    /// is a real light: it is drawn, not computed, so it costs next to nothing.
+    public bool HasLamps { get { string f = Bodies[Body % Bodies.Length].file; return f != "zuk" && f != "pickup"; } }   /* the van and the pickup have no working lamps */
     public void SetLamps(bool on) {
+      if (!HasLamps) return;
       if (_lamps == null) { if (!on || Ghost) return;
-        _glowTex ??= Tex(64, 64, (u, v) => { float r = Mathf.Sqrt((u - 0.5f) * (u - 0.5f) + (v - 0.5f) * (v - 0.5f)) * 2; return Mathf.Pow(Mathf.Max(0, 1 - r), 2.2f) + 0.9f * Mathf.Exp(-r * r * 40); });
-        _poolTex ??= Tex(64, 128, (u, v) => { float w = 0.1f + 0.36f * v, du = (u - 0.5f) / w, cone = Mathf.Exp(-du * du * 2.6f) * Mathf.Min(1, v / 0.05f) * Mathf.Pow(1 - v, 1.6f) * 0.5f, st = 0;
-          foreach (float c in new[] { 0.5f - 0.11f, 0.5f + 0.11f }) { float d = (u - c) / 0.03f; st += Mathf.Exp(-d * d) * Mathf.Exp(-v / 0.2f) * Mathf.Min(1, v / 0.02f); } return cone + st * 0.8f; });
-        StandardMaterial3D Add(Texture2D t, Color c, bool billboard) => new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = t, AlbedoColor = c, BlendMode = BaseMaterial3D.BlendModeEnum.Add, CullMode = BaseMaterial3D.CullModeEnum.Disabled, BillboardMode = billboard ? BaseMaterial3D.BillboardModeEnum.Enabled : BaseMaterial3D.BillboardModeEnum.Disabled, DisableReceiveShadows = true };
-        float k = Hall.Dark ? 1f : 0.45f; Color cool = new(0.72f, 0.86f, 1f), red = new(1f, 0.1f, 0.06f);
+        _glowTex ??= Tex(64, 64, (u, v) => { float r = Mathf.Sqrt((u - 0.5f) * (u - 0.5f) + (v - 0.5f) * (v - 0.5f)) * 2; return Mathf.Pow(Mathf.Max(0, 1 - r), 3f) * 0.7f + Mathf.Exp(-r * r * 30); });
+        _streakTex ??= Tex(32, 128, (u, v) => { float du = (u - 0.5f) / 0.3f, a = Mathf.Exp(-du * du * 2.5f), along = Mathf.Min(1, v / 0.035f) * Mathf.Exp(-v * 2.8f) * Mathf.Min(1, (1 - v) / 0.12f); return a * along; });   // brightest by the car, dying away towards the eye
+        StandardMaterial3D Add(Texture2D t, Color c) => new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoTexture = t, AlbedoColor = c, BlendMode = BaseMaterial3D.BlendModeEnum.Add, CullMode = BaseMaterial3D.CullModeEnum.Back, DisableReceiveShadows = true };
+        float k = Hall.Dark ? 1f : 0.5f; Color cool = new(0.78f, 0.9f, 1f), red = new(1f, 0.1f, 0.06f);
         // the kit on the chassis: a bar on two posts at each end, an LED in a holder at each end of the bar
         _lampKit = new Node3D { Name = "LampKit" }; (_chassis ?? _body).AddChild(_lampKit);
         var alu = new StandardMaterial3D { AlbedoColor = new Color(0.1f, 0.1f, 0.11f), Roughness = 0.4f, Metallic = 0.6f };
@@ -235,15 +238,40 @@ namespace DriftMaster {
             _lampKit.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0065f, BottomRadius = 0.0055f, Height = 0.011f, RadialSegments = 12, Rings = 1 }, MaterialOverride = alu, Position = new Vector3(sx * x, 0.047f, z + dir * 0.004f), Rotation = new Vector3(Mathf.Pi / 2 * dir, 0, 0) });
             _lampKit.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.0052f, BottomRadius = 0.0052f, Height = 0.001f, RadialSegments = 12, Rings = 1 }, Position = new Vector3(sx * x, 0.047f, z + dir * 0.0098f), Rotation = new Vector3(Mathf.Pi / 2, 0, 0), MaterialOverride = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = c } }); } }
         foreach (var n in _lampKit.GetChildren()) ((MeshInstance3D)n).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-        // the light itself, where it leaves the shell: halos at the nose and tail (they sit just outside the body, so the car hides them from the other end)
-        _lamps = new Node3D { Name = "Lamps" }; _body.AddChild(_lamps);
-        void Halo(Vector3 onShell, Vector3 onKit, float size, Color c) { var h = new MeshInstance3D { Mesh = new QuadMesh { Size = new Vector2(size, size) }, MaterialOverride = Add(_glowTex, c, true), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; _lamps.AddChild(h); _halos.Add((h, onShell, onKit)); }
-        foreach (int sx in new[] { -1, 1 }) { Halo(new Vector3(sx * HalfW * 0.62f, 0.057f, HalfL + 0.004f), new Vector3(sx * 0.052f, 0.044f, 0.18f), 0.085f, cool * (0.9f * k + 0.25f)); Halo(new Vector3(sx * HalfW * 0.64f, 0.06f, -HalfL - 0.004f), new Vector3(sx * 0.05f, 0.044f, -0.182f), 0.075f, red * (1.0f * k + 0.3f)); }
-        // and on the floor (fixed to the car's place on the floor, not to the body, which leans)
-        _lampFloor = new Node3D { Name = "LampFloor" }; AddChild(_lampFloor);
-        _lampFloor.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.62f, 1.0f) }, Position = new Vector3(0, 0.0026f, HalfL + 0.48f), MaterialOverride = Add(_poolTex, cool * (0.75f * k), false), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
-        _lampFloor.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(0.3f, 0.3f) }, Position = new Vector3(0, 0.0026f, -HalfL - 0.1f), MaterialOverride = Add(_glowTex, red * (0.5f * k), false), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }); }
+        // the shell's own lamps light up: the moulded headlamps (white parts at the nose) and tail lamps (red parts, or white
+        // ones at the tail) are drawn again in a material that gives off light. Nothing is added in the air round them.
+        _lamps = new Node3D { Name = "Lamps" }; _body.AddChild(_lamps); _lampFloor = new Node3D { Name = "LampFloor" }; AddChild(_lampFloor);
+        var sum = new Vector3[4]; var cnt = new int[4];   // where the lamps are: front left, front right, rear left, rear right (in the body's frame)
+        Transform3D Rel(Node3D n) { var x = n.Transform; for (var q = n.GetParent(); q != _body && q is Node3D q3; q = q3.GetParent()) x = q3.Transform * x; return x; }
+        if (_shell != null) foreach (var node in _shell.FindChildren("*", "MeshInstance3D", true, false)) { var mi = (MeshInstance3D)node; string nm = mi.Name.ToString(); bool white = nm.EndsWith("_m_e6e6e6"), redPart = nm.EndsWith("_m_b0121a"); if (!(white || redPart) || !(mi.Mesh is ArrayMesh am) || am.GetSurfaceCount() != 1) continue;
+            var arr = am.SurfaceGetArrays(0); var v = (Vector3[])arr[(int)Mesh.ArrayType.Vertex]; var idx = arr[(int)Mesh.ArrayType.Index].VariantType == Variant.Type.Nil ? null : (int[])arr[(int)Mesh.ArrayType.Index]; if (idx == null) { idx = new int[v.Length]; for (int q = 0; q < idx.Length; q++) idx[q] = q; }
+            var xf = Rel(mi); var parts = new[] { new System.Collections.Generic.List<int>(), new System.Collections.Generic.List<int>() };
+            for (int q = 0; q + 2 < idx.Length; q += 3) { var c = xf * ((v[idx[q]] + v[idx[q + 1]] + v[idx[q + 2]]) / 3); int rear = c.Z < 0 ? 1 : 0; if (redPart && rear == 0) continue; parts[rear].Add(idx[q]); parts[rear].Add(idx[q + 1]); parts[rear].Add(idx[q + 2]); int slot = rear * 2 + (c.X < 0 ? 1 : 0); sum[slot] += c; cnt[slot]++; }
+            bool first = true;
+            for (int rear = 0; rear < 2; rear++) { if (parts[rear].Count == 0) continue; var nmsh = new ArrayMesh(); arr[(int)Mesh.ArrayType.Index] = parts[rear].ToArray(); nmsh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arr);
+              var c = rear == 1 ? red : cool; var lit = new MeshInstance3D { Mesh = nmsh, Transform = mi.Transform, Name = "Lit" + rear, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, MaterialOverride = new StandardMaterial3D { AlbedoColor = c * 0.6f, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = Hall.Dark ? 2.6f : 1.4f, Roughness = 0.3f } };
+              mi.GetParent().AddChild(lit); _lit.Add((first ? mi : null, lit)); first = false; } }   // (the plain part is hidden while its lit copy is shown)
+        // each lamp's reflection on the floor, under the lamp itself
+        void Lamp(int slot, Vector3 fallback, Vector3 onKit, Color c, bool rear) {
+          if (cnt[slot] == 0) return;   // (a body with no moulded lamp there shows no light and so no reflection)
+          var at = cnt[slot] > 0 ? sum[slot] / cnt[slot] : fallback; at.Z = rear ? Mathf.Min(at.Z, -HalfL + 0.004f) : Mathf.Max(at.Z, HalfL - 0.004f);
+          var h = new Node3D { Rotation = new Vector3(0, rear ? Mathf.Pi : 0, 0) }; _lamps.AddChild(h); _halos.Add((h, at, onKit));
+          var st = new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(1, 1) }, MaterialOverride = Add(_streakTex, c), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off }; ((StandardMaterial3D)st.MaterialOverride).CullMode = BaseMaterial3D.CullModeEnum.Disabled; _lampFloor.AddChild(st); _refl.Add((st, h, c * (rear ? 0.7f : 0.55f) * (0.5f + 0.5f * k))); }
+        foreach (int side in new[] { 0, 1 }) { int sx = side == 0 ? 1 : -1; Lamp(side, new Vector3(sx * HalfW * 0.62f, 0.05f, HalfL), new Vector3(sx * 0.052f, 0.044f, 0.179f), cool, false); Lamp(2 + side, new Vector3(sx * HalfW * 0.64f, 0.055f, -HalfL), new Vector3(sx * 0.05f, 0.044f, -0.181f), red, true); } }
+      foreach (var (plain, lit) in _lit) { if (plain != null) plain.Visible = !on; if (lit != null) lit.Visible = on; }
       _lamps.Visible = on; _lampKit.Visible = on; _lampFloor.Visible = on; PlaceHalos();
+    }
+    // each lamp's reflection: flat on the floor at the point where a mirror would show the lamp to the eye, drawn out
+    // into a streak along the line of sight (the tile is glossy, not a mirror). Only for lamps that face the eye.
+    void PlaceReflections() {
+      var inv = GlobalTransform.AffineInverse(); var eye = inv * Eye;
+      foreach (var (st, h, col) in _refl) { var lamp = inv * h.GlobalPosition; var fwd = (inv.Basis * h.GlobalBasis.Z).Normalized(); var to = eye - lamp; float facing = fwd.Dot(to.Normalized());
+        var flat = new Vector3(to.X, 0, to.Z); float dist = flat.Length(), eh = Mathf.Max(0.02f, eye.Y), lh = Mathf.Max(0.005f, lamp.Y);
+        if (facing < 0.12f || dist < 0.05f) { st.Visible = false; continue; } st.Visible = true;
+        var dir = flat / dist; float d = dist * lh / (eh + lh), len = Mathf.Clamp(d * 1.5f, 0.07f, 0.42f), wid = 0.028f + d * 0.06f;
+        var side = new Vector3(dir.Z, 0, -dir.X);   // the plane's own x lies across the streak, its z along it, towards the eye
+        st.Transform = new Transform3D(new Basis(side * wid, Vector3.Up, dir * len), new Vector3(lamp.X, 0.0028f, lamp.Z) + dir * (len * 0.5f + 0.012f));   // (it begins by the car and runs towards the eye)
+        if (st.MaterialOverride is StandardMaterial3D m) m.AlbedoColor = col * Mathf.Clamp(facing * 1.3f, 0, 1); }
     }
     public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; PlaceHalos(); }
     /// how the shell is held on: body posts with clips (they stand through the bonnet and boot), or hidden magnets (nothing shows)
@@ -285,7 +313,7 @@ namespace DriftMaster {
       if (_susp != null && _susp.Visible != Detail) _susp.Visible = Detail;
       if (_layTick++ % 45 == 0) Lay();
       if (Detail) _susp?.Update((_body.Transform * _chassis.Transform).AffineInverse(), (float)c.Ax, (float)c.Ay);
-      if (_lampFloor != null && _lamps.Visible) _lampFloor.Visible = !c.Air;
+      if (_lampFloor != null && _lamps.Visible) { _lampFloor.Visible = !c.Air; if (!c.Air) PlaceReflections(); }
       _blob.Visible = !c.Air && !Ghost; if (_neonFloorNode.Visible != (_neon.Visible && !c.Air)) _neonFloorNode.Visible = _neon.Visible && !c.Air;
       for (int i = 0; i < 4; i++) {
         if (_wheel[i] == null || _spin[i] == null) continue;

@@ -24,8 +24,32 @@ namespace DriftMaster {
       ("RED", new Color(0.8f, 0.03f, 0.05f), false), ("BLUE", new Color(0.02f, 0.2f, 0.78f), false), ("PURPLE", new Color(0.42f, 0.08f, 0.78f), false) };
     int _rimIdx, _livery, _body; /* rim colour, bonnet (0 body colour, 1 carbon), body shell */
     /// the tracks: name, data file, how far the layout is moved along z, floor sheet, white boards all round?
-    public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB 1", "club", 0.0, "floor_wear_club", true), ("CLUB 2", "club2", 0.0, "floor_wear_club2", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };   // CLUB is the main track
+    public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB 1", "club", 0.0, "floor_wear_club", true), ("CLUB 2", "club2", 0.0, "floor_wear_club2", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true), ("BIG S", "bigs", 0.0, "floor_wear_bigs", true) };
+    /// which room a track is in: the last one is in the Warehouse, the rest in the Cave
+    static int MapOf(int track) => 0;   /* (the Warehouse is put away for now: every track is in the Cave) */   // CLUB is the main track
+    // ---- a demonstration lap, for film: the car is carried round the middle of the lane at a speed that suits each bend,
+    // its nose turned into the bend by a drift angle that grows with how tight the bend is, the front wheels turned back
+    // along the way it is going. Nothing is simulated, so it never touches a barrier.
+    bool _top; /* test: a plan of the hall, straight down from under the ceiling */
+    bool _demo; double _dS = -1, _dV = 2, _dB; double[] _dK;
+    void DemoStep(double dt) {
+      int n = _t.N; if (_dK == null) { var raw = new double[n]; for (int i = 0; i < n; i++) { int a = (i - 1 + n) % n, b = (i + 1) % n; double dh = Math.Atan2(_t.TX[b], _t.TZ[b]) - Math.Atan2(_t.TX[a], _t.TZ[a]); raw[i] = Math.Atan2(Math.Sin(dh), Math.Cos(dh)) / (2 * _t.Ds); }
+        _dK = new double[n]; for (int i = 0; i < n; i++) { double sum = 0; for (int k = -8; k <= 8; k++) sum += raw[((i + k) % n + n) % n]; _dK[i] = sum / 17; } }
+      if (_dS < 0) { _dS = _t.NearestT(_car.X, _car.Z, -1); _ghostOn = false; }
+      double K(double s) { int i = ((int)Math.Floor(s) % n + n) % n; return _dK[i]; }
+      double ahead = 0.4 / _t.Ds, kA = K(_dS + ahead), kMax = 0; for (double q = 0; q < 1.0 / _t.Ds; q += 2) kMax = Math.Max(kMax, Math.Abs(K(_dS + q)));
+      double vT = Math.Clamp(Math.Sqrt(2.4 / Math.Max(kMax, 0.05)), 1.25, 2.9), bT = Math.Sign(kA) * 0.62 * Math.Tanh(Math.Abs(kA) / 0.9);
+      _dV += (vT - _dV) * (1 - Math.Exp(-dt / 0.45)); _dB += (bT - _dB) * (1 - Math.Exp(-dt / 0.3)); _dS += _dV * dt / _t.Ds;
+      int i0 = ((int)Math.Floor(_dS) % n + n) % n, i1 = (i0 + 1) % n; double f = _dS - Math.Floor(_dS), kH = K(_dS);
+      double tx = _t.TX[i0] + (_t.TX[i1] - _t.TX[i0]) * f, tz = _t.TZ[i0] + (_t.TZ[i1] - _t.TZ[i0]) * f, ht = Math.Atan2(tx, tz);
+      _car.X = _t.X[i0] + (_t.X[i1] - _t.X[i0]) * f; _car.Z = _t.Z[i0] + (_t.Z[i1] - _t.Z[i0]) * f; _car.Y = 0; _car.Air = false; _t.Idx = i0;
+      _car.Hd = ht + _dB; _car.Steer = Math.Clamp(-_dB * 0.92 + kH * 0.257, -0.62, 0.62); _car.Roll = Math.Sign(kH) * Math.Min(0.05, _dV * _dV * Math.Abs(kH) * 0.008); _car.Pitch = 0; _car.Heave = 0;
+      _car.Spin += _dV / 0.032 * dt * (1.25 + Math.Abs(_dB)); _car.SpinF += _dV / 0.032 * dt; _car.Vx = _dV * tx; _car.Vz = _dV * tz; _car.U = _dV * Math.Cos(_dB); _car.V = -_dV * Math.Sin(_dB); _car.Beta = _dB;
+    }
+    Centrepiece _centre; /* the Warehouse's tyre stack and its drone */
     OmniLight3D _ledL, _ledR; /* lights out: the strips' light on the car, ice blue from its left barrier and pink from its right: two lights that go with it */
+    static int[] _menuBack; /* the menu's page and row, kept across a change that builds the hall again (track, lights): the menu comes back where it was */
+    void Rebuild() { _menuBack = new[] { _pause.PageIdx, _pause.RowIdx }; ApplyOptions(true); GetTree().ReloadCurrentScene(); }
     static bool _darkChosen; bool _lampsOn; string _dump; /* test: every frame saved as a picture in this folder (run with --fixed-fps) */
     static bool _trackChosen; public static int TrackIdx; /* kept across a change of track: the scene is loaded again */
 
@@ -46,18 +70,19 @@ namespace DriftMaster {
         else if (a.StartsWith("--stk=")) { var q = a.Substring(6).Split(','); CarView.StickSide = int.Parse(q[0]); CarView.StickUp = float.Parse(q[1], System.Globalization.CultureInfo.InvariantCulture); CarView.StickFwd = float.Parse(q[2], System.Globalization.CultureInfo.InvariantCulture); }
         else if (a == "--noshell") _shellOn = false; else if (a == "--clear") _clearGlass = true; else if (a.StartsWith("--neon=")) _neonIdx = int.Parse(a.Substring(7));
         else if (a.StartsWith("--solo=")) CarAudio.Solo = a.Substring(7);
-        else if (a == "--bare") _bare = true; else if (a.StartsWith("--dump=")) _dump = a.Substring(7); else if (a == "--dark") { Hall.Dark = true; _darkChosen = true; } else if (a == "--lamps") _lampsOn = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
+        else if (a == "--bare") _bare = true; else if (a.StartsWith("--dump=")) _dump = a.Substring(7); else if (a == "--demo") _demo = true; else if (a == "--top") _top = true; else if (a == "--dark") { Hall.Dark = true; _darkChosen = true; } else if (a == "--lamps") _lampsOn = true; else if (a.StartsWith("--steer=")) _poseSteer = double.Parse(a.Substring(8), System.Globalization.CultureInfo.InvariantCulture);
         else if (a.StartsWith("--orbit=")) { _view6 = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 8; }
         else if (a.StartsWith("--view=")) { _view6 = Array.ConvertAll(a.Substring(7).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); _camMode = 9; }
       }
       // the layout sat at z = -4.9..-1.9 in the big warehouse; here it is centred in a hall of its own (9.0 x 5.0 m)
       if (_shot == null) LoadOptions();
       // the layouts share one small hall (9.0 x 5.0 m). HILLSIDE sat at z = -4.9..-1.9 in the web version's warehouse and is centred here
+      Hall.Map = MapOf(TrackIdx);
       var td = Tracks[TrackIdx % Tracks.Length];
-      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); _t.Name = td.name; _t.Wear = td.wear; _t.Boards = td.boards;
+      _t = Track.FromJson(FileAccess.GetFileAsString("res://assets/" + td.file + ".json"), td.z0 + Hall.Shift, Hall.HalfX, Hall.HalfZ); _t.Name = td.name; _t.Wear = td.wear; _t.Boards = td.boards;
       if (!_bare) AddChild(Hall.Build(_t)); else { GetViewport().TransparentBg = true; }
       BuildLights();
-      if (!_bare) { // the driver's stand: a low platform with a step up, in the corner behind the track
+      if (!_bare && Hall.Map == 0) { // the driver's stand: a low platform with a step up, in the corner behind the track
         var wood = new StandardMaterial3D { AlbedoColor = new Color(0.16f, 0.15f, 0.14f), Roughness = 0.8f }; var e = DriverEye;
         AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(1.3f, 0.3f, 0.9f) }, MaterialOverride = wood, Position = new Vector3(e.X - 0.05f, 0.15f, e.Z) });
         AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.6f, 0.15f, 0.3f) }, MaterialOverride = wood, Position = new Vector3(e.X - 0.2f, 0.075f, e.Z - 0.6f) }); }
@@ -68,10 +93,12 @@ namespace DriftMaster {
       BuildOnBoard();
       _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
       BuildHud(); BuildCompetition(); BuildTv();
+      if (_t.Name == "BIG S" && !_bare) { _centre = new Centrepiece(new Vector3(3.5f, 0, 0.62f), 0.72f); AddChild(_centre.Root); }   // BIG S: on the strip of open floor between the right-hand side and the hook
+      if (_top) { _cam.Projection = Camera3D.ProjectionType.Orthogonal; _cam.Size = (float)_t.HallZ * 2 + 0.1f; _cam.Near = 0.02f; _view6 = new[] { 0f, Hall.CeilY - (Hall.Map == 1 ? 1.25f : 0.05f), 0.002f, 0f, 0f, 0f, 50f }; _camMode = 9; }
       if (Hall.Dark && !_bare) { _ledL = new OmniLight3D { LightColor = new Color(0.35f, 0.85f, 1f), LightEnergy = 0.42f, OmniRange = 1.2f, OmniAttenuation = 1.0f, ShadowEnabled = false, LightCullMask = 2 }; _ledR = new OmniLight3D { LightColor = new Color(1f, 0.25f, 0.68f), LightEnergy = 0.42f, OmniRange = 1.2f, OmniAttenuation = 1.0f, ShadowEnabled = false, LightCullMask = 2 }; AddChild(_ledL); AddChild(_ledR); }
       if (!_bare) AddChild(Decor.Build(_t, _course, DriverEye));
       if (!_bare && _t.Name == "CLUB 1") { // three cars on show on the turf island by the wide bend: they stand still
-        var tt = Track.FromJson(FileAccess.GetFileAsString("res://assets/club.json"), Hall.Back / 2, Hall.HalfX, 2.5 + Hall.Back / 2); var park = new CarPhysics { T = tt };
+        var tt = Track.FromJson(FileAccess.GetFileAsString("res://assets/club.json"), Hall.Shift, Hall.HalfX, Hall.HalfZ); var park = new CarPhysics { T = tt };
         foreach (var (body, paint, rims, zc, hd) in new[] { (1, 4, 0, -1.9, Math.PI / 2), (3, 7, 1, -1.5, Math.PI / 2), (0, 8, 4, -1.1, Math.PI / 2) }) {   // one above the other in the bays of the pits, beside the right-hand side
           double x = 3.1;
           var show = new CarView { Body = body, Name = "Show" + body, Show = true }; AddChild(show); show.SetPaint(Paints[paint].col, false); show.SetRims(Rims[rims].col, Rims[rims].metal); show.SetCamber(-7, -2); show.SetMounts(true);
@@ -79,6 +106,7 @@ namespace DriftMaster {
       _ghostLap = LoadGhost(false); _ghostRun = LoadGhost(true);
       if (CompTest == "solo" || CompTest == "solo2") StartSolo(); else if (CompTest == "park") Park();
       if (_menuAt != null) { _pause.Open(true); _pause.Goto(_menuAt[0], _menuAt[1]); }
+      if (_menuBack != null) { _pause.Open(true); _pause.Goto(_menuBack[0], _menuBack[1]); _menuBack = null; }
       _view.Pose(_car, _t); UpdateCamera(0);
     }
 
@@ -90,7 +118,7 @@ namespace DriftMaster {
       };
       AddChild(new WorldEnvironment { Environment = env });
       // the tube lights overhead as one soft downward light with a shadow, plus two fills so the walls fall off
-      _sun = new DirectionalLight3D { LightEnergy = Hall.Dark ? 0.012f : 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = 7, ShadowBlur = 2.0f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
+      _sun = new DirectionalLight3D { LightEnergy = Hall.Dark ? 0.012f : 0.6f, LightColor = new Color(1, 0.98f, 0.94f), ShadowEnabled = true, DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal, DirectionalShadowMaxDistance = Hall.Map == 1 ? 14 : 7, ShadowBlur = 2.0f, ShadowOpacity = 0.85f, ShadowBias = 0.06f, ShadowNormalBias = 1.5f };
       _sun.RotationDegrees = new Vector3(-78, 24, 0); AddChild(_sun);
       foreach (int s in new[] { -1, 1 }) AddChild(new OmniLight3D { Position = new Vector3(s * 2.2f, Hall.CeilY - 0.4f, 0), OmniRange = 6.5f, LightEnergy = Hall.Dark ? 0 : 0.3f, OmniAttenuation = 1.2f, LightColor = new Color(1, 0.97f, 0.92f) });
       // one probe for the whole room: the glossy tiles mirror the ceiling lights
@@ -116,9 +144,10 @@ namespace DriftMaster {
     // The television on the wall plays the overhead camera: the whole hall from the ceiling, straight down, as a small
     // picture of its own, refreshed every third frame so it costs little.
     void BuildTv() {
-      if (_bare || Room.Screen == null) return;
+      _cam.CullMask = 0xFFFFF & ~4u; _fpvCam.CullMask = 0xFFFFF & ~4u;   // (layer 3 is the television's stand-in blocks for the cars)
+      if (_bare || Room.Screen == null || Hall.Map == 1) return;
       _tvView = new SubViewport { Size = new Vector2I(384, 216), RenderTargetUpdateMode = SubViewport.UpdateMode.Once, Msaa3D = Viewport.Msaa.Disabled }; AddChild(_tvView);
-      var cam = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = (float)_t.HallZ * 2 - 0.2f, Near = 0.05f, Far = 6, Position = new Vector3(0, Hall.CeilY - 0.06f, 0) }; _tvView.AddChild(cam);
+      var cam = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = (float)_t.HallZ * 2 - 0.2f, Near = 0.05f, Far = 6, Position = new Vector3(0, Hall.CeilY - (Hall.Map == 1 ? 1.25f : 0.06f), 0) };   // (in the Warehouse: below the beams and the lamps) _tvView.AddChild(cam);
       cam.LookAt(new Vector3(0, 0, 0), Vector3.Forward); cam.MakeCurrent();
       // the television's picture has to be cheap: it sees the room (layer 1) and a plain block for each car (layer 3), not
       // the cars' own meshes (layer 2), and it is lit by a light of its own that throws no shadow, so it has no shadow pass
@@ -138,7 +167,8 @@ namespace DriftMaster {
     // the icon simply shows on black.
     float _eyeFov = 50; Vector3 _aheadSm; bool _magnets; SubViewport _tvView; int _tvTick;
     /// where the driver stands: on a low stand at the back of the clear floor, in front of the middle of the track, eyes 1.9 m up
-    Vector3 DriverEye => new Vector3(0, 1.9f, (float)_t.HallZ - 0.55f);   // in the middle of the long side, facing the layout
+    Vector3 DriverEye => Hall.Map == 1 ? new Vector3(2.6f, 2.75f, 4.45f) : new Vector3(0, 1.9f, (float)_t.HallZ - 0.55f);   // (the Warehouse: on its driver's stand, at the rail)
+    Vector3 DriverEyeUnused => new Vector3(0, 1.9f, (float)_t.HallZ - 0.55f);   // in the middle of the long side, facing the layout
     readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
     bool _txShot; bool _full; bool Quiet => _shot != null && !_full; /* test shots skip the splash and the music unless asked (--full) */
     static bool _splashShown; TextureRect _splash; double _splashT;
@@ -236,7 +266,7 @@ namespace DriftMaster {
         R("MOUNT", () => _magnets ? "MAGNETS" : "POSTS", d => { _magnets = !_magnets; ApplyOptions(true); }, "How the shell is held on. Posts and clips show through the bonnet and boot; magnets are hidden under it."),
         R("SHELL", () => _shellOn ? "ON" : "OFF", d => { _shellOn = !_shellOn; ApplyOptions(true); }, "Off: the bare chassis, as on a setup stand."),
         R("WINDOWS", () => _clearGlass ? "CLEAR" : "TINTED", d => { _clearGlass = !_clearGlass; ApplyOptions(true); }),
-        R("HEADLIGHTS", () => _lampsOn ? "ON" : "OFF", d => { _lampsOn = !_lampsOn; ApplyOptions(true); }, "A beam ahead of the car and red lamps behind. Made for LIGHTS OUT (GAME page)."),
+        R("HEADLIGHTS", () => !_view.HasLamps ? "NOT ON THIS BODY" : _lampsOn ? "ON" : "OFF", d => { _lampsOn = !_lampsOn; ApplyOptions(true); }, "The shell's headlamps and tail lamps light up, with their reflections on the floor. Made for LIGHTS OUT (GAME page). The pickup and the van have none."),
         R("NEON", () => CarView.Neons[_neonIdx].name, d => { _neonIdx = Cyc(_neonIdx, d, CarView.Neons.Length); ApplyOptions(true); }, "Lit tubes under the chassis."),
       };
       string[] labels = { "MOTOR", "FRONT CAMBER", "REAR CAMBER", "FRONT CASTER", "FRONT TOE", "REAR TOE", "SHOCK OIL", "RIDE HEIGHT", "GYRO GAIN", "SPRINGS", "DIFFERENTIAL", "WEIGHT BIAS (F / R)" };
@@ -252,12 +282,12 @@ namespace DriftMaster {
       setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The middle of the baseline: 13.5T, -7 and -2 camber, 8 caster, 2 toe each end, 200 cSt, 7 mm, 55% gyro, 1.2 mm springs, spool, 40 / 60."));
       string[] cams = { "", "DRIVER", "", "ON BOARD", "ROOF STICK" }; int[] camOrder = { 1, 3, 4 };   // (the overhead camera now plays on the room's television)
       var game = new List<Menu.Row> {
-        R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Changing track builds the hall again and puts the car on the start line."),
+        R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; Rebuild(); }, "Changing track builds the hall again and puts the car on the start line."),
         R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = camOrder[Cyc(Math.Max(0, Array.IndexOf(camOrder, _camMode)), d, 3)]; _camSnap = true; }),
         R("VOLUME", () => $"{Math.Round(_audio.Volume * 10)}", d => { _audio.Volume = Math.Clamp(_audio.Volume + 0.1f * d, 0, 1); ApplyOptions(true); }, "The car's sound."),
         R("MUSIC", () => _musicOn ? "ON" : "OFF", d => { _musicOn = !_musicOn; if (!_musicOn && _music != null) _music.Stop(); ApplyOptions(true); if (_musicOn) { ApplyMusic(); StartMusicLabel(); } }, MusicTitle + " by " + MusicArtist + ", heard as if from the hall's speakers."),
         R("MUSIC VOLUME", () => $"{Math.Round(_musicVol * 10)}", d => { _musicVol = Math.Clamp(_musicVol + 0.1f * d, 0, 1); ApplyOptions(true); }),
-        R("LIGHTS", () => Hall.Dark ? "OUT" : "ON", d => { Hall.Dark = !Hall.Dark; _darkChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Lights out: the room goes dark and the track is lit by LED strips on its barriers, kerbs and line. Turn HEADLIGHTS on (CAR page)."),
+        R("LIGHTS", () => Hall.Dark ? "OUT" : "ON", d => { Hall.Dark = !Hall.Dark; _darkChosen = true; Rebuild(); }, "Lights out: the room goes dark and the track is lit by LED strips on its barriers, kerbs and line. Turn HEADLIGHTS on (CAR page)."),
         R("SHADOWS", () => _sun.ShadowEnabled ? "ON" : "OFF", d => { _sun.ShadowEnabled = !_sun.ShadowEnabled; }),
         R("RESOLUTION", () => $"{_scales[_scaleIdx] * 100:0}%", d => { _scaleIdx = Cyc(_scaleIdx, d, _scales.Length); GetViewport().Scaling3DScale = _scales[_scaleIdx]; }, "Lower it if the frame rate is low."),
         R("FULL SCREEN", () => GetWindow().Mode == Window.ModeEnum.Fullscreen ? "ON" : "OFF", d => { var w = GetWindow(); w.Mode = w.Mode == Window.ModeEnum.Fullscreen ? Window.ModeEnum.Windowed : Window.ModeEnum.Fullscreen; }),
@@ -363,6 +393,7 @@ namespace DriftMaster {
     public override void _Process(double delta) {
       if (!_pause.Visible) {
         var inp = ReadInput(); _acc += Math.Min(delta, 0.05); int idx0 = _t.Idx;
+        if (_demo) { DemoStep(Math.Min(_acc, 0.05)); _acc = 0; } else
         while (_acc >= CarPhysics.DT) { StepWorld(inp); _acc -= CarPhysics.DT; }
         Laps(idx0, Math.Min(delta, 0.05));
       }
@@ -374,6 +405,8 @@ namespace DriftMaster {
       if (_tvView != null && ++_tvTick % 3 == 0) _tvView.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;   // the television's picture: every third frame is plenty
       StepSplash(delta); StepMusic(delta);
       _view.Detail = _camMode != 1 || (_pause.Visible && _pause.Preview);   // from the stand the shocks are a pixel: they are drawn in the close views
+      if (_centre != null && !_pause.Visible) _centre.Step(delta);
+      _view.Eye = (_fpvScreen != null && _fpvScreen.Visible ? _fpvCam : _cam).GlobalPosition;
       StepCompetition(delta); _view.Pose(_car, _t);
       if (_ledL != null) { int li = Math.Max(0, _t.Idx); var at = new Vector3((float)_car.X, (float)_car.Y + 0.13f, (float)_car.Z); var nrm = new Vector3((float)_t.NX[li], 0, (float)_t.NZ[li]) * 0.42f; _ledL.Position = at + nrm; _ledR.Position = at - nrm; } UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone
@@ -417,7 +450,7 @@ namespace DriftMaster {
         pos = DriverEye; look = p + new Vector3(0, 0.04f, 0) + ahead; float dEye = pos.DistanceTo(look);
         _eyeFov += (Mathf.Clamp(58f * Mathf.Pow(2.5f / dEye, 0.4f), 34, 58) - _eyeFov) * (_camSnap || dt <= 0 ? 1 : 1 - Mathf.Exp(-dt * 3)); fov = _eyeFov;
       } else if (_camMode == 2) { // from the ceiling: an analog camera too, fixed up there looking straight down
-        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f - (float)Hall.Back / 2); _fpvCam.LookAt(new Vector3(0, 0, -(float)Hall.Back / 2), Vector3.Forward);   /* over the middle of the layout, not of the hall */ _camSnap = true; return; }
+        OnBoard(true); _view.SetOnBoard(false); _view.ShowStick(false); _fpvCam.Fov = 100; _fpvCam.Position = new Vector3(0, Hall.CeilY - 0.05f, 0.01f - (float)(Hall.Back / 2 - Hall.Shift) * 0); _fpvCam.LookAt(new Vector3(0, 0, -(float)Hall.Back / 2), Vector3.Forward);   /* over the middle of the layout, not of the hall */ _camSnap = true; return; }
       else if (_camMode == 3) { // on board: the camera rides in the cabin and leans with the body
         OnBoard(true); _view.ShowStick(false); _fpvCam.Fov = 75; _fpvCam.GlobalTransform = _view.Fpv.GlobalTransform; _camSnap = true; return;
       }
@@ -434,7 +467,7 @@ namespace DriftMaster {
     static string T(double s) => s <= 0 ? "--:--.--" : $"{(int)(s / 60):00}:{s % 60:00.00}";
     void UpdateHud() {
       double sp = Math.Sqrt(_car.U * _car.U + _car.V * _car.V);
-      _hud.Text = $"{_t.Name}\nLAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
+      _hud.Text = $"{Hall.MapNames[Hall.Map]}  ·  {_t.Name}\nLAP   {T(_timing ? _lap : 0)}\nLAST  {T(_last)}\nBEST  {T(_best)}\n{sp * 36:0} km/h scale   ANGLE {Math.Abs(_car.Beta) * 180 / Math.PI:0}°";
       _hud.Visible = !_pause.Visible && !_bare && _splash == null; if (_splash != null) _help.Visible = false; else if (!_pause.Visible && !Quiet) _help.Visible = true;
       { var vs = GetViewport().GetVisibleRect().Size; _help.SetAnchorsPreset(Control.LayoutPreset.TopLeft); _help.Position = new Vector2(24, vs.Y - 40); _help.Size = new Vector2(vs.X - 48, 24); _help.ClipText = true; } // along the bottom edge, never wider than the window
       _hud.Text += CompHud();
