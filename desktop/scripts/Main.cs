@@ -24,7 +24,7 @@ namespace DriftMaster {
       ("RED", new Color(0.8f, 0.03f, 0.05f), false), ("BLUE", new Color(0.02f, 0.2f, 0.78f), false), ("PURPLE", new Color(0.42f, 0.08f, 0.78f), false) };
     int _rimIdx, _livery, _body; /* rim colour, bonnet (0 body colour, 1 carbon), body shell */
     /// the tracks: name, data file, how far the layout is moved along z, floor sheet, white boards all round?
-    public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };
+    public static readonly (string name, string file, double z0, string wear, bool boards)[] Tracks = { ("CLUB", "club", 0.0, "floor_wear_club", true), ("HILLSIDE", "hillside", -3.4, "floor_wear", false), ("INFIELD", "infield", 0.0, "floor_wear_infield", true) };   // CLUB is the main track
     static bool _trackChosen; public static int TrackIdx; /* kept across a change of track: the scene is loaded again */
 
     public override void _Ready() {
@@ -35,7 +35,7 @@ namespace DriftMaster {
         else if (a.StartsWith("--paint=")) _paintIdx = int.Parse(a.Substring(8));
         else if (a.StartsWith("--fpv=")) { var q = Array.ConvertAll(a.Substring(6).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.FpvX = q[0]; CarView.FpvY = q[1]; CarView.FpvZ = q[2]; CarView.FpvTilt = q[3]; }
         else if (a.StartsWith("--stick=")) { var q = Array.ConvertAll(a.Substring(8).Split(','), x => float.Parse(x, System.Globalization.CultureInfo.InvariantCulture)); CarView.StickY = q[0]; CarView.StickZ = q[1]; CarView.StickTilt = q[2]; }
-        else if (a == "--full") _full = true; else if (a.StartsWith("--comp=")) CompTest = a.Substring(7); else if (a == "--tx") _txShot = true; else if (a.StartsWith("--fakeaxis=")) { _radio.Fake = new float[Radio.Axes]; var q = a.Substring(11).Split(','); for (int k = 0; k < q.Length && k < Radio.Axes; k++) _radio.Fake[k] = float.Parse(q[k], System.Globalization.CultureInfo.InvariantCulture); _radio.On = true; _txShot = true; }
+        else if (a == "--full") _full = true; else if (a == "--magnets") _magnets = true; else if (a.StartsWith("--comp=")) CompTest = a.Substring(7); else if (a == "--tx") _txShot = true; else if (a.StartsWith("--fakeaxis=")) { _radio.Fake = new float[Radio.Axes]; var q = a.Substring(11).Split(','); for (int k = 0; k < q.Length && k < Radio.Axes; k++) _radio.Fake[k] = float.Parse(q[k], System.Globalization.CultureInfo.InvariantCulture); _radio.On = true; _txShot = true; }
         else if (a.StartsWith("--menu=")) _menuAt = Array.ConvertAll(a.Substring(7).Split(','), int.Parse);
         else if (a.StartsWith("--track=")) { TrackIdx = int.Parse(a.Substring(8)); _trackChosen = true; }
         else if (a.StartsWith("--body=")) _body = int.Parse(a.Substring(7)); else if (a.StartsWith("--livery=")) _livery = int.Parse(a.Substring(9)); else if (a.StartsWith("--rims=")) _rimIdx = int.Parse(a.Substring(7));
@@ -65,7 +65,7 @@ namespace DriftMaster {
       _cam = new Camera3D { Near = 0.02f, Far = 40, Fov = 58 }; AddChild(_cam); _cam.MakeCurrent();
       BuildOnBoard();
       _audio = new CarAudio(); AddChild(_audio); _car.OnBump = k => { _audio.Bump(k); if (_comp != 0 && _phase == 1) _jP?.Tap(k); }; _audio.Volume = _vol0; _audio.Motor = _motor0; ApplySetup();
-      BuildHud(); BuildCompetition();
+      BuildHud(); BuildCompetition(); BuildTv();
       if (!_bare) AddChild(Decor.Build(_t, _course, DriverEye));
       _ghostLap = LoadGhost(false); _ghostRun = LoadGhost(true);
       if (CompTest == "solo" || CompTest == "solo2") StartSolo(); else if (CompTest == "park") Park();
@@ -104,6 +104,15 @@ namespace DriftMaster {
       pic.Material = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/analog.gdshader") };
       box.AddChild(pic); bg.AddChild(box); layer.AddChild(bg); _fpvScreen = bg; bg.Visible = false;
     }
+    // The television on the wall plays the overhead camera: the whole hall from the ceiling, straight down, as a small
+    // picture of its own, refreshed every third frame so it costs little.
+    void BuildTv() {
+      if (_bare || Room.Screen == null) return;
+      _tvView = new SubViewport { Size = new Vector2I(384, 216), RenderTargetUpdateMode = SubViewport.UpdateMode.Once, Msaa3D = Viewport.Msaa.Disabled }; AddChild(_tvView);
+      var cam = new Camera3D { Projection = Camera3D.ProjectionType.Orthogonal, Size = (float)_t.HallZ * 2 - 0.2f, Near = 0.05f, Far = 6, Position = new Vector3(0, Hall.CeilY - 0.06f, 0) }; _tvView.AddChild(cam);
+      cam.LookAt(new Vector3(0, 0, 0), Vector3.Forward); cam.MakeCurrent();
+      Room.Screen.MaterialOverride = new StandardMaterial3D { AlbedoColor = Colors.Black, EmissionEnabled = true, EmissionTexture = _tvView.GetTexture(), Emission = Colors.White, EmissionOperator = BaseMaterial3D.EmissionOperatorEnum.Multiply, EmissionEnergyMultiplier = 1.15f, Roughness = 0.25f };
+    }
     void OnBoard(bool on) {
       if (_fpvScreen.Visible == on) return;
       _fpvScreen.Visible = on; _fpvView.RenderTargetUpdateMode = on ? SubViewport.UpdateMode.Always : SubViewport.UpdateMode.Disabled;
@@ -114,7 +123,7 @@ namespace DriftMaster {
     // (the engine's own start-up picture is the same icon, the same way). After two seconds it fades and the window becomes
     // the game's: framed, 1280 x 720, in the middle of the screen. If the graphics driver cannot do a see-through window,
     // the icon simply shows on black.
-    float _eyeFov = 50; Vector3 _aheadSm;
+    float _eyeFov = 50; Vector3 _aheadSm; bool _magnets; SubViewport _tvView; int _tvTick;
     /// where the driver stands: on a low stand at the back of the clear floor, in front of the middle of the track, eyes 1.9 m up
     Vector3 DriverEye => new Vector3(0, 1.9f, (float)_t.HallZ - 0.55f);   // in the middle of the long side, facing the layout
     readonly Radio _radio = new(); Transmitter _tx; bool _txOn = true; /* a real RC transmitter as the controller, and the one shown on screen */
@@ -211,6 +220,7 @@ namespace DriftMaster {
         R("COLOUR", () => Paints[_paintIdx].name, d => { _paintIdx = Cyc(_paintIdx, d, Paints.Length); ApplyOptions(true); }),
         R("BONNET", () => _view.HasBonnet ? CarView.Bonnets[_livery] : "-", d => { _livery = Cyc(_livery, d, CarView.Bonnets.Length); ApplyOptions(true); }, "In the body colour, or in carbon weave."),
         R("RIMS", () => Rims[_rimIdx].name, d => { _rimIdx = Cyc(_rimIdx, d, Rims.Length); ApplyOptions(true); }),
+        R("MOUNT", () => _magnets ? "MAGNETS" : "POSTS", d => { _magnets = !_magnets; ApplyOptions(true); }, "How the shell is held on. Posts and clips show through the bonnet and boot; magnets are hidden under it."),
         R("SHELL", () => _shellOn ? "ON" : "OFF", d => { _shellOn = !_shellOn; ApplyOptions(true); }, "Off: the bare chassis, as on a setup stand."),
         R("WINDOWS", () => _clearGlass ? "CLEAR" : "TINTED", d => { _clearGlass = !_clearGlass; ApplyOptions(true); }),
         R("NEON", () => CarView.Neons[_neonIdx].name, d => { _neonIdx = Cyc(_neonIdx, d, CarView.Neons.Length); ApplyOptions(true); }, "Lit tubes under the chassis."),
@@ -226,10 +236,10 @@ namespace DriftMaster {
       var setup = new List<Menu.Row>();
       for (int k = 0; k < labels.Length; k++) { int q = k; setup.Add(R(labels[q], () => SetupNames[q][_setup[q]], d => { _setup[q] = Cyc(_setup[q], d, SetupNames[q].Length); ApplySetup(); ApplyOptions(true); }, notes[q])); }
       setup.Add(R("BACK TO DEFAULTS", null, d => { Array.Copy(SetupDefault, _setup, _setup.Length); ApplySetup(); ApplyOptions(true); }, "The middle of the baseline: 13.5T, -7 and -2 camber, 8 caster, 2 toe each end, 200 cSt, 7 mm, 55% gyro, 1.2 mm springs, spool, 40 / 60."));
-      string[] cams = { "", "DRIVER", "CEILING", "ON BOARD", "ROOF STICK" };
+      string[] cams = { "", "DRIVER", "", "ON BOARD", "ROOF STICK" }; int[] camOrder = { 1, 3, 4 };   // (the overhead camera now plays on the room's television)
       var game = new List<Menu.Row> {
         R("TRACK", () => Tracks[TrackIdx].name, d => { TrackIdx = Cyc(TrackIdx, d, Tracks.Length); _trackChosen = true; ApplyOptions(true); GetTree().ReloadCurrentScene(); }, "Changing track builds the hall again and puts the car on the start line."),
-        R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = 1 + Cyc(_camMode - 1, d, 4); _camSnap = true; }),
+        R("CAMERA", () => cams[Math.Clamp(_camMode, 1, 4)], d => { _camMode = camOrder[Cyc(Math.Max(0, Array.IndexOf(camOrder, _camMode)), d, 3)]; _camSnap = true; }),
         R("VOLUME", () => $"{Math.Round(_audio.Volume * 10)}", d => { _audio.Volume = Math.Clamp(_audio.Volume + 0.1f * d, 0, 1); ApplyOptions(true); }, "The car's sound."),
         R("MUSIC", () => _musicOn ? "ON" : "OFF", d => { _musicOn = !_musicOn; if (!_musicOn && _music != null) _music.Stop(); ApplyOptions(true); if (_musicOn) { ApplyMusic(); StartMusicLabel(); } }, MusicTitle + " by " + MusicArtist + ", heard as if from the hall's speakers."),
         R("MUSIC VOLUME", () => $"{Math.Round(_musicVol * 10)}", d => { _musicVol = Math.Clamp(_musicVol + 0.1f * d, 0, 1); ApplyOptions(true); }),
@@ -271,15 +281,15 @@ namespace DriftMaster {
       _view.SetPaint(Paints[_paintIdx % Paints.Length].col, _livery == 1); { var rm = Rims[_rimIdx % Rims.Length]; _view.SetRims(rm.col, rm.metal); }
       { var bd = CarView.Bodies[_body % CarView.Bodies.Length]; _car.SetBody(bd.kg, bd.cgUp, _view.HalfW, _view.HalfL); }
       _view.SetCamber((float)CamberFDeg[_setup[1]], (float)CamberRDeg[_setup[2]]); _car.H += (RideMm - 7) * 0.001; _view.RideOffset = (float)((RideMm - 7) * 0.001);
-      _view.SetShell(_shellOn); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
-      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup4", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
+      _view.SetShell(_shellOn); _view.SetMounts(_magnets); _view.SetNeon(_neonIdx); _view.SetWindows(_clearGlass);
+      if (save && _shot == null) { var cf = new ConfigFile(); cf.SetValue("game", "track", TrackIdx); for (int k = 0; k < _setup.Length; k++) cf.SetValue("setup4", SetupKeys[k], _setup[k]); cf.SetValue("game", "assist", _assist); if (_audio != null) { cf.SetValue("game", "volume", _audio.Volume); cf.SetValue("game", "music", _musicOn); cf.SetValue("game", "music_volume", _musicVol); cf.SetValue("game", "motor_sound", _audio.Motor); } _radio.Save(cf); cf.SetValue("game", "transmitter", _txOn); cf.SetValue("game", "ghost", _ghostOn); cf.SetValue("car", "paint", _paintIdx); cf.SetValue("car", "rims", _rimIdx); cf.SetValue("car", "bonnet", _livery); cf.SetValue("car", "body", _body); cf.SetValue("car", "shell", _shellOn); cf.SetValue("car", "magnets", _magnets); cf.SetValue("car", "neon", _neonIdx); cf.SetValue("car", "clear_windows", _clearGlass); cf.Save("user://settings.cfg"); }
     }
     void LoadOptions() {
       var cf = new ConfigFile(); if (cf.Load("user://settings.cfg") != Error.Ok) return;
       if (!_trackChosen) TrackIdx = Math.Clamp((int)cf.GetValue("game", "track", 0), 0, Tracks.Length - 1);
       for (int k = 0; k < _setup.Length; k++) _setup[k] = Math.Clamp((int)cf.GetValue("setup4", SetupKeys[k], SetupDefault[k]), 0, SetupNames[k].Length - 1);
       _vol0 = (float)(double)cf.GetValue("game", "volume", 0.4); _musicOn = (bool)cf.GetValue("game", "music", true); _musicVol = (float)(double)cf.GetValue("game", "music_volume", 0.5); _radio.Load(cf); _txOn = (bool)cf.GetValue("game", "transmitter", true); _assist = (bool)cf.GetValue("game", "assist", true); _ghostOn = (bool)cf.GetValue("game", "ghost", true); _motor0 = (bool)cf.GetValue("game", "motor_sound", true);
-      _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
+      _paintIdx = (int)cf.GetValue("car", "paint", 0); _rimIdx = Math.Clamp((int)cf.GetValue("car", "rims", 0), 0, Rims.Length - 1); _livery = Math.Clamp((int)cf.GetValue("car", "bonnet", 0), 0, 1); _body = Math.Clamp((int)cf.GetValue("car", "body", 0), 0, CarView.Bodies.Length - 1); _shellOn = (bool)cf.GetValue("car", "shell", true); _magnets = (bool)cf.GetValue("car", "magnets", false); _neonIdx = (int)cf.GetValue("car", "neon", 0); _clearGlass = (bool)cf.GetValue("car", "clear_windows", false);
       _paintIdx = Math.Clamp(_paintIdx, 0, Paints.Length - 1); _neonIdx = Math.Clamp(_neonIdx, 0, CarView.Neons.Length - 1);
     }
     float _vol0 = 0.4f; /* the browser version's 4 out of 10 */ bool _motor0 = true; double _sayT; string _sayText = "";
@@ -296,7 +306,7 @@ namespace DriftMaster {
       else if (_comp != 0 && _phase == 2 && (key(Key.Enter) || key(Key.Space) || pad(JoyButton.A))) NextRun();
       else if (key(Key.R) || pad(JoyButton.Y)) ResetCar();
       else if (key(Key.K)) Park();
-      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode >= 4 ? 1 : _camMode + 1; _camSnap = true; }
+      else if (key(Key.C) || pad(JoyButton.X)) { _camMode = _camMode == 1 ? 3 : _camMode == 3 ? 4 : 1; _camSnap = true; }
       else if (key(Key.P)) { _paintIdx = (_paintIdx + 1) % Paints.Length; ApplyOptions(true); Say("COLOUR " + Paints[_paintIdx].name); }
       else if (key(Key.O)) { _rimIdx = (_rimIdx + 1) % Rims.Length; ApplyOptions(true); Say("RIMS " + Rims[_rimIdx].name); }
       else if (key(Key.L)) { _livery = 1 - _livery; ApplyOptions(true); Say("BONNET " + CarView.Bonnets[_livery]); }
@@ -345,6 +355,7 @@ namespace DriftMaster {
         if (_radio.Step(delta) || (_pause.Visible && _radio.On)) _pause.Refresh();
         var show = ReadInput(); var vs = GetViewport().GetVisibleRect().Size; _tx.Visible = _txOn && !_bare && _splash == null && (_shot == null || _txShot) && !(_fpvScreen.Visible && vs.X < 900);
         _tx.Position = new Vector2(vs.X - _tx.Size.X - 14, vs.Y - _tx.Size.Y - 44); _tx.Show(show.Steer, show.Thr, show.Brk, Input.GetConnectedJoypads().Count > 0 || _radio.Fake != null); }
+      if (_tvView != null && ++_tvTick % 3 == 0) _tvView.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;   // the television's picture: every third frame is plenty
       StepSplash(delta); StepMusic(delta);
       StepCompetition(delta); _view.Pose(_car, _t); UpdateCamera((float)delta); UpdateHud();
       { // sound is always heard from where the pilot stands, facing the track: the cameras on the car have no microphone

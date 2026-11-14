@@ -1,4 +1,4 @@
-// Trackside dressing, as at a club track: old tyres packed on edge along the inside of some bends, and flags of two
+// Trackside dressing, as at a club track: a wall of old tyres stacked along the outside of two bends, and flags of two
 // kinds round the outside of the lane (tall feather flags on poles, small banners hung in frames), red and white, with
 // DRIFT MASTER on them. All of it stands off the lane, behind the barriers: there to look at, not to hit.
 using Godot;
@@ -11,13 +11,20 @@ namespace DriftMaster {
       var root = new Node3D { Name = "Decor" }; int n = t.N;
       // how far a point is from the middle of the nearest piece of lane
       double Clear(double x, double z) { double m = 1e9; for (int i = 0; i < n; i += 2) { double dx = x - t.X[i], dz = z - t.Z[i]; m = Math.Min(m, dx * dx + dz * dz); } return Math.Sqrt(m); }
-      // ---- tyres: packed side by side on edge, against the inside barrier of every other bend
-      var xf = new List<Transform3D>();
-      for (int b = 0; b < c.Bends.Count; b += 2) { var bend = c.Bends[b]; double run = 0; int last = -1;
-        for (int k = bend.a; k <= bend.b; k++) { int i = ((k % n) + n) % n; if (t.E[i] > 0.004) continue; if (last >= 0) run += t.Ds; last = i; if (run < 0.031 && xf.Count > 0 && k != bend.a) continue; run = 0;
-          double off = bend.side * (t.Hw + 0.055), x = t.X[i] + t.NX[i] * off, z = t.Z[i] + t.NZ[i] * off; if (Clear(x, z) < t.Hw + 0.045) continue;   // (where the inside of the bend is too tight for them they are left out)
-          var ty = new Vector3((float)t.TX[i], 0, (float)t.TZ[i]); var nx = new Vector3((float)t.NX[i], 0, (float)t.NZ[i]);
-          xf.Add(new Transform3D(new Basis(nx, ty, nx.Cross(ty)), new Vector3((float)x, 0.032f, (float)z))); } }
+      // ---- tyres: a tyre wall in two places only. Old tyres lying flat, three high, packed tight in one row along the
+      // outside of a bend, behind its barrier: the two bends that have the longest clear run of floor beside them
+      var xf = new List<Transform3D>(); var rnd = new Random(41); const float TyreH = 0.026f; const double Out = 0.062;
+      var runs = new List<(int from, int len, double side)>();
+      foreach (var bend in c.Bends) { int from = -1, len = 0, bestFrom = -1, bestLen = 0;
+        for (int k = bend.a - 6; k <= bend.b + 6; k++) { int i = ((k % n) + n) % n; double off = -bend.side * (t.Hw + Out), x = t.X[i] + t.NX[i] * off, z = t.Z[i] + t.NZ[i] * off;
+          bool ok = t.E[i] <= 0.004 && Clear(x, z) > t.Hw + Out - 0.012 && Math.Abs(x) < t.HallX - 0.12 && Math.Abs(z) < t.HallZ - 0.12;
+          if (ok) { if (from < 0) { from = k; len = 0; } len++; if (len > bestLen) { bestLen = len; bestFrom = from; } } else from = -1; }
+        if (bestLen * t.Ds > 0.8) runs.Add((bestFrom, bestLen, bend.side)); }
+      runs.Sort((a, b) => b.len.CompareTo(a.len));
+      for (int r = 0; r < Math.Min(2, runs.Count); r++) { var (from, len, side) = runs[r]; int cap = (int)(2.6 / t.Ds); if (len > cap) { from += (len - cap) / 2; len = cap; } double run = 9;
+        for (int k = from; k < from + len; k++) { int i = ((k % n) + n) % n; run += t.Ds; if (run < 0.066) continue; run = 0;
+          double off = -side * (t.Hw + Out), x = t.X[i] + t.NX[i] * off, z = t.Z[i] + t.NZ[i] * off; float yaw = (float)(rnd.NextDouble() * 6.28);
+          for (int h = 0; h < 3; h++) { var b = new Basis(Vector3.Up, yaw + h * 0.7f).Scaled(new Vector3(1, TyreH / 0.015f, 1)); xf.Add(new Transform3D(b, new Vector3((float)(x + (rnd.NextDouble() - 0.5) * 0.006), TyreH / 2 + h * TyreH, (float)(z + (rnd.NextDouble() - 0.5) * 0.006)))); } } }
       if (xf.Count > 0) { var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = new TorusMesh { InnerRadius = 0.017f, OuterRadius = 0.032f, Rings = 14, RingSegments = 6 }, InstanceCount = xf.Count };
         for (int i = 0; i < xf.Count; i++) mm.SetInstanceTransform(i, xf[i]);
         root.AddChild(new MultiMeshInstance3D { Multimesh = mm, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.03f, 0.03f, 0.032f), Roughness = 0.85f }, Name = "Tyres" }); }
@@ -28,7 +35,7 @@ namespace DriftMaster {
       for (int q = 0; q < steps; q++) { int i = (q * n / steps + n / (2 * steps)) % n; if (t.E[i] > 0.004) continue; Vector3 best = Vector3.Zero; double bestD = -1;
         foreach (int sg in new[] { -1, 1 }) { double off = sg * (t.Hw + 0.16), x = t.X[i] + t.NX[i] * off, z = t.Z[i] + t.NZ[i] * off;
           if (Clear(x, z) < t.Hw + 0.13 || Math.Abs(x) > t.HallX - 0.25 || Math.Abs(z) > t.HallZ - 0.25) continue; double d = new Vector3((float)x, 0, (float)z).DistanceTo(driver); if (d < 1.6) continue; if (d > bestD) { bestD = d; best = new Vector3((float)x, 0, (float)z); } }
-        if (bestD < 0) continue; int kind = made % 4; made++; var at = new Node3D { Position = best }; at.LookAt(new Vector3(driver.X, 0, driver.Z), Vector3.Up, true); root.AddChild(at);   // each faces the driver, so it can be read
+        if (bestD < 0) continue; int kind = made % 4; made++; var at = new Node3D { Position = best }; root.AddChild(at); at.LookAtFromPosition(best, new Vector3(driver.X, 0, driver.Z), Vector3.Up, true);   // each faces the driver, so it can be read
         void Box(Vector3 size, Vector3 pos) => at.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = pole, Position = pos });
         void Quad(Vector2 size, Vector3 pos, Material m) => at.AddChild(new MeshInstance3D { Mesh = new QuadMesh { Size = size }, MaterialOverride = m, Position = pos, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         if (kind % 2 == 0) { // a feather flag: a thin pole 45 cm tall on a small foot, the cloth down one side of it

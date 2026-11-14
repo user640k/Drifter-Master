@@ -102,7 +102,7 @@ namespace DriftMaster {
       bool init = !double.IsNaN(InitLead); double early = init ? Math.Clamp((InitLead + 0.3) / 0.8, 0, 1) : 0, sharp = init ? Math.Clamp(InitRate / 3.0, 0, 1) : 0;   // tail out by 0.5 m before the bend: full marks for timing
       c.Initiation = 6 * (0.6 * early + 0.4 * sharp);
       c.Style = Math.Max(0, c.Fluidity + c.Commitment + c.Initiation - 2 * Reaches);
-      c.Bonus = init && InitLead > 0.8 ? Math.Min(5, 5 * (0.6 * Math.Clamp((InitLead - 0.8) / 1.0, 0, 1) + 0.4 * sharp)) : 0;   // before the initiation line
+      c.Bonus = init && InitLead > 0.8 && InitLead <= 3.0 ? Math.Min(5, 5 * (0.6 * Math.Clamp((InitLead - 0.8) / 1.0, 0, 1) + 0.4 * sharp)) : 0;   // before the initiation line (but not a slide carried from far back along a long run-in)
       c.Deduct = 4 * Straightens + (Taps > 0 ? 2 + 4 * (Taps - 1) : 0); var notes = new List<string>();
       if (ClipsHit < Clip.Length) notes.Add($"MISSED {Clip.Length - ClipsHit} OF {Clip.Length} CLIPS"); if (Reaches > 0) notes.Add($"REACHED FOR A CLIP x{Reaches}"); if (Straightens > 0) notes.Add($"STRAIGHTENED x{Straightens}"); if (Taps > 0) notes.Add($"WALL TAP x{Taps}"); if (c.Bonus > 0.05) notes.Add("EARLY INITIATION");
       c.Total = Math.Max(0, c.Line + c.Angle + c.Style + c.Bonus - c.Deduct); c.Notes = string.Join("   ", notes); return c;

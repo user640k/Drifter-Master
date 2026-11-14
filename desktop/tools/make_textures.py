@@ -81,7 +81,7 @@ def arr(im, blur=0):
     a = np.asarray(im).astype(np.float32) / 255
     return gaussian_filter(a, blur) if blur else a
 # one sheet per track: (data file, how far its layout was moved along z, name suffix, turf and kerbs?)
-for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True)):   # (each layout sits 1 m towards -z of the hall's middle)
+for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json', 1.0, '_infield', True), ('club.json', 1.0, '_club', 'club')):   # (each layout sits 1 m towards -z of the hall's middle)
     wr = np.random.default_rng(777); tj = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', TFILE)))
     rgb = np.zeros((Hp, Wp, 3), np.float32); al = np.zeros((Hp, Wp), np.float32); ro = np.zeros((Hp, Wp), np.float32)
     # broad dust haze
@@ -152,6 +152,11 @@ for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json'
         lanes = arr(im) > 0.5
         hull = ConvexHull(np.c_[cx, cz]); im, d = layer(); d.polygon([px(*np.c_[cx, cz][i]) for i in hull.vertices], fill=255); inside = arr(im) > 0.5
         grass = inside & ~lanes
+        if TURF == 'club':   # the club's floor is bare between the lanes but for three islands of turf, one inside each tight bend
+            isl = np.zeros_like(grass)
+            for ix, iz in ((2.85, -1.33), (-1.0, -0.17), (2.75, 1.21)):
+                q = px(ix, iz - Z0); isl |= ((xx - q[0]) / (1.5 * PXM)) ** 2 + ((yy - q[1]) / (0.62 * PXM)) ** 2 < 1
+            grass &= isl
         g = wr.random((Hp, Wp)).astype(np.float32); blade = gaussian_filter(g, (0.6, 0.6)); clump = gaussian_filter(wr.random((Hp, Wp)).astype(np.float32), 9)
         tone = 0.78 + 0.5 * (blade - 0.5) * 2.2 + 0.5 * (clump - 0.5) * 3
         for k, base in enumerate((0.16, 0.42, 0.14)): rgb[..., k] = np.where(grass, base * tone, rgb[..., k])
@@ -168,6 +173,20 @@ for TFILE, Z0, SUF, TURF in (('hillside.json', -2.4, '', False), ('infield.json'
             im, d = layer(); d.polygon(quad, fill=255); m = arr(im) > 0.5; red = (i // step) % 2 == 0
             for k, v in enumerate((0.78, 0.08, 0.07) if red else (0.9, 0.9, 0.88)): rgb[..., k] = np.where(m, v, rgb[..., k])
             al[:] = np.where(m, 1.0, al); ro[:] = np.where(m, 0.1, ro)
+    if TURF == 'club':   # three yellow lines along the outside of each wide bend, as the club marks its outer zones
+        for o in (0.10, 0.17, 0.24):
+            im, d = layer(); run = []
+            for i in range(n + 1):
+                q = i % n
+                if 1 / 2.6 < abs(kap[q]) < 1 / 0.9 or (abs(kap[q]) >= 1 / 0.9 and False):
+                    sg = 1 if kap[q] > 0 else -1; tx, tz = np.cos(hd[q]), -np.sin(hd[q]); run.append(px(cx[q] - sg * tx * (hw - o), cz[q] - sg * tz * (hw - o)))
+                else:
+                    if len(run) > 3: d.line(run, fill=255, width=max(2, int(0.022 * PXM)))
+                    run = []
+            if len(run) > 3: d.line(run, fill=255, width=max(2, int(0.022 * PXM)))
+            m = arr(im, 0.6) * (0.55 + 0.45 * (wr.random((Hp, Wp)) > 0.25))
+            for k, v in enumerate((0.9, 0.74, 0.08)): rgb[..., k] = np.where(m > 0.3, v, rgb[..., k])
+            al[:] = np.where(m > 0.3, np.maximum(al, 0.9 * m), al)
     out_rgba = np.dstack([rgb.clip(0, 1), al.clip(0, 1)])
     Image.fromarray((out_rgba * 255).astype(np.uint8), 'RGBA').save(f'{out}/floor_wear{SUF}.png', optimize=True)
     Image.fromarray(((0.5 + ro).clip(0, 1) * 255).astype(np.uint8)).save(f'{out}/floor_wear{SUF}_rough.jpg', quality=85)

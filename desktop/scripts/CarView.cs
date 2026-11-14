@@ -11,6 +11,7 @@ namespace DriftMaster {
     public static readonly (string name, string file, double kg, double cgUp, float cabZ)[] Bodies = {
       ("SEDAN", "sedan", 0.130, 0.068, 0.006f), ("COUPE", "coupe", 0.115, 0.060, -0.012f), ("PICKUP", "pickup", 0.165, 0.074, 0.03f), ("TUNER", "tuner", 0.120, 0.060, 0.02f), ("VAN", "zuk", 0.175, 0.090, 0.10f) };
     public float RideOffset; /* ride height above or below 7 mm (m) */
+    Node3D _mounts;
     public bool Ghost; /* a see-through replay of the car: one pale tint, no shadow, no stickers */
     public int Body; public float RoofY = 0.133f, HalfW = 0.095f, HalfL = 0.21f;
     public static readonly string[] Bonnets = { "BODY COLOUR", "CARBON" }; /* one livery template: a solid colour, the bonnet in it or in carbon, and the rims in their own colour */
@@ -28,7 +29,7 @@ namespace DriftMaster {
     public override void _Ready() {
       var model = GD.Load<PackedScene>("res://assets/" + Bodies[Body % Bodies.Length].file + ".glb").Instantiate<Node3D>(); AddChild(model);
       _body = new Node3D { Name = "Body" }; AddChild(_body);
-      foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; }
+      foreach (var n in new[] { "Shell", "Chassis", "Mounts" }) { var p = model.FindChild(n, true, false) as Node3D; if (p == null) { GD.PrintErr("missing ", n); continue; } var xf = p.Transform; p.GetParent().RemoveChild(p); _body.AddChild(p); p.Transform = xf; if (n == "Shell") _shell = p; if (n == "Mounts") _mounts = p; }
       for (int i = 0; i < 4; i++) {
         _wheel[i] = model.FindChild(Names[i], true, false) as Node3D; _spin[i] = model.FindChild(Names[i] + "_Spin", true, false) as Node3D;
         if (_spin[i] != null) { _camber[i] = _spin[i].Quaternion; _leanIn[i] = Mathf.Sign(_camber[i].X) == 0 ? 1 : Mathf.Sign(_camber[i].X); _camber[i] = Quaternion.Identity; } // the model came with 9 degrees of negative camber: which way is 'in' for this wheel is taken from it, then the wheel is stood upright
@@ -195,6 +196,8 @@ namespace DriftMaster {
     void Glass() { _glass.SetShaderParameter("tint", _clear ? new Color(0.75f, 0.82f, 0.88f, 0.1f) : new Color(0.05f, 0.065f, 0.085f, _onBoard ? 0.16f : 0.8f)); _glass.SetShaderParameter("metal", _clear ? 0.1f : 0.3f); _glass.SetShaderParameter("strip_show", _onBoard ? 0f : 1f); }
     // shell off: the bare chassis, as on a setup stand (the body posts stay)
     public void SetShell(bool on) { if (_shell != null) _shell.Visible = on; }
+    /// how the shell is held on: body posts with clips (they stand through the bonnet and boot), or hidden magnets (nothing shows)
+    public void SetMounts(bool magnets) { if (_mounts != null) _mounts.Visible = !magnets; }
     /// Neon, as fitted to RC drift cars: LED strips under the edges of the chassis and across its ends. The light pools on
     /// the floor close round the car's outline, fills the wheel arches, catches the bottom of the body, and lights the
     /// cabin from inside so the windows glow.
@@ -206,7 +209,7 @@ namespace DriftMaster {
       void Strip(Vector3 size, Vector3 pos) => _neon.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = _neonBar, Position = pos, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
       foreach (int sd in new[] { -1, 1 }) Strip(new Vector3(0.004f, 0.003f, hl * 1.0f), new Vector3(sd * (hw - 0.022f), 0.013f, 0));            // along each sill, between the wheels
       Strip(new Vector3(hw * 1.2f, 0.003f, 0.004f), new Vector3(0, 0.014f, hl - 0.03f)); Strip(new Vector3(hw * 1.2f, 0.003f, 0.004f), new Vector3(0, 0.014f, -hl + 0.03f));   // across the nose and the tail
-      void Lamp(Vector3 pos, float range, float energy) => _neon.AddChild(new OmniLight3D { Position = pos, OmniRange = range, OmniAttenuation = 1.1f, LightEnergy = energy, LightColor = c, ShadowEnabled = false, LightSpecular = 0.3f });
+      void Lamp(Vector3 pos, float range, float energy) => _neon.AddChild(new OmniLight3D { Position = pos, OmniRange = range, OmniAttenuation = 1.1f, LightEnergy = energy, LightColor = c, ShadowEnabled = false, LightSpecular = 0.04f });   // (next to no highlight of its own: on the glossy floor it drew a bright streak; the pool is the floor's light)
       Lamp(new Vector3(0, 0.014f, 0), 0.24f, 2.2f);                                                           // under the chassis
       Lamp(new Vector3(0, 0.04f, 0.1285f), 0.2f, 1.8f); Lamp(new Vector3(0, 0.04f, -0.1285f), 0.2f, 1.8f);    // in the wheel arches, front and rear
       Lamp(new Vector3(0, RoofY - 0.05f, Bodies[Body % Bodies.Length].cabZ - 0.03f), 0.17f, 1.1f);            // inside the cabin

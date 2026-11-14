@@ -51,9 +51,10 @@ namespace DriftMaster {
       var skirt = Mat(null, new Color(0.13f, 0.14f, 0.15f), 0.6f);
       foreach (int s in new[] { -1, 1 }) {
         Box(root, new Vector3(hx * 2, CeilY, 0.06f), new Vector3(0, CeilY / 2, s * (hz + 0.03f)), wall);
-        Box(root, new Vector3(0.06f, CeilY, hz * 2), new Vector3(s * (hx + 0.03f), CeilY / 2, 0), wall);
+        float cut = s > 0 ? Room.NookW : 0;   // the right-hand wall stops short at the far end: the door corner opens off it there
+        Box(root, new Vector3(0.06f, CeilY, hz * 2 - cut), new Vector3(s * (hx + 0.03f), CeilY / 2, cut / 2), wall);
         Box(root, new Vector3(hx * 2, 0.07f, 0.012f), new Vector3(0, 0.035f, s * (hz - 0.006f)), skirt);
-        Box(root, new Vector3(0.012f, 0.07f, hz * 2), new Vector3(s * (hx - 0.006f), 0.035f, 0), skirt);
+        Box(root, new Vector3(0.012f, 0.07f, hz * 2 - cut), new Vector3(s * (hx - 0.006f), 0.035f, cut / 2), skirt);
       }
       // ceiling: suspended tiles, with tube-light panels that also light the floor's reflections
       var ceil = Mat("ceiling.jpg", new Color(0.86f, 0.86f, 0.84f), 0.95f, 1); ceil.Uv1Scale = new Vector3(hx * 2 / 3.6f, hz * 2 / 3.6f, 1);
@@ -67,6 +68,7 @@ namespace DriftMaster {
         Box(root, new Vector3(1.2f, 0.008f, 0.3f), new Vector3(x, CeilY - 0.034f, z), lampOn);
       }
 
+      Room.Build(root, t, wall, skirt);
       BuildDeck(root, t, floorMat);
       BuildBarriers(root, t);
       BuildStartLine(root, t);

@@ -2,7 +2,7 @@
 
 A separate build of Drift Master for desktop, made with Godot 4.6 and C#. The browser version in the repository root is unchanged.
 
-One hall, two layouts (HILLSIDE and INFIELD), five bodies on one chassis.
+One room, three layouts (CLUB, HILLSIDE and INFIELD), five bodies on one chassis.
 
 ## Run
 
@@ -52,7 +52,9 @@ Open the `desktop` folder in Godot 4.6 (.NET edition) and press Play, or export 
 - **Training** (`scripts/Judging.cs`, `scripts/Compete.cs`, TRAINING page): solo only. A judged run is one lap from the start line, scored like solo qualifying (tanso): line 40 (clips and zones on a natural line; reaching for a clip halves it), angle 40 (depth 25, consistency 15), style 20 (fluidity 7, commitment 7, initiation 6) and up to 5 bonus for initiating before the first bend's initiation line; speed earns nothing by itself. Deductions for straightening up in a bend and for wall taps; a spin or stop scores zero. The course marks are set out from each track's bends: cones at inner clipping points, yellow dashes for outer zones. **Ghost**: a see-through copy of your own car replays a recording, your fastest lap in free practice (from the line) and your highest-scoring run in a judged run (from the start); a better lap or run replaces it. Recordings are 60 frames a second and kept per track in `user://ghost_*.bin`. (An earlier rival car and tandem battles were taken out.)
 - **Parking bay**: K (or TRAINING > PARK THE CAR) takes the car off the track into a marked bay by the driver's stand; R returns it to the start line.
 - **The hall and the driver**: 11 x 7 m (`Hall.HalfX`): 11 x 5 m for the layouts plus 2 m of clear floor on the driver's side (`Hall.Back`). The driver stands on a low stand at the back of that floor, in front of the middle of the layout, eyes 1.9 m up (`Main.DriverEye`), and the main camera sees like a person from there: a steady field of view (58 degrees, easing to 34 far off) with the gaze about half a second ahead of the car. The sound is heard from the same place.
-- **Trackside dressing** (`scripts/Decor.cs`, `tools/make_flags.py`): tyres packed on edge inside every other bend where there is room, and fourteen flag positions round each lap, alternating feather flags and framed banners in red and white with DRIFT MASTER on them, each turned to face the driver. They stand off the lane and are not hit.
+- **CLUB** (`tools/make_track.py club`, `assets/club.json`): the main track, laid out after a photo of a club's room as a smooth curve through chosen points: 37.5 m a lap, tightest bend 0.58 m, three turf islands, yellow lines along the outside of the wide bends (drawn into its floor sheet by `tools/make_textures.py`).
+- **The room** (`scripts/Room.cs`, `tools/make_room.py`): the door corner set back from the far right of the hall (a CC0 wood from ambientCG on the door), yellow notices, a fire extinguisher, a television whose screen is the overhead camera's picture (a 384 x 216 view refreshed every third frame), ten banners on the far wall and a window with its blind down in the left wall. All our own artwork.
+- **Trackside dressing** (`scripts/Decor.cs`, `tools/make_flags.py`): a tyre wall (three high, one tight row) along the outside of the two bends with the most clear floor beside them, and fourteen flag positions round each lap, alternating feather flags and framed banners in red and white with DRIFT MASTER on them, each turned to face the driver. They stand off the lane and are not hit.
 - **RC radio** (`scripts/Radio.cs`, CONTROLLER page): a real pistol-grip transmitter plugged into the PC drives the car. The game finds the steering and throttle channels by watching which one moves, learns centre and end points, and can reverse either. Wheel and trigger act one to one; pushing the trigger brakes, then reverses.
 - **Transmitter on screen** (`scripts/Transmitter.cs`): a pistol-grip radio in the bottom right corner (our own model, built from plain shapes) whose wheel and trigger follow the inputs, from a radio, a gamepad or the keys. Can be switched off.
 - **Windscreen** (`assets/glass.gdshader`): a sun strip, a band of darker tint across the top of the windscreen (found in the glass mesh of each body), with the DRIFT MASTER banner on it.
@@ -71,7 +73,7 @@ Wall, foam, ceiling and board textures are from ambientCG.com (CC0 1.0): Painted
 
 The list, in order:
 1. Animated suspension on the chassis (shocks, springs, arms moving with the physics).
-2. The room: one side extended for stairs going up; basement windows on the opposite side; posts; the ceiling.
+2. The room, further: stairs, posts, the ceiling.
 3. Left-over texture and shell fitting issues.
 4. An exit from every layout to a parking area (replaces the K parking bay).
 5. Better textures for the walls and the artificial grass.

@@ -16,7 +16,7 @@ void vertex() { mp = VERTEX; on = NORMAL; }
 void fragment() {
 	float t = dot(mp - strip_c, strip_v);
 	float band = smoothstep(-fwidth(t), fwidth(t), t) * step(0.75, abs(dot(normalize(on), strip_n))) * step(abs(dot(mp - strip_c, strip_n)), 0.02) * step(0.0, mp.z - strip_c.z + 0.05) * strip_on * strip_show;
-	EMISSION = inner_glow * 0.3 * (1.0 - 0.5 * band);   // the cabin lit from inside by the neon
+	EMISSION = inner_glow * 0.17 * (1.0 - 0.5 * band);   // the cabin lit from inside by the neon
 	ALBEDO = mix(tint.rgb, vec3(0.012, 0.014, 0.018), band); ALPHA = mix(tint.a, mix(tint.a, 1.0, 0.55), band);
 	METALLIC = metal; ROUGHNESS = mix(0.08, 0.2, band); SPECULAR = 0.5;
 }
